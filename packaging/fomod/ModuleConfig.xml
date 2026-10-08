@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+    <moduleName>AnvilLOD SKSE Plugin</moduleName>
+    <moduleImage path="fomod\images\anvillod.jpg" />
+    <requiredInstallFiles>
+        <file source="common\SKSE\Plugins\AnvilLOD.ini" destination="SKSE\Plugins\AnvilLOD.ini" />
+    </requiredInstallFiles>
+    <installSteps order="Explicit">
+        <installStep name="Game version">
+            <optionalFileGroups order="Explicit">
+                <group name="Which Skyrim do you run?" type="SelectExactlyOne">
+                    <plugins order="Explicit">
+                        <plugin name="SE 1.5.97 up to AE 1.6.1170">
+                            <description>Skyrim Special Edition 1.5.97 and Anniversary Edition up to 1.6.1170 (the version most modlists use). Built on CommonLibSSE-NG.&#13;&#10;&#13;&#10;Check your version: right-click SkyrimSE.exe, Properties, Details, File version.</description>
+                            <image path="fomod\images\anvillod.jpg" />
+                            <files>
+                                <folder source="1.5.97-1.6.1170" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <type name="Optional" />
+                            </typeDescriptor>
+                        </plugin>
+                        <plugin name="Newer than 1.6.1170 (1.7.99, 1.7.104 and later)">
+                            <description>Skyrim 1.7.x, which Steam installs since August 2026 and which uses a new Address Library format. Built on CommonLibSSE-NG 7.2.0 (GPL-3.0).&#13;&#10;&#13;&#10;Needs SKSE and Address Library for this game version.</description>
+                            <image path="fomod\images\anvillod.jpg" />
+                            <files>
+                                <folder source="1.7.x" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <type name="Optional" />
+                            </typeDescriptor>
+                        </plugin>
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+    </installSteps>
+</config>

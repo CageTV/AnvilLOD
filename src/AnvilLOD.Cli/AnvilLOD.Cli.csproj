@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Headless runner. Add it to MO2 as an executable so it sees the VFS + profile load order. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AnvilLOD.Cli</RootNamespace>
+    <AssemblyName>AnvilLOD</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
+    <ProjectReference Include="..\AnvilLOD.Plugins\AnvilLOD.Plugins.csproj" />
+  </ItemGroup>
+</Project>

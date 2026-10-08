@@ -1,0 +1,10 @@
+{
+  "name": "anvillod-skse-17",
+  "version-string": "0.2.0",
+  "description": "AnvilLOD runtime, Skyrim 1.7.x build line: same sources as the root manifest, CommonLibSSE-NG 7.2.0 from cmake/ports-17.",
+  "dependencies": [
+    "commonlibsse-ng",
+    "spdlog"
+  ],
+  "builtin-baseline": "127402f1c75bb3d5ff6bce04b285faa4930a5aca"
+}

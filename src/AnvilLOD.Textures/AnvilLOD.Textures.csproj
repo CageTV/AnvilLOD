@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- GPU atlas + billboard rendering (TexGen replacement). Backend (Vortice D3D12 vs Silk.NET Vulkan) chosen in milestone 2. -->
+  <PropertyGroup>
+    <RootNamespace>AnvilLOD.Textures</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
+  </ItemGroup>
+</Project>

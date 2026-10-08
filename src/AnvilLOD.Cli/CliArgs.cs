@@ -1,0 +1,39 @@
+namespace AnvilLOD.Cli;
+
+public sealed class CliArgException(string message) : Exception(message);
+
+/// <summary>Minimal "--key value" / "--flag" parser. Keys may repeat.</summary>
+public sealed class CliArgs
+{
+    private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic"];
+    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness"];
+
+    private readonly Dictionary<string, List<string>> _values = new(StringComparer.OrdinalIgnoreCase);
+
+    public static CliArgs Parse(string[] args)
+    {
+        var r = new CliArgs();
+        for (int i = 0; i < args.Length; i++)
+        {
+            var a = args[i];
+            if (!a.StartsWith("--")) throw new CliArgException($"Unexpected argument '{a}'.");
+            var key = a[2..].ToLowerInvariant();
+
+            if (Flags.Contains(key)) { r.Add(key, "true"); continue; }
+            if (!Valued.Contains(key)) throw new CliArgException($"Unknown option '{a}'.");
+            if (i + 1 >= args.Length) throw new CliArgException($"Option '{a}' needs a value.");
+            r.Add(key, args[++i]);
+        }
+        return r;
+    }
+
+    private void Add(string k, string v)
+    {
+        if (!_values.TryGetValue(k, out var list)) _values[k] = list = [];
+        list.Add(v);
+    }
+
+    public bool Has(string k) => _values.ContainsKey(k);
+    public string? Get(string k) => _values.TryGetValue(k, out var l) ? l[^1] : null;
+    public IReadOnlyCollection<string>? GetAll(string k) => _values.TryGetValue(k, out var l) ? l : null;
+}

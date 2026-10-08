@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "release",
+      "displayName": "Release, SE 1.5.97 / AE 1.6.x line",
+      "binaryDir": "${sourceDir}/build",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
+        "ANVILLOD_RUNTIME_LINE": "1"
+      }
+    },
+    {
+      "name": "release-17",
+      "displayName": "Release, Skyrim 1.7.x line (CommonLibSSE-NG 7.2.0)",
+      "binaryDir": "${sourceDir}/build-17",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed-17",
+        "VCPKG_MANIFEST_DIR": "${sourceDir}/cmake/manifest-17",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/ports-17",
+        "ANVILLOD_RUNTIME_LINE": "17"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "release-17",
+      "configurePreset": "release-17",
+      "configuration": "Release"
+    }
+  ]
+}

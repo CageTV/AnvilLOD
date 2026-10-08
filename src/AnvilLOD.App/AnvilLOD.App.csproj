@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- WPF front end. Thin: all real work goes through AnvilLOD.Plugins.ScanPipeline, same as the CLI. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>AnvilLOD.App</RootNamespace>
+    <AssemblyName>AnvilLOD.App</AssemblyName>
+    <!-- Workstation GC for the UI process (the CLI keeps server GC). -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ApplicationIcon>..\..\assets\anvillod.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="..\..\assets\anvillod.ico" Link="anvillod.ico" />
+    <Resource Include="..\..\assets\anvillod-256.png" Link="anvillod-256.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
+    <ProjectReference Include="..\AnvilLOD.Plugins\AnvilLOD.Plugins.csproj" />
+  </ItemGroup>
+</Project>

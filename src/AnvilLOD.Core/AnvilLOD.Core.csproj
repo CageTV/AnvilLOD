@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pure model + math. No external packages so every other layer can depend on it. -->
+  <PropertyGroup>
+    <RootNamespace>AnvilLOD.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AnvilLOD.Core.Tests" />
+  </ItemGroup>
+</Project>

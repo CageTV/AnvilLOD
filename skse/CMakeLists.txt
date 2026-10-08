@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.21)
+
+project(AnvilLOD VERSION 0.1.0 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
+set(ANVILLOD_RUNTIME_LINE "1" CACHE STRING "Build line: 1 (SE 1.5.97 - AE 1.6.1170) or 17 (newer than 1.6.1170)")
+
+find_package(CommonLibSSE CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+if(ANVILLOD_RUNTIME_LINE STREQUAL "17")
+    # CommonLibSSE-NG 7.2.0 links Microsoft::DirectXTK in its interface without finding it itself,
+    # so the plugin has to, or the generate step fails.
+    find_package(directxtk CONFIG REQUIRED)
+endif()
+
+# Two build lines from one source tree (like ApocryphaRealm Menu Framework):
+#   1  = Skyrim SE 1.5.97 / AE 1.6.x, CommonLibSSE-NG from the colorglass registry (root vcpkg.json)
+#   17 = Skyrim 1.7.x, CommonLibSSE-NG 7.2.0 (alandtse ng), which reads Address Library's format-5 databases
+#        (cmake/manifest-17 + cmake/ports-17, preset release-17)
+add_commonlibsse_plugin(${PROJECT_NAME}
+    AUTHOR "Julio"
+    SOURCES
+        src/main.cpp
+        src/DataFile.cpp
+        src/Controller.cpp
+        src/Settings.cpp
+        src/LodDistances.cpp
+        src/IniFile.cpp
+        src/Menu.cpp
+)
+
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
+target_compile_definitions(${PROJECT_NAME} PRIVATE ANVILLOD_RUNTIME_LINE=${ANVILLOD_RUNTIME_LINE} NOMINMAX WIN32_LEAN_AND_MEAN)
+target_precompile_headers(${PROJECT_NAME} PRIVATE src/PCH.h)
+target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive- /Zc:preprocessor /utf-8)

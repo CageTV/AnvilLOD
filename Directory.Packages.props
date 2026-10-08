@@ -1,0 +1,15 @@
+<Project>
+  <!-- Central package versions. Bump here, not in individual .csproj files. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Plugin / load order / BSA access. Requires net9.0+ (we target net10.0). -->
+    <PackageVersion Include="Mutagen.Bethesda.Skyrim" Version="0.54.2" />
+
+    <!-- Tests -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+</Project>

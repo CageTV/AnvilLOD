@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fomod>
+    <Name>AnvilLOD SKSE Plugin</Name>
+    <Author>CageTV</Author>
+    <Version>@VERSION@</Version>
+    <Website>https://github.com/CageTV/AnvilLOD</Website>
+    <Description>Runtime part of AnvilLOD: dynamic LOD for quest-switched places, in-game LOD/grass/fade distance settings (SKSE Menu Framework page) and DynDOLOD MCM settings compatibility. Pick the build for your game version.</Description>
+    <Groups>
+        <element>Utilities</element>
+    </Groups>
+</fomod>

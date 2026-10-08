@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything that touches Mutagen lives here: load order, records, BSAs. -->
+  <PropertyGroup>
+    <RootNamespace>AnvilLOD.Plugins</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Mutagen.Bethesda.Skyrim" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
+    <ProjectReference Include="..\AnvilLOD.Meshes\AnvilLOD.Meshes.csproj" />
+    <ProjectReference Include="..\AnvilLOD.Textures\AnvilLOD.Textures.csproj" />
+  </ItemGroup>
+</Project>

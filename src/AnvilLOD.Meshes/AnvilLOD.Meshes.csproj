@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- NIF loading, transforming, merging and .bto writing. Pure managed code, no native dependencies. -->
+  <PropertyGroup>
+    <RootNamespace>AnvilLOD.Meshes</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AnvilLOD.Core.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
+  </ItemGroup>
+</Project>

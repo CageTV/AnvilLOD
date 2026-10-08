@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+reports/
+*.scan.json
+dist/
+skse/build/
+skse/vcpkg_installed/
+skse/build-17/
+skse/vcpkg_installed-17/
+skse/dist/
+release/
