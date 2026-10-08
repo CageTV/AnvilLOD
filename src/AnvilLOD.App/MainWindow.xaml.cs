@@ -28,7 +28,7 @@ public partial class MainWindow : Window
         StartupLog.Write("MainWindow: InitializeComponent");
         InitializeComponent();
         Loaded += (_, _) => StartupLog.Write("MainWindow loaded (UI is up)");
-        VersionText.Text = "v" + (typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.1.0");
+        VersionText.Text = "v" + (typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "?");
         _clock.Tick += (_, _) => StatusText.Text = $"Running… {_elapsed.Elapsed:mm\\:ss}";
         ApplySettings();
         AuthorWarningText.Text = AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning;
@@ -43,7 +43,7 @@ public partial class MainWindow : Window
         PresetBox.SelectedIndex = _settings.Preset switch { "Low" => 0, "Medium" => 1, _ => 2 };
         Mo2Box.Text = _settings.Mo2Instance ?? "";
         LoadProfiles(_settings.Mo2Profile);
-        if (_settings.UseMo2) Mo2Radio.IsChecked = true; else DataRadio.IsChecked = true;
+        if (_settings.UseMo2) Mo2Radio.IsChecked = true; else if (_settings.UseVortex) VortexRadio.IsChecked = true; else DataRadio.IsChecked = true;
         DataBox.Text = _settings.DataFolder ?? "";
         PluginsBox.Text = _settings.PluginsTxt ?? "";
         OutputBox.Text = _settings.OutputFolder ?? "";
@@ -57,8 +57,12 @@ public partial class MainWindow : Window
         RemoveBuriedCheck.IsChecked = _settings.RemoveBuried;
         TreeLodCheck.IsChecked = _settings.TreeLod;
         GrassLodCheck.IsChecked = _settings.GrassLod;
-        TreeBrightnessBox.SelectedIndex = _settings.TreeBrightness switch { <= 82 => 0, <= 95 => 1, >= 105 => 3, _ => 2 };
+        TreeBrightnessBox.SelectedIndex = BrightnessIndex(_settings.TreeBrightness);
+        ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
+        GridObjectsCheck.IsChecked = _settings.GridObjects;
+        SeasonsCheck.IsChecked = _settings.Seasons;
+        SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 3);
         GrassDensityBox.SelectedIndex = _settings.GrassDensity switch { <= 5 => 0, >= 12 => 2, _ => 1 };
         IncludeDisabledCheck.IsChecked = _settings.IncludeDisabled;
         IncludeEnableParentCheck.IsChecked = _settings.IncludeEnableParented;
@@ -67,6 +71,7 @@ public partial class MainWindow : Window
     private void CaptureSettings()
     {
         _settings.UseMo2 = Mo2Radio.IsChecked == true;
+        _settings.UseVortex = VortexRadio.IsChecked == true;
         _settings.Mo2Instance = Blank(Mo2Box.Text);
         _settings.Mo2Profile = ProfileBox.SelectedItem as string;
         _settings.DataFolder = Blank(DataBox.Text);
@@ -83,8 +88,12 @@ public partial class MainWindow : Window
         _settings.RemoveBuried = RemoveBuriedCheck.IsChecked == true;
         _settings.TreeLod = TreeLodCheck.IsChecked == true;
         _settings.GrassLod = GrassLodCheck.IsChecked == true;
-        _settings.TreeBrightness = TreeBrightnessBox.SelectedIndex switch { 0 => 80, 1 => 90, 3 => 110, _ => 100 };
+        _settings.TreeBrightness = BrightnessPercent(TreeBrightnessBox.SelectedIndex);
+        _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
+        _settings.GridObjects = GridObjectsCheck.IsChecked == true;
+        _settings.Seasons = SeasonsCheck.IsChecked == true;
+        _settings.SkseDll = Math.Max(0, SkseDllBox.SelectedIndex);
         _settings.GrassDensity = GrassDensityBox.SelectedIndex switch { 0 => 4, 2 => 15, _ => 8 };
         _settings.IncludeDisabled = IncludeDisabledCheck.IsChecked == true;
         _settings.IncludeEnableParented = IncludeEnableParentCheck.IsChecked == true;
@@ -105,8 +114,32 @@ public partial class MainWindow : Window
     {
         if (Mo2Panel is null || DataPanel is null) return;
         var mo2 = Mo2Radio.IsChecked == true;
+        var vortex = VortexRadio.IsChecked == true;
         Mo2Panel.Visibility = mo2 ? Visibility.Visible : Visibility.Collapsed;
         DataPanel.Visibility = mo2 ? Visibility.Collapsed : Visibility.Visible;
+        if (VortexPanel is null || DataInfoText is null) return;
+        VortexPanel.Visibility = vortex ? Visibility.Visible : Visibility.Collapsed;
+        DataInfoText.Text = vortex
+            ? "Vortex deploys mods into the game's Data folder: leave Data folder empty to auto-detect, and plugins.txt empty for Vortex's load order. Deploy in Vortex before generating."
+            : "For a plain (non-MO2) install.";
+        if (vortex)
+        {
+            var staging = VortexInstall.StagingFolder();
+            VortexOutputButton.IsEnabled = staging is not null;
+            VortexInfoText.Text = staging is not null
+                ? $"Staging folder: {staging}. After Generate, refresh Vortex (or restart it), enable \"{VortexInstall.OutputModName}\" and Deploy."
+                : VortexInstall.IsInstalled()
+                    ? "Vortex's Skyrim SE staging folder wasn't found at the default place (%APPDATA%\\Vortex\\skyrimse\\mods). Pick an output folder, then install it in Vortex as a mod."
+                    : "Vortex doesn't seem to be installed for this user.";
+        }
+    }
+
+    private void VortexOutput_Click(object sender, RoutedEventArgs e)
+    {
+        if (VortexInstall.StagingFolder() is not { } staging) return;
+        var output = Path.Combine(staging, VortexInstall.OutputModName);
+        Directory.CreateDirectory(output);
+        OutputBox.Text = output;
     }
 
     private void BrowseMo2_Click(object sender, RoutedEventArgs e)
@@ -242,13 +275,14 @@ public partial class MainWindow : Window
         var req = new ScanRequest(
             _settings.UseMo2
                 ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile)
-                : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt),
+                : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt, Mode: _settings.UseVortex ? GameSourceMode.Vortex : GameSourceMode.DataFolder),
             new ScanOptions(
                 Worldspaces: worldspaces is { Length: > 0 } ? worldspaces : null,
                 IncludeInitiallyDisabled: _settings.IncludeDisabled,
                 IncludeEnableParented: _settings.IncludeEnableParented,
                 TreeLod: _settings.TreeLod,
-                DynamicLod: _settings.DynamicLod),
+                DynamicLod: _settings.DynamicLod,
+                GridObjects: _settings.GridObjects),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,
             Generate: generate,
@@ -256,7 +290,10 @@ public partial class MainWindow : Window
             RemoveBuried: _settings.RemoveBuried,
             GrassLod: _settings.GrassLod,
             TreeBrightness: _settings.TreeBrightness / 100f,
+            ObjectBrightness: _settings.ObjectBrightness / 100f,
+            Seasons: _settings.Seasons,
             GrassDensity: _settings.GrassDensity / 100f,
+            SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 3),
             Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });
 
         SetBusy(true);
@@ -590,4 +627,8 @@ public partial class MainWindow : Window
         ScanReport.Write(d.FileName, _lastScan, _lastTotal);
         StatusText.Text = "Report saved";
     }
+
+    // Brightness dropdowns: 11 entries, 10% .. 110% in 10% steps.
+    private static int BrightnessIndex(int percent) => Math.Clamp((int)Math.Round(percent / 10.0) - 1, 0, 10);
+    private static int BrightnessPercent(int index) => index < 0 ? 100 : (Math.Clamp(index, 0, 10) + 1) * 10;
 }

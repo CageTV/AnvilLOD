@@ -14,11 +14,13 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Tree LOD: billboards (`.lst`/`.btt` + atlas) | TexGen billboards packed into a BC7 atlas (managed encoder), engine format verified against vanilla and DynDOLOD | ✅ v1 |
 | Tree LOD: hybrid 3D / own billboard renderer | GPU billboard renderer (TexGen not needed) | planned |
 | Grass LOD (NGIO / FasterNGIO `.cgid`) | Cache read directly, sampled into alpha-tested billboard quads in LOD4, per-cell segments | ✅ v1 |
-| Seasons (Seasons of Skyrim) | Per-season swaps → per-season LOD files | planned |
-| Dynamic LOD, glow windows, large refs, enable state | SKSE plugin (CommonLibSSE-NG, one DLL for SE/AE/VR) + generated `AnvilLOD.esm` | planned |
+| Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Tree/terrain LOD not seasonal yet | 🧪 experimental |
+| Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
+| In-game settings (DynDOLOD MCM equivalent) | SKSE Menu Framework pages: LOD/fade/grass distances, dynamic LOD, water & animated objects | ✅ |
+| Glow windows, large refs | SKSE plugin | planned |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |
 | Enable parents (quest-built places, e.g. Helgen Reborn) | Initial state resolved through the parent chain; start-disabled refs left out of static LOD | ✅ |
-| Water LOD matching the water mod in use | Read the WRLD/WATR records the water mod sets; investigate | planned |
+| Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪, water look needs tuning) |
 | Walled cities in the parent's LOD (Dragonsreach etc.) | Child world references copied into Tamriel's LOD, driven by DynDOLOD's `Configs\DynDOLOD_SSE_childworld_*.ini` + ChildworldMatches | ✅ |
 | Child worldspaces with their own LOD | Generate for parent/child links | planned |
 | Occlusion.esp | Build from our own terrain data (xLODGen meanwhile) | planned |

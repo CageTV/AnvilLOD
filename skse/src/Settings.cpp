@@ -65,6 +65,18 @@ namespace AnvilLOD
 					updateIntervalMs = std::max<std::uint32_t>(100, static_cast<std::uint32_t>(std::stoul(value)));
 				} else if (EqualsNoCase(key, "iMaxShown")) {
 					maxShown = static_cast<std::uint32_t>(std::stoul(value));
+				} else if (EqualsNoCase(key, "bGridObjects")) {
+					gridObjects = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "bWaterPlanes")) {
+					waterPlanes = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "fNearGridDistance")) {
+					nearGridDistance = std::stof(value);
+				} else if (EqualsNoCase(key, "fFarGridDistance")) {
+					farGridDistance = std::stof(value);
+				} else if (EqualsNoCase(key, "bAnimateExperimental")) {
+					animate = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "iAnimationFps")) {
+					animationFps = std::min<std::uint32_t>(120, static_cast<std::uint32_t>(std::stoul(value)));
 				} else if (EqualsNoCase(key, "bVerboseLog")) {
 					verboseLog = value != "0" && !EqualsNoCase(value, "false");
 				}
@@ -72,7 +84,8 @@ namespace AnvilLOD
 				logger::warn("AnvilLOD.ini: bad value for {}: {}", key, value);
 			}
 		}
-		logger::info("Settings: enabled={} maxDistance={} interval={}ms maxShown={}", enabled, maxDistance, updateIntervalMs, maxShown);
+		logger::info("Settings: enabled={} maxDistance={} interval={}ms maxShown={} gridObjects={} water={} near={} far={} animate={} animationFps={}",
+			enabled, maxDistance, updateIntervalMs, maxShown, gridObjects, waterPlanes, nearGridDistance, farGridDistance, animate, animationFps);
 	}
 
 	bool Settings::Save() const
@@ -82,6 +95,12 @@ namespace AnvilLOD
 			{ "fMaxDistance", std::format("{:.0f}", maxDistance) },
 			{ "iUpdateIntervalMs", std::to_string(updateIntervalMs) },
 			{ "iMaxShown", std::to_string(maxShown) },
+			{ "bGridObjects", gridObjects ? "1" : "0" },
+			{ "bWaterPlanes", waterPlanes ? "1" : "0" },
+			{ "fNearGridDistance", std::format("{:.0f}", nearGridDistance) },
+			{ "fFarGridDistance", std::format("{:.0f}", farGridDistance) },
+			{ "bAnimateExperimental", animate ? "1" : "0" },
+			{ "iAnimationFps", std::to_string(animationFps) },
 			{ "bVerboseLog", verboseLog ? "1" : "0" },
 		});
 	}

@@ -5,8 +5,8 @@ public sealed class CliArgException(string message) : Exception(message);
 /// <summary>Minimal "--key value" / "--flag" parser. Keys may repeat.</summary>
 public sealed class CliArgs
 {
-    private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic"];
-    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness"];
+    private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic", "no-child-worlds", "no-grid-objects", "seasons"];
+    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness", "object-brightness", "skse-dll"];
 
     private readonly Dictionary<string, List<string>> _values = new(StringComparer.OrdinalIgnoreCase);
 

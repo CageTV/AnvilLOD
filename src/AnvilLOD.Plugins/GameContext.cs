@@ -17,6 +17,8 @@ public enum GameSourceMode
     DataFolder,
     /// <summary>An MO2 instance read directly from disk — no need to launch through MO2.</summary>
     Mo2Instance,
+    /// <summary>Vortex: read like a Data folder install (Vortex deploys into the real Data folder).</summary>
+    Vortex,
 }
 
 /// <summary>Where the game data and load order come from.</summary>
@@ -172,7 +174,7 @@ public sealed class GameContext : IDisposable
     // ---------- MO2 instance mode ----------
 
     /// <summary>Top-level folders indexed from mods. Grows as later milestones need textures etc.</summary>
-    public static readonly string[] Mo2LooseRoots = ["meshes", "lodsettings", "dyndolod", "textures\\terrain\\lodgen", "grass"];
+    public static readonly string[] Mo2LooseRoots = ["meshes", "lodsettings", "dyndolod", "textures\\terrain\\lodgen", "grass", "seasons"];
 
     private static GameContext OpenMo2(GameContextOptions o, IProgress<string>? progress)
     {

@@ -142,6 +142,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var refs = new List<LodReference>(capacity: 200_000);
         var parentOf = new Dictionary<LodReference, FormKey>(ReferenceEqualityComparer.Instance);
         var dynamicCandidates = new Dictionary<LodReference, DynamicLodReference>(ReferenceEqualityComparer.Instance);
+        var gridObjects = new List<DynamicLodReference>();
+        var gridMeshes = new ConcurrentDictionary<(FormKey, DynamicGrid), string?>();
         var initiallyDisabled = new HashSet<LodReference>(ReferenceEqualityComparer.Instance);
         var trees = new List<TreeReference>(capacity: 200_000);
         var treeParentOf = new Dictionary<TreeReference, FormKey>(ReferenceEqualityComparer.Instance);
@@ -230,6 +232,10 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                     var raw0 = r.MajorRecordFlagsRaw;
                     if ((raw0 & FlagInitiallyDisabled) != 0 && !options.IncludeInitiallyDisabled) { skippedDisabled++; return; }
                     bool parented = r.EnableParent is { } tep && !tep.Reference.IsNull;
+                    // Child world copies are drawn over the city while you're inside it (the engine doesn't hide the
+                    // parent's LOD under loaded child cells), so anything a quest can switch off must stay out:
+                    // Legacy of the Dragonborn's museum trees hang off build-stage markers, for example.
+                    if (copy is not null && (parented || (raw0 & FlagInitiallyDisabled) != 0)) { childCopyIgnored++; return; }
                     if (parented && !options.IncludeEnableParented) { skippedDisabled++; return; }
                     if (r.Placement is not { } tp) return;
 
@@ -266,10 +272,18 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 var res = resolver.HasFormIdRule(refKey)
                     ? resolver.Resolve(refKey, info.FormIdKey, info.ModelPath, info.Mnam)
                     : resolved.GetOrAdd(baseKey.Value, _ => resolver.Resolve(null, info.FormIdKey, info.ModelPath, info.Mnam));
+                // DynDOLOD grid objects (all LOD columns empty, a Grid set): water planes, waterfalls, fires, windmills,
+                // ships. No static LOD; the SKSE plugin draws them beyond the loaded cells, with their animations.
+                string? gridMesh = null;
                 if (!res.Meshes.HasAny)
                 {
-                    if (info.Mnam is not null) skippedMissing++;
-                    return;
+                    if (copy is null && options.GridObjects && res.Rule.IsGridObject)
+                        gridMesh = gridMeshes.GetOrAdd((baseKey.Value, res.Rule.Grid), _ => LodMeshResolver.GridMesh(info.ModelPath, res.Rule.Grid, Exists));
+                    if (gridMesh is null)
+                    {
+                        if (info.Mnam is not null) skippedMissing++;
+                        return;
+                    }
                 }
 
                 var raw = r.MajorRecordFlagsRaw;
@@ -282,6 +296,26 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
 
                 var p = r.Placement;
                 if (p is null) return;
+                // Same for child world copies of objects: switchable ones would stay visible inside the city.
+                if (copy is not null && (flags.HasFlag(LodReferenceFlags.HasEnableParent) || flags.HasFlag(LodReferenceFlags.InitiallyDisabled)))
+                { childCopyIgnored++; return; }
+
+                if (gridMesh is not null)
+                {
+                    if (p.Position.Z <= -29000f) return; // "undelete and disable" leftovers
+                    var gref = new LodReference(r.FormKey.ToString(), baseKey.Value.ToString(), info.EditorId, wsId, ctx.ModKey.ToString(),
+                        new Vector3(p.Position.X, p.Position.Y, p.Position.Z), new Vector3(p.Rotation.X, p.Rotation.Y, p.Rotation.Z),
+                        r.Scale ?? 1f, new LodMeshSet(gridMesh, null, null, null), flags);
+                    var gParent = r.EnableParent is { } gep && !gep.Reference.IsNull ? gep.Reference.FormKey : (FormKey?)null;
+                    gridObjects.Add(new DynamicLodReference(gref,
+                        r.FormKey.ModKey.FileName.String, r.FormKey.ID,
+                        wsCtx.Record.FormKey.ModKey.FileName.String, wsCtx.Record.FormKey.ID,
+                        gParent?.ModKey.FileName.String, gParent?.ID ?? 0,
+                        r.EnableParent?.Flags.HasFlag(EnableParent.Flag.SetEnableStateToOppositeOfParent) ?? false,
+                        flags.HasFlag(LodReferenceFlags.InitiallyDisabled),
+                        res.Rule.Grid));
+                    return;
+                }
 
                 // Initially disabled refs may be enabled by a script later; with dynamic LOD they go to the controller.
                 // ("Undelete and disable" leftovers sit far below the world and are never enabled, so they're skipped.)
@@ -398,6 +432,14 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 && ((lr.Flags.HasFlag(LodReferenceFlags.InitiallyDisabled) && !options.IncludeInitiallyDisabled)
                     || (lr.Flags.HasFlag(LodReferenceFlags.HasEnableParent) && !options.IncludeEnableParented)));
             progress?.Report($"Dynamic LOD: {dynamic.Count:N0} switchable references go to the SKSE controller");
+        }
+        if (gridObjects.Count > 0)
+        {
+            dynamic.AddRange(gridObjects);
+            var full = gridObjects.Count(g => !g.Ref.Meshes.Lod4!.Contains("\\dyndolod\\lod\\", StringComparison.OrdinalIgnoreCase));
+            progress?.Report($"Grid objects: {gridObjects.Count:N0} water planes, waterfalls, fires, windmills and other animated objects go to the SKSE plugin "
+                + $"({string.Join(", ", gridObjects.GroupBy(g => g.Grid).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count():N0}"))}; "
+                + $"{gridObjects.Count - full:N0} use _dyndolod_lod meshes, {full:N0} the full model)");
         }
 
         // 4) Enable parents: keep a parented ref only if it starts out enabled (following the whole parent

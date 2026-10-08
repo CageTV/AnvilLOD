@@ -21,7 +21,10 @@ public sealed record ScanRequest(
     float GrassDensity = 0.08f,                    // share of cached grass instances kept as LOD quads
     float GrassSize = 1f,                          // size multiplier for the kept quads (fewer, bigger tufts)
     float TreeBrightness = 1f,                     // tree LOD billboard colour multiplier (DynDOLOD-style brightness)
-    bool ChildWorlds = true);                      // copy walled-city child worldspaces into the parent's LOD (DynDOLOD Configs)
+    float ObjectBrightness = 1f,                   // object LOD colour multiplier (vertex colours; textures untouched)
+    bool Seasons = false,                          // EXPERIMENTAL: Seasons of Skyrim seasonal object LOD (<block>.WIN.bto, …)
+    bool ChildWorlds = true,                       // copy walled-city child worldspaces into the parent's LOD (DynDOLOD Configs)
+    SkseDllChoice SkseDll = SkseDllChoice.Auto);   // which SKSE plugin build Generate puts in the output (None = installed separately)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -87,7 +90,7 @@ public static class ScanPipeline
         var assets = game.BuildAssets(
             p => p.StartsWith("meshes\\", StringComparison.Ordinal) || p.StartsWith("lodsettings\\", StringComparison.Ordinal)
                  || p.StartsWith("dyndolod\\", StringComparison.Ordinal) || p.StartsWith("textures\\terrain\\lodgen\\", StringComparison.Ordinal)
-                 || p.StartsWith("grass\\", StringComparison.Ordinal)
+                 || p.StartsWith("grass\\", StringComparison.Ordinal) || p.StartsWith("seasons\\", StringComparison.Ordinal)
                  || (req.GrassLod && p.StartsWith("textures\\", StringComparison.Ordinal))); // grass model textures, for rendered grass billboards
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
         if (assets.ArchiveCount == 0)
@@ -202,7 +205,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (terrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (terrain is null ? "|keep-buried"
                     : "|terrain:" + (terrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
         sw.Stop();
 
@@ -243,7 +246,7 @@ public static class ScanPipeline
         {
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
-            var generator = new LodGenerator(assets, terrain?.Heights, new CompositeSyntheticSource(grass, cards));
+            var generator = new LodGenerator(assets, terrain?.Heights, new CompositeSyntheticSource(grass, cards)) { Brightness = req.ObjectBrightness };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
 
             foreach (var stale in plan.StaleFiles)
@@ -260,6 +263,16 @@ public static class ScanPipeline
             var failed = gen.BlockErrors.Keys.ToHashSet();
             manifest.Commit(hashes, plan.Rebuild.Where(q => !failed.Contains(q)), failed, plan.StaleFiles);
 
+            // Seasons of Skyrim: seasonal copies of the object LOD blocks, after the normal ones are up to date.
+            if (req.Seasons)
+            {
+                progress?.Report("Seasons (experimental): building seasonal object LOD from Data\\Seasons\\*_WIN/_SPR/_SUM/_AUT.ini...");
+                var seasonal = SeasonalLod.Build(game, assets, assets.EnumeratePaths, resolver, quads, generator, output, progress, ct);
+                if (seasonal.Seasons == 0 && seasonal.Messages.Count == 0)
+                    progress?.Report("Seasons: no season INI files found in Data\\Seasons; nothing written.");
+            }
+            else SeasonalLod.RemoveAll(output, quads.Keys);
+
             if (req.Scan.TreeLod && bttTrees is { } treeRefs)
             {
                 trees = TreeLodGenerator.Generate(scan.Grids, treeRefs, assets, output, manifest, progress, ct, req.TreeBrightness);
@@ -267,16 +280,26 @@ public static class ScanPipeline
                 progress?.Report($"Tree LOD: {trees.Instances:N0} trees, {trees.TreeTypes} types, {trees.Blocks:N0} blocks"
                                  + $" ({trees.WorldspacesWritten} worldspaces written, {trees.WorldspacesUnchanged} unchanged) in {trees.Elapsed.TotalSeconds:F1}s");
             }
-            if (req.Scan.DynamicLod)
+            if (req.Scan.DynamicLod || req.Scan.GridObjects)
             {
                 int n = DynamicLodWriter.Write(output, scan.Dynamic ?? []);
-                progress?.Report($"Dynamic LOD: {n:N0} switchable references written to {DynamicLodWriter.RelativePath} for the AnvilLOD SKSE plugin");
+                int g = scan.Dynamic?.Count(d => d.IsGridObject) ?? 0;
+                progress?.Report($"Dynamic LOD: {n - g:N0} switchable references and {g:N0} grid objects written to {DynamicLodWriter.RelativePath} for the AnvilLOD SKSE plugin");
             }
             else
             {
                 var dyn = BuildManifest.FullPath(output, DynamicLodWriter.RelativePath);
                 if (File.Exists(dyn)) File.Delete(dyn);
             }
+            try
+            {
+                var skse = SksePluginInstaller.Install(output, game.DataFolder, req.SkseDll);
+                if (skse.Installed || req.SkseDll == SkseDllChoice.None) progress?.Report(skse.Message);
+                else Warn(skse.Message);
+                if (skse.Message.Contains("WARNING")) Warn(skse.Message);
+            }
+            catch (IOException ex) { Warn($"SKSE plugin: couldn't copy AnvilLOD.dll into the output ({ex.Message})."); }
+            catch (UnauthorizedAccessException ex) { Warn($"SKSE plugin: couldn't copy AnvilLOD.dll into the output ({ex.Message})."); }
             manifest.Save(output);
 
             progress?.Report($"Generated {gen.BlocksWritten:N0} blocks, {gen.Triangles:N0} triangles ({gen.TrianglesCulled:N0} buried ones removed), {gen.MeshesLoaded:N0} meshes in {gen.Elapsed.TotalSeconds:F1}s"

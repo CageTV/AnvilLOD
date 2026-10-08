@@ -9,7 +9,8 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <TieredPGO>true</TieredPGO>
-    <Version>0.1.0</Version>
+    <!-- One version for the tool and the SKSE plugin: the VERSION file at the repo root (bump.ps1 raises the last number). -->
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
     <Authors>CageTV</Authors>
     <Product>AnvilLOD</Product>
   </PropertyGroup>

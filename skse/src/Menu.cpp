@@ -172,7 +172,7 @@ namespace AnvilLOD::Menu
 			auto& c = Controller::Get();
 			Smf::TextWrapped("Dynamic LOD draws the LOD of references that quests switch on and off (Helgen Reborn's "
 							 "town, for example), only while they're enabled.");
-			Smf::Text("Switchable references: %zu in %zu worldspaces, %zu drawn now", c.ItemCount(), c.WorldCount(), c.ShownCount());
+			Smf::Text("Switchable references: %zu, grid objects: %zu (in %zu worldspaces); %zu drawn now", c.ItemCount() - c.GridCount(), c.GridCount(), c.WorldCount(), c.ShownCount());
 			Smf::Separator();
 			Smf::Checkbox("Enabled", &s.enabled);
 			Smf::SliderFloat("Max distance", &s.maxDistance, 20000.0f, 400000.0f, "%.0f");
@@ -186,9 +186,41 @@ namespace AnvilLOD::Menu
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
 		}
 
+		void __stdcall RenderGridObjects()
+		{
+			auto& s = Settings::Get();
+			auto& c = Controller::Get();
+			Smf::TextWrapped("Water planes, waterfalls, creeks, fires, windmills and ships: objects DynDOLOD's rules mark with a "
+							 "Grid and no static LOD. AnvilLOD draws them beyond the loaded cells and keeps them animated. "
+							 "Mods' _dyndolod_lod meshes (CS Water Mod, DynDOLOD Resources) are used when present.");
+			if (c.GridCount() == 0) {
+				Smf::TextDisabled("No grid objects in AnvilLOD.dyn - generate with \"Water and animated distant objects\" ticked.");
+			}
+			Smf::Text("Grid objects: %zu, animated now: %zu", c.GridCount(), c.AnimatedCount());
+			Smf::Separator();
+			Smf::Checkbox("Draw grid objects", &s.gridObjects);
+			Smf::Checkbox("Include water-shader planes (lakes, pools, streams)", &s.waterPlanes);
+			Smf::SliderFloat("Near grid distance", &s.nearGridDistance, 8192.0f, 200000.0f, "%.0f");
+			Smf::TextDisabled("    Water planes, creeks, rapids, fires (DynDOLOD \"Near LOD\"). 4096 = one cell.");
+			Smf::SliderFloat("Far grid distance", &s.farGridDistance, 20000.0f, 400000.0f, "%.0f");
+			Smf::TextDisabled("    Waterfalls, windmills, water wheels, ships (DynDOLOD \"Far LOD\" / \"Far Full\").");
+			Smf::Checkbox("Animate them (EXPERIMENTAL - may crash)", &s.animate);
+			Smf::TextDisabled("    Waterfall flow and windmill blades. Takes effect for objects drawn after the change (use Redraw now).");
+			int fps = static_cast<int>(s.animationFps);
+			if (Smf::SliderInt("Animation ticks per second", &fps, 5, 60)) s.animationFps = static_cast<std::uint32_t>(fps);
+			Smf::Separator();
+			if (Smf::Button("Redraw now")) {
+				c.Refresh();
+				g_status = "Redrawing with the current settings.";
+			}
+			Smf::SameLine();
+			if (Smf::Button("Save to AnvilLOD.ini##grid")) g_status = s.Save() ? "Saved." : "Could not write AnvilLOD.ini.";
+			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
+		}
+
 		void __stdcall RenderAbout()
 		{
-			Smf::Text("AnvilLOD runtime %s", "0.2");
+			Smf::Text("AnvilLOD %s", ANVILLOD_VERSION_STRING);
 #if ANVILLOD_RUNTIME_LINE == 17
 			Smf::Text("Build: game versions newer than 1.6.1170 (Skyrim 1.7.x)");
 #else
@@ -214,6 +246,7 @@ namespace AnvilLOD::Menu
 		}
 		const bool ok = Smf::AddSectionItem("AnvilLOD/Distances & Grass", RenderLodDistances)
 					 && Smf::AddSectionItem("AnvilLOD/Dynamic LOD", RenderDynamic)
+					 && Smf::AddSectionItem("AnvilLOD/Water & Animated Objects", RenderGridObjects)
 					 && Smf::AddSectionItem("AnvilLOD/About", RenderAbout);
 		logger::info("SKSE Menu Framework {:.1f}: {}", Smf::Version(), ok ? "AnvilLOD pages added" : "AddSectionItem not exported, menu off");
 	}

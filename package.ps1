@@ -12,15 +12,31 @@ param([switch]$SkipBuild)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-$version = ([xml](Get-Content "Directory.Build.props")).Project.PropertyGroup.Version
-if (-not $version) { throw "No <Version> in Directory.Build.props" }
+$version = (Get-Content (Join-Path $PSScriptRoot "VERSION") -Raw).Trim()
+if (-not $version) { throw "The VERSION file is empty" }
 Write-Host "AnvilLOD $version" -ForegroundColor Cyan
 
 $toolDist = Join-Path $PSScriptRoot "dist\tool"
 if (-not $SkipBuild) {
+    # SKSE first: the tool build bundles both DLLs (tool\SKSE\<line>) so Generate can install the right one.
+    & "$PSScriptRoot\skse\build.ps1" -Line both
     & "$PSScriptRoot\build.ps1" -Dest $toolDist
     if ($LASTEXITCODE -ne 0) { throw "Tool build failed." }
-    & "$PSScriptRoot\skse\build.ps1" -Line both
+}
+
+# Zips with forward-slash entry names (Windows PowerShell's Compress-Archive writes backslashes, which some
+# extractors and mod managers turn into flat file names).
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+function New-Zip([string]$folder, [string]$zipPath) {
+    if (Test-Path $zipPath) { Remove-Item $zipPath }
+    $zip = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $root = (Resolve-Path $folder).Path.TrimEnd('\') + '\'
+        Get-ChildItem $folder -Recurse -File | ForEach-Object {
+            $name = $_.FullName.Substring($root.Length).Replace('\', '/')
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $name, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+    } finally { $zip.Dispose() }
 }
 
 $release = Join-Path $PSScriptRoot "release"
@@ -28,9 +44,8 @@ New-Item -ItemType Directory -Force -Path $release | Out-Null
 
 # 1) The tool
 $toolZip = Join-Path $release "AnvilLOD-$version.zip"
-if (Test-Path $toolZip) { Remove-Item $toolZip }
 Copy-Item "$PSScriptRoot\README.md" $toolDist -Force
-Compress-Archive -Path "$toolDist\*" -DestinationPath $toolZip
+New-Zip $toolDist $toolZip
 Write-Host "Tool:  $toolZip" -ForegroundColor Green
 
 # 2) The SKSE plugin FOMOD
@@ -50,7 +65,6 @@ foreach ($line in "1.5.97-1.6.1170", "1.7.x") {
     if (Test-Path $pdb) { Copy-Item $pdb "$stage\$line\SKSE\Plugins\" }
 }
 $fomodZip = Join-Path $release "AnvilLOD SKSE Plugin-$version.zip"
-if (Test-Path $fomodZip) { Remove-Item $fomodZip }
-Compress-Archive -Path "$stage\*" -DestinationPath $fomodZip
+New-Zip $stage $fomodZip
 Remove-Item -Recurse -Force $stage
 Write-Host "SKSE:  $fomodZip" -ForegroundColor Green

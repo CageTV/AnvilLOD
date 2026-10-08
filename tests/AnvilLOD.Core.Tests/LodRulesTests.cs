@@ -113,3 +113,73 @@ public class LodRulesTests
         Assert.Equal(1, res.TrianglesCulled);
     }
 }
+
+public class GridObjectTests
+{
+    [Fact]
+    public void Grid_column_is_read_in_both_formats()
+    {
+        var water = LodRules.ParseRule("water1024.nif,,,,Near LOD,Unchanged,0", "high.ini")!;
+        Assert.Equal(DynamicGrid.Near, water.Grid);
+        Assert.True(water.IsGridObject);
+
+        var fan = LodRules.ParseRule("farmhousewindmillfan,,,,Far LOD,Replace,0", "high.ini")!;
+        Assert.Equal(DynamicGrid.Far, fan.Grid);
+        Assert.True(fan.IsGridObject);
+
+        var nine = LodRules.ParseRule("giantcampfire,None,None,None,None,Far Full,Unchanged,0,desc", "x.ini")!;
+        Assert.Equal(DynamicGrid.FarFull, nine.Grid);
+        Assert.True(nine.IsGridObject);
+
+        // Objects with static LOD keep it; the grid column only matters for dynamic-only objects.
+        var catchAll = LodRules.ParseRule("\\,Static LOD4,Static LOD8,Static LOD16,Far LOD,Unchanged,1", "high.ini")!;
+        Assert.Equal(DynamicGrid.Far, catchAll.Grid);
+        Assert.False(catchAll.IsGridObject);
+
+        var none = LodRules.ParseRule("clutter,,,,,Unchanged,0", "high.ini")!;
+        Assert.False(none.IsGridObject);
+    }
+
+    [Fact]
+    public void Grid_mesh_prefers_dyndolod_lod_mesh()
+    {
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "meshes\\effects\\fxwaterfallbody01.nif",
+            "meshes\\dyndolod\\lod\\effects\\fxwaterfallbody01_dyndolod_lod.nif",
+            "meshes\\clutter\\windmill.nif",
+        };
+        Assert.Equal("meshes\\dyndolod\\lod\\effects\\fxwaterfallbody01_dyndolod_lod.nif",
+            LodMeshResolver.GridMesh("Effects\\FXWaterfallBody01.nif", DynamicGrid.Near, files.Contains));
+        Assert.Equal("meshes\\effects\\fxwaterfallbody01.nif",
+            LodMeshResolver.GridMesh("effects\\fxwaterfallbody01.nif", DynamicGrid.FarFull, files.Contains));
+        Assert.Equal("meshes\\clutter\\windmill.nif", LodMeshResolver.GridMesh("meshes\\clutter\\windmill.nif", DynamicGrid.Far, files.Contains));
+        Assert.Null(LodMeshResolver.GridMesh("meshes\\missing.nif", DynamicGrid.Far, files.Contains));
+    }
+}
+
+public class SeasonTests
+{
+    [Fact]
+    public void Parses_seasons_of_skyrim_swap_ini()
+    {
+        var ini = "﻿[Trees]\n0x826~GildergreenEmbiggened.esp|0x8CA~GildergreenEmbiggened.esp\n[Statics]\n;comment\nRockCliff01|RockCliff01Snow\n0xFE001801~Mod.esl|0x02C10E4~Northern Roads.esp\n";
+        var sw = SeasonSwaps.Parse(ini);
+        Assert.Equal(3, sw.Count);
+        Assert.Equal(("Trees", "GildergreenEmbiggened.esp", 0x826u, 0x8CAu), (sw[0].Section, sw[0].Base.Plugin, sw[0].Base.LocalId, sw[0].Swap.LocalId));
+        Assert.Equal(("RockCliff01", "RockCliff01Snow"), (sw[1].Base.EditorId, sw[1].Swap.EditorId));
+        Assert.Equal((0x801u, 0x2C10E4u), (sw[2].Base.LocalId, sw[2].Swap.LocalId));
+        Assert.Equal("WIN", SeasonSwaps.SeasonOf("Floral Sky_WIN.ini"));
+        Assert.Null(SeasonSwaps.SeasonOf("Snow_SNOW.ini"));
+        Assert.Equal("meshes\\terrain\\tamriel\\objects\\tamriel.4.0.0.WIN.bto",
+            SeasonSwaps.SeasonalPath("meshes\\terrain\\tamriel\\objects\\tamriel.4.0.0.bto", "WIN"));
+    }
+
+    [Fact]
+    public void Brightness_scales_vertex_colour_rgb_only()
+    {
+        Assert.Equal(0xFF808080u, BtoBuilder.Scale(0xFFFFFFFFu, 0.5f));
+        Assert.Equal(0x80020305u, BtoBuilder.Scale(0x80102030u, 0.1f));
+        Assert.Equal(0x12345678u, BtoBuilder.Scale(0x12345678u, 1f));
+    }
+}

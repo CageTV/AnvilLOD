@@ -29,13 +29,38 @@ public readonly record struct LodChoice(LodChoiceKind Kind, int Level = 0)
     }
 }
 
+/// <summary>
+/// DynDOLOD's Grid column: where dynamic LOD shows an object that has no static LOD (empty LOD columns): water
+/// planes, waterfalls, fires, windmills, ships. Near = the near grid around the loaded cells, Far = out to the far
+/// grid, FarFull = like Far but always the full model, NeverFade = drawn at any distance.
+/// </summary>
+public enum DynamicGrid { None, Near, Far, FarFull, NeverFade }
+
 /// <summary>One rule line: a mesh mask (substring of the model path) or a reference/base FormID, and a choice per level.</summary>
 public sealed record LodRule(
     string Mask,               // lower-case path substring, or "" for FormID rules
     string? FormId,            // "skyrim.esm;00071c5e" (lower-case), or null for mesh rules
     LodChoice Lod4, LodChoice Lod8, LodChoice Lod16, LodChoice Lod32,
-    string SourceFile)
+    string SourceFile,
+    DynamicGrid Grid = DynamicGrid.None)
 {
+    /// <summary>
+    /// An object DynDOLOD draws with dynamic LOD only (all LOD columns empty, a grid set): the SKSE plugin draws
+    /// its full model (or <c>_dyndolod_lod.nif</c>) beyond the loaded cells, animated.
+    /// </summary>
+    public bool IsGridObject => Grid != DynamicGrid.None
+        && Lod4.Kind == LodChoiceKind.None && Lod8.Kind == LodChoiceKind.None
+        && Lod16.Kind == LodChoiceKind.None && Lod32.Kind == LodChoiceKind.None;
+
+    public static DynamicGrid ParseGrid(string s) => s.Trim().Replace(" ", "").ToLowerInvariant() switch
+    {
+        "nearlod" or "near" => DynamicGrid.Near,
+        "farlod" or "far" => DynamicGrid.Far,
+        "farfull" => DynamicGrid.FarFull,
+        "neverfadelod" or "neverfade" => DynamicGrid.NeverFade,
+        _ => DynamicGrid.None,
+    };
+
     public LodChoice For(LodLevel level) => level switch
     {
         LodLevel.Lod4 => Lod4,
@@ -56,8 +81,8 @@ public enum LodPreset { Low, Medium, High }
 /// LODGen1=mask,LOD4,LOD8,LOD16,LOD32,Grid,Reference,Flags,Description       (9 columns)
 /// </code>
 /// FormID rules ("plugin.esm;00ABCDEF") are checked before mesh masks; otherwise the first
-/// matching rule wins. Only the LOD columns matter for static object LOD; grid/reference/flags
-/// (dynamic LOD) are kept for the SKSE milestone.
+/// matching rule wins. The LOD columns drive static object LOD; the Grid column marks objects that only get
+/// dynamic LOD (see <see cref="LodRule.IsGridObject"/>), which the SKSE plugin draws.
 /// Reference: https://dyndolod.info/Help/Mesh-Mask-Reference-Rules
 /// </summary>
 public sealed class LodRules
@@ -223,7 +248,11 @@ public sealed class LodRules
         if (mask.Length == 0) return null;
 
         LodChoice l4 = LodChoice.Parse(c[1]), l8 = LodChoice.Parse(c[2]), l16 = LodChoice.Parse(c[3]);
-        LodChoice l32 = c.Length >= 9 ? LodChoice.Parse(c[4]) : l16;
+        // 7 columns: mask,4,8,16,Grid,Ref,Flags. 8-9 columns: mask,4,8,16,32,Grid,Ref,Flags[,Desc].
+        bool hasLod32 = c.Length >= 8;
+        LodChoice l32 = hasLod32 ? LodChoice.Parse(c[4]) : l16;
+        int gridCol = hasLod32 ? 5 : 4;
+        var grid = c.Length > gridCol ? LodRule.ParseGrid(c[gridCol]) : DynamicGrid.None;
 
         string? formId = null;
         int semi = mask.IndexOf(';');
@@ -235,7 +264,7 @@ public sealed class LodRules
             formId = FormIdKey(mask[..semi].Trim(), id);
             mask = "";
         }
-        return new LodRule(mask, formId, l4, l8, l16, l32, source);
+        return new LodRule(mask, formId, l4, l8, l16, l32, source, grid);
     }
 
     /// <summary>

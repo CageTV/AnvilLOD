@@ -35,9 +35,15 @@ public static class Program
           --no-child-worlds      Don't copy walled cities (Whiterun, Solitude, ...) into Tamriel's LOD
           --no-dynamic           Keep switchable references (quest-toggled) in static LOD instead of
                                  handing them to the AnvilLOD SKSE plugin
+          --seasons              EXPERIMENTAL: seasonal object LOD for Seasons of Skyrim (Data\Seasons\*_WIN.ini ...)
+          --skse-dll <which>     SKSE plugin put in the output: auto (default, reads SkyrimSE.exe),
+                                 1170 (SE 1.5.97 - AE 1.6.1170), 17 (newer, 1.7.x), none (installed separately)
+          --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD
+                                 "grid" objects) to the AnvilLOD SKSE plugin
           --no-grass             Don't build grass LOD from the grass cache
           --grass-density <pct>  Share of cached grass kept as LOD (default 8)
-          --tree-brightness <pct> Tree LOD billboard brightness (default 100)
+          --tree-brightness <pct> Tree LOD billboard brightness, 10-110 (default 100)
+          --object-brightness <pct> Object LOD brightness, 10-110 (default 100)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
           --no-enable-parented   Exclude every reference with an enable parent (by default only
                                  parented refs that start disabled are left out)
@@ -84,7 +90,8 @@ public static class Program
                 IncludeInitiallyDisabled: a.Has("include-disabled"),
                 IncludeEnableParented: !a.Has("no-enable-parented"),
                 TreeLod: !a.Has("no-trees"),
-                DynamicLod: !a.Has("no-dynamic")),
+                DynamicLod: !a.Has("no-dynamic"),
+                GridObjects: !a.Has("no-grid-objects")),
             OutputFolder: a.Get("output"),
             Generate: generate,
             DynDolodFolder: a.Get("dyndolod"),
@@ -92,6 +99,16 @@ public static class Program
             RemoveBuried: !a.Has("keep-buried"),
             GrassLod: !a.Has("no-grass"),
             ChildWorlds: !a.Has("no-child-worlds"),
+            Seasons: a.Has("seasons"),
+            SkseDll: (a.Get("skse-dll") ?? "auto").ToLowerInvariant() switch
+            {
+                "auto" => SkseDllChoice.Auto,
+                "1170" or "old" or "se" or "ae" => SkseDllChoice.UpTo1170,
+                "17" or "new" or "1.7" => SkseDllChoice.Newer,
+                "none" or "separate" => SkseDllChoice.None,
+                var v => throw new CliArgException($"--skse-dll must be auto, 1170, 17 or none (got '{v}')."),
+            },
+            ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,
             GrassDensity: (a.Get("grass-density") is { } gd && float.TryParse(gd, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pct) ? pct : 8f) / 100f);
 

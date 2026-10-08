@@ -54,8 +54,9 @@ namespace AnvilLOD
 			logger::error("{} is not an AnvilLOD dynamic LOD file", a_path.string());
 			return false;
 		}
-		if (version != 1) {
-			logger::error("{} has version {}, this plugin reads version 1 - update the AnvilLOD plugin or regenerate", a_path.string(), version);
+		// Version 2 added grid-object flags; the layout is the same, so version 1 files still load.
+		if (version < 1 || version > 2) {
+			logger::error("{} has version {}, this plugin reads versions 1-2 - update the AnvilLOD plugin or regenerate", a_path.string(), version);
 			return false;
 		}
 

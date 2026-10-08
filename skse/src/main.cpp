@@ -66,7 +66,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 
 	SKSE::Init(a_skse);
 	SetupLog();
-	logger::info("AnvilLOD SKSE plugin loading. Build line: {}; game {}", kLine, game.string());
+	logger::info("AnvilLOD SKSE plugin {} loading. Build line: {}; game {}", ANVILLOD_VERSION_STRING, kLine, game.string());
 	AnvilLOD::Menu::SetGameVersion(game.string());
 
 	if (!SKSE::GetMessagingInterface()->RegisterListener(OnMessage)) {

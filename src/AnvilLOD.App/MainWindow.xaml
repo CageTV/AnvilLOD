@@ -53,6 +53,7 @@
                         <TextBlock Text="GAME" Style="{StaticResource SectionHeader}" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <RadioButton x:Name="Mo2Radio" Content="MO2 instance" GroupName="Source" Margin="0,0,18,0" Checked="SourceMode_Changed" />
+                            <RadioButton x:Name="VortexRadio" Content="Vortex" GroupName="Source" Margin="0,0,18,0" Checked="SourceMode_Changed" />
                             <RadioButton x:Name="DataRadio" Content="Data folder" GroupName="Source" Checked="SourceMode_Changed" />
                         </StackPanel>
 
@@ -79,7 +80,11 @@
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowsePlugins_Click" />
                                 <TextBox x:Name="PluginsBox" ToolTip="Use a specific load order. Requires the Data folder." />
                             </DockPanel>
-                            <TextBlock Text="For a plain (non-MO2) install." Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <TextBlock x:Name="DataInfoText" Text="For a plain (non-MO2) install." Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <StackPanel x:Name="VortexPanel" Visibility="Collapsed" Margin="0,6,0,0">
+                                <Button x:Name="VortexOutputButton" Content="Output to Vortex staging (AnvilLOD Output)" Padding="8,4" HorizontalAlignment="Left" Click="VortexOutput_Click" />
+                                <TextBlock x:Name="VortexInfoText" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
                         </StackPanel>
 
                         <TextBlock Text="OUTPUT" Style="{StaticResource SectionHeader}" />
@@ -120,12 +125,34 @@
                         <CheckBox x:Name="TreeLodCheck" Content="Tree LOD (billboards from TexGen output)" IsChecked="True"
                                   ToolTip="Builds the engine's billboard tree LOD (.lst, .btt and the tree atlas) from textures\terrain\LODGen billboards, e.g. TexGen output." />
                         <TextBlock Text="Tree LOD brightness" Margin="20,2,0,2" />
-                        <ComboBox x:Name="TreeBrightnessBox" SelectedIndex="2" Margin="20,0,0,6"
+                        <ComboBox x:Name="TreeBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
                                   ToolTip="Darkens or brightens the distant tree billboards to match your lighting/ENB.">
-                            <ComboBoxItem Content="Much darker (80%)" />
-                            <ComboBoxItem Content="Darker (90%)" />
-                            <ComboBoxItem Content="Default (100%)" />
-                            <ComboBoxItem Content="Brighter (110%)" />
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
+                        </ComboBox>
+                        <TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
+                        <ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
+                                  ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
                         </ComboBox>
                         <CheckBox x:Name="GrassLodCheck" Content="Grass LOD (from the grass cache)" IsChecked="True"
                                   ToolTip="Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards." />
@@ -137,6 +164,18 @@
                         </ComboBox>
                         <CheckBox x:Name="DynamicLodCheck" Content="Dynamic LOD for switchable references (SKSE)" IsChecked="True"
                                   ToolTip="References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled." />
+                        <CheckBox x:Name="GridObjectsCheck" Content="Water and animated distant objects (SKSE)" IsChecked="True"
+                                  ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
+                        <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD (EXPERIMENTAL)"
+                                  ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
+                        <TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
+                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads SkyrimSE.exe's version. Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
+                        <ComboBox x:Name="SkseDllBox" SelectedIndex="0" Margin="0,0,0,6">
+                            <ComboBoxItem Content="Auto-detect game version" />
+                            <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />
+                            <ComboBoxItem Content="Newer than 1.6.1170 (1.7.x)" />
+                            <ComboBoxItem Content="Installed separately (FOMOD)" />
+                        </ComboBox>
                         <CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
                         <CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
                     </StackPanel>

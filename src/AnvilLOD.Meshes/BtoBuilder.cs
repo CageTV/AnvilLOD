@@ -42,7 +42,9 @@ public static class BtoBuilder
     }
 
     /// <param name="terrain">Optional buried-triangle test (see <see cref="TerrainTest"/>).</param>
-    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null)
+    /// <param name="brightness">Colour multiplier (1 = unchanged). Applied through vertex colours, which the shader
+    /// multiplies with the diffuse texture, so LOD textures shared with other mods are left alone.</param>
+    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f)
     {
         var origin = new Vector3(quad.X * CellCoord.CellSize, quad.Y * CellCoord.CellSize, 0);
         float level = (int)quad.Level;
@@ -74,10 +76,10 @@ public static class BtoBuilder
             {
                 if (part.VertexCount > MaxIndex || part.TriangleCount > MaxIndex) continue; // can't happen for valid SSE shapes
                 if (!chunks.TryGetValue(part.Material.Key, out var list))
-                    chunks[part.Material.Key] = list = [new Chunk(part.Material, segmented)];
+                    chunks[part.Material.Key] = list = [new Chunk(part.Material, segmented, brightness)];
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
-                    list.Add(chunk = new Chunk(part.Material, segmented));
+                    list.Add(chunk = new Chunk(part.Material, segmented, brightness));
                 culled += chunk.Append(part, m, rot, origin, inv, terrain, segment);
             }
         }
@@ -167,7 +169,17 @@ public static class BtoBuilder
     }
 
     /// <summary>Merged geometry for one material, in block-local, level-scaled coordinates.</summary>
-    private sealed class Chunk(LodMaterial material, bool segmented)
+    /// <summary>Scales the RGB bytes of an RGBA vertex colour (alpha kept).</summary>
+    internal static uint Scale(uint rgba, float f)
+    {
+        if (f >= 0.999f && f <= 1.001f) return rgba;
+        uint r = (uint)Math.Clamp(MathF.Round((rgba & 0xFF) * f), 0, 255);
+        uint g = (uint)Math.Clamp(MathF.Round(((rgba >> 8) & 0xFF) * f), 0, 255);
+        uint b = (uint)Math.Clamp(MathF.Round(((rgba >> 16) & 0xFF) * f), 0, 255);
+        return (rgba & 0xFF00_0000u) | (b << 16) | (g << 8) | r;
+    }
+
+    private sealed class Chunk(LodMaterial material, bool segmented, float brightness = 1f)
     {
         public LodMaterial Material { get; } = material;
         private readonly List<Vector3> _pos = [];
@@ -215,13 +227,13 @@ public static class BtoBuilder
                         _n.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ));
                         _t.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Tangents[i], rot), Vector3.UnitX));
                         _b.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Bitangents[i], rot), Vector3.UnitY));
-                        _c.Add(p.Colors?[i] ?? 0xFFFF_FFFFu);
+                        _c.Add(Scale(p.Colors?[i] ?? 0xFFFF_FFFFu, brightness));
                     }
                     tris.Add((ushort)remap[i]);
                     _indexCount++;
                 }
             }
-            if (p.Colors is not null && culled < keep.Length) HasColors = true;
+            if ((p.Colors is not null || MathF.Abs(brightness - 1f) > 0.001f) && culled < keep.Length) HasColors = true;
             return culled;
         }
 

@@ -37,6 +37,9 @@ public sealed class LodGenerator
     private readonly TerrainHeights? _terrain;
     private readonly ISyntheticMeshSource? _synthetic;
 
+    /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
+    public float Brightness { get; init; } = 1f;
+
     /// <param name="terrain">Terrain heights for buried-triangle removal, or null to keep everything.</param>
     /// <param name="synthetic">Meshes built on the fly (grass patches). They're not cached: each is used by one block.</param>
     public LodGenerator(IAssetSource assets, TerrainHeights? terrain = null, ISyntheticMeshSource? synthetic = null)
@@ -90,7 +93,8 @@ public sealed class LodGenerator
         IReadOnlyCollection<QuadKey> toBuild,
         string outputFolder,
         IProgress<string>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? seasonSuffix = null)   // "WIN" → <world>.<L>.<X>.<Y>.WIN.bto (Seasons of Skyrim)
     {
         var sw = Stopwatch.StartNew();
         int written = 0, empty = 0, failed = 0, done = 0;
@@ -108,8 +112,9 @@ public sealed class LodGenerator
                 {
                     var test = _terrain is null ? null
                         : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level));
-                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test);
-                    var path = Path.Combine(outputFolder, quad.RelativePath.Replace('\\', Path.DirectorySeparatorChar));
+                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness);
+                    var rel = seasonSuffix is null ? quad.RelativePath : AnvilLOD.Core.Lod.SeasonSwaps.SeasonalPath(quad.RelativePath, seasonSuffix);
+                    var path = Path.Combine(outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                     var tmp = path + ".tmp";
                     File.WriteAllBytes(tmp, result.Bytes);

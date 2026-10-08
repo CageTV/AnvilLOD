@@ -1,4 +1,5 @@
 using System.Text;
+using AnvilLOD.Core.Lod;
 using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
 
@@ -7,20 +8,22 @@ namespace AnvilLOD.Plugins;
 /// <summary>
 /// Writes <c>SKSE\Plugins\AnvilLOD\AnvilLOD.dyn</c>, the data file the AnvilLOD SKSE plugin reads at startup.
 /// <code>
-/// char[4] "ALDY", u32 version (1)
+/// char[4] "ALDY", u32 version (2; version 1 had no grid objects)
 /// u32 stringCount, then per string: u16 byteLength + UTF-8 bytes   (plugin names and mesh paths)
 /// u32 entryCount, then per entry (60 bytes):
 ///   u32 refPlugin (string index), u32 refLocalId,
 ///   u32 worldspacePlugin (string index), u32 worldspaceLocalId,
 ///   u32 mesh (string index, relative to Data\meshes), f32 pos[3], f32 rot[3] (radians), f32 scale,
 ///   u32 parentPlugin (string index, 0xFFFFFFFF = none), u32 parentLocalId,
-///   u32 flags (1 = enable state opposite of parent, 2 = initially disabled)
+///   u32 flags (1 = enable state opposite of parent, 2 = initially disabled,
+///              4 = grid object: water / waterfall / fire / windmill, always dynamic and animated,
+///              8 = near grid (drawn only near the loaded cells), 16 = never fade (drawn at any distance))
 /// </code>
 /// </summary>
 public static class DynamicLodWriter
 {
     public const string RelativePath = "SKSE\\Plugins\\AnvilLOD\\AnvilLOD.dyn";
-    public const uint Version = 1;
+    public const uint Version = 2;
 
     public static int Write(string outputFolder, IReadOnlyList<DynamicLodReference> refs)
     {
@@ -74,7 +77,7 @@ public static class DynamicLodWriter
                 w.Write(e.R.Scale);
                 w.Write(e.D.ParentPlugin is { } pp ? Str2(pp) : 0xFFFF_FFFFu);
                 w.Write(e.D.ParentLocalId);
-                w.Write((e.D.ParentOpposite ? 1u : 0u) | (e.D.InitiallyDisabled ? 2u : 0u));
+                w.Write(Flags(e.D));
             }
         }
         File.Move(path + ".tmp", path, overwrite: true);
@@ -85,6 +88,10 @@ public static class DynamicLodWriter
             File.WriteAllText(ini, DefaultIni);
         return entries.Count;
     }
+
+    public static uint Flags(DynamicLodReference d) =>
+        (d.ParentOpposite ? 1u : 0u) | (d.InitiallyDisabled ? 2u : 0u)
+        | (d.IsGridObject ? 4u : 0u) | (d.Grid == DynamicGrid.Near ? 8u : 0u) | (d.Grid == DynamicGrid.NeverFade ? 16u : 0u);
 
     public const string DefaultIni = """
         ; AnvilLOD SKSE plugin settings
@@ -97,6 +104,14 @@ public static class DynamicLodWriter
         iUpdateIntervalMs=500
         ; Safety cap on how many dynamic LOD objects are drawn at once
         iMaxShown=4000
+        ; Water planes, waterfalls, fires, windmills and other DynDOLOD "grid" objects, drawn beyond the loaded cells
+        bGridObjects=1
+        ; How far "Near LOD" grid objects (water planes, creeks, fires) and "Far LOD" ones (waterfalls, windmills, ships) are drawn
+        fNearGridDistance=40000
+        fFarGridDistance=120000
+        ; EXPERIMENTAL: keep them animated (waterfall flow, windmill blades). Can crash; off by default
+        bAnimateExperimental=0
+        iAnimationFps=30
         ; Log every object shown/hidden to Documents\My Games\Skyrim Special Edition\SKSE\AnvilLOD.log
         bVerboseLog=0
 

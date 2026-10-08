@@ -79,4 +79,20 @@ public sealed class LodMeshResolver
         var set = new LodMeshSet(Pick(rule.Lod4), Pick(rule.Lod8), Pick(rule.Lod16), Pick(rule.Lod32));
         return new Resolution(set, rule, usedNamed, usedMnam);
     }
+
+    /// <summary>
+    /// Mesh for a grid object: DynDOLOD's dynamic LOD mesh (<c>meshes\dyndolod\lod\&lt;model path&gt;_dyndolod_lod.nif</c>,
+    /// shipped by DynDOLOD Resources and water mods), otherwise the full model. "Far Full" always uses the full model.
+    /// </summary>
+    public static string? GridMesh(string modelPath, DynamicGrid grid, Func<string, bool> exists)
+    {
+        var full = LodMeshIndex.Normalize(modelPath);
+        if (grid != DynamicGrid.FarFull && full.StartsWith("meshes\\", StringComparison.Ordinal) && full.EndsWith(".nif", StringComparison.Ordinal))
+        {
+            var lod = "meshes\\dyndolod\\lod\\" + full["meshes\\".Length..^4] + "_dyndolod_lod.nif";
+            if (exists(lod)) return lod;
+        }
+        return exists(full) ? full : null;
+    }
+
 }
