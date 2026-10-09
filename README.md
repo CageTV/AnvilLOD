@@ -45,6 +45,20 @@ The **Mod Author** tab (or `AnvilLOD author --plugin "<file>" --author-out <fold
 
 The tools are behind a confirmation: generated files are a starting point to check in NifSkope and in game, and are only shared with the mod author's permission. Files already in the output folder are kept unless "Overwrite" is ticked, so hand-edited ones survive a rerun.
 
+### LOD Mesh Maker
+
+The **LOD Mesh Maker** tab (or `AnvilLOD lodmaker`) makes LOD meshes from full models you pick, with no plugin involved, for models that have no LOD mesh yet:
+
+- **Models:** add `.nif` files, a mod folder, its `meshes` folder or any folder of models. It only reads the model files, so it needs no load order.
+- **Output:** a **new mod in your MO2 mods folder** (give it a name; run it again with the same name to add more models) or any folder you choose. Never your LOD output folder.
+- **What it writes:** `meshes\lod\<name>\<model>_lod_0/1/2.nif` (LOD4, LOD8, LOD16; pick the levels you want): small parts dropped, the rest simplified, the model's own textures kept. The files are written from the triangles alone, so collision and other game data from the full model are not copied. A **Detail** setting keeps more (finer) or less (coarser) of the model, and models below a size you set can be skipped.
+- **Triangle budget** (on by default, optional): LOD meshes made from dense models can be far heavier than anything in a normal list, so each level is simplified until it fits a budget. **Recommended** scales with the model's largest dimension and comes from measuring the 2,554 LOD meshes in DynDOLOD Resources SE and LOD Model Library (the 90th percentile per size class, kept decreasing with distance): up to 1,000 units 250 / 200 / 150 triangles at LOD 0 / 1 / 2, 1,000-3,000 units 600 / 450 / 300, 3,000-8,000 units 2,500 / 1,500 / 650, over 8,000 units 1,400 / 900 / 600. **Custom** takes your own maximums per level (0 = no limit) and **Off** leaves only the Detail setting. A farther level never gets more triangles than a nearer one. If a budget can't be met (every part is already at its minimum) the file is still written and the report says it is over budget. Command line: `--budget recommended|off|<LOD0,LOD1,LOD2>`. The Mod Author tab and `author` command use the same budget for the LOD meshes they generate (a checkbox, `--budget`).
+- **Rule file:** `DynDOLOD\DynDOLOD_SSE_<name>.ini` in DynDOLOD's format, so AnvilLOD and DynDOLOD use the new meshes for the models they were made from. Run it again and the file only gains lines for new models. Existing LOD files are kept unless "Overwrite" is ticked.
+- Two models with the same file name can't both get LOD (LOD files are matched by name): the first, in path order, is made and the other is reported. Files that already are LOD meshes are skipped.
+- Command line: `AnvilLOD lodmaker --input <file|folder> [--input ...] --output <folder>` or `--mo2 <instance> --new-mod <name>`, with `--levels 0,1,2`, `--detail <0.1-10>`, `--min-size <units>`, `--group`, `--no-rules`, `--overwrite`.
+
+As with the other author tools, the generated files are a starting point to check in NifSkope and in game, and are only shared with the model author's permission.
+
 ## Build
 
 ```powershell
@@ -139,12 +153,29 @@ LOD is drawn with vanilla shaders, which don't do PBR. A LOD mesh that uses a te
 - The conversion darkens the PBR colours (a gentle power curve and DynDOLOD's default PBR scale of 0.65) because the PBR albedo is meant for linear lighting. It is an approximation fitted to TexGen's own output, so tune **PBR LOD texture brightness** (`--pbr-lod-brightness`, 100 = default) in game: lower it if the LOD looks brighter than the real objects. Changing the option or the brightness rebuilds every block.
 - Tree LOD (billboards and 3D models) isn't covered yet.
 
+## Presets
+
+The three tabs at the top of the settings column are presets. Each one remembers every setting in the column: output folder, worldspaces, LOD levels, the DynDOLOD folder and rule preset, and all the options. Click a tab to switch (the column slides over to the new preset), double-click a tab to rename it. The preset you leave is saved first, and a preset that was never used starts as a copy of what is on screen, so switching never loses anything. Use them for, say, a fast test setup and a full release setup.
+
+The game source (MO2 instance, Vortex or Data folder, the profile and the optional **Locations**) lives in the bar at the top of the window and is shared by all presets.
+
+## Large references (opt-in)
+
+Skyrim SE has a **large reference grid**: a list, per cell, in the worldspace record of an ESM-flagged plugin, of references whose full models the game shows beyond the normally loaded cells (`uLargeRefLODGridSize` in SkyrimPrefs.ini; 5 turns it off). Skyrim.esm and the DLCs list theirs. Tick **Large references** (`--large-refs`) and AnvilLOD lists the ones from your other ESM-flagged plugins that nobody lists yet, in `AnvilLOD.esm`, flagged ESL, so it takes no plugin slot.
+
+- **Which references:** the base record is a STAT (or a MSTT with record flag 0x4), half the object bounds diagonal times the reference scale is more than `fLargeRefMinSize` (512 in Skyrim.esm), it is defined in ESM-flagged plugins only, it doesn't start disabled, and no plugin lists it yet. The size rule is not a guess: it reproduces the list Bethesda shipped. In Skyrim.esm's Tamriel every STAT reference whose full bounds diagonal times scale is at least 1,024 is listed, and almost none of the smaller ones.
+- **What is left out, and why:** references that a plugin outside the ESMs overrides, and ones that start disabled, because those are the known causes of large references flickering (the full model and the LOD drawn in the same place). The report, `AnvilLOD Large References.txt` in the output folder, counts what was listed and what was left out and why, for every worldspace.
+- **The plugin:** `AnvilLOD.esm` only holds one worldspace override per worldspace that got new entries, with the list entries (one per cell, the reference's own cell, as DynDOLOD does). Enable it after your other ESMs, so the worldspace data it is based on is current. Its masters are all ESM-flagged; AnvilLOD checks that every time and warns if one isn't. Turn the option off and the file is removed from the output.
+- **ESL or a slot:** by default `AnvilLOD.esm` is flagged ESL, so it takes no plugin slot. If large references flicker at a distance and you want to rule the ESL flag out, untick **Flag AnvilLOD.esm as ESL** (`--large-refs-no-esl`) and generate again: it is then a normal ESM and uses one slot. Nothing in DynDOLOD's documentation says ESL causes flicker (it suggests an ESM+ESL plugin for this), so treat it as a troubleshooting step.
+- **Cost:** full models loaded farther out cost performance, so the list is kept to what Bethesda's own rule would pick. The grid size (`uLargeRefLODGridSize`) decides how far they show.
+- **Flicker:** AnvilLOD doesn't include the large reference bug workarounds. If you have DynDOLOD DLL NG installed, its Large Reference Bugs Workarounds are what DynDOLOD's documentation recommends for flicker, and it works alongside AnvilLOD's plugin (AnvilLOD leaves the LOD distance settings to it while it is installed). When AnvilLOD finds DynDOLOD DLL NG in your load order it says so in the log and the report; it doesn't recommend installing it.
+
 ## Terrain underside (opt-in)
 
 Volumetric lighting mods (DVLaSS, EVLaS, Community Shaders' sky sync) need a low-resolution copy of the terrain facing downward under the world, or sun rays and shadows leak through the landscape. DynDOLOD makes it ("Terrain underside"); tick **Terrain underside** (`--underside`) and AnvilLOD does too, for every worldspace that has LOD32 blocks, including ones added by mods.
 
 - `meshes\Terrain\<worldspace>\<worldspace>_Underside.nif`: one shape per LOD32 block, built from the winning LAND heights. Each vertex is the lowest LAND height within one step around it, so the mesh stays at or below the terrain everywhere and can't poke through. Neighbouring blocks agree along their shared edge. `--underside-detail <4|8|16|32|64|128>` sets the LAND vertices per underside square (default 16: about 90,000 triangles and 1.5 MB for Tamriel; smaller is finer and heavier).
-- `AnvilLOD Underside.esm` and `AnvilLOD Underside.esp`, both flagged ESL, so they take no plugin slot. The ESM only holds one moveable static per worldspace and has no masters. The ESP places it: a persistent reference 500 units below the world, in each worldspace's own persistent cell. Enable both in your mod manager. The ESP needs the plugins that define the worldspaces as masters, and it overrides the worldspace and its persistent cell as they were when you generated, so load it after plugins that edit worldspaces and generate again when they change.
+- `AnvilLOD.esp`, flagged ESL, so it takes no plugin slot. It holds one moveable static per worldspace and places it: a persistent reference 500 units below the world, in each worldspace's own persistent cell. Enable it in your mod manager. It needs the plugins that define the worldspaces as masters, and it overrides the worldspace and its persistent cell as they were when you generated, so load it after plugins that edit worldspaces and generate again when they change.
 - Don't combine it with DynDOLOD's own underside (they would both place one). Worldspaces DynDOLOD ignores (Blackreach, Soul Cairn, Apocrypha, the Deadlands, Japhet's Folly, the Creation Club Qasmoke world) get none. Hidden quads and the Solstheim and Markarth trims DynDOLOD's INI can set are not applied.
 - Experimental: the placement is the same as DynDOLOD's except that the reference is enabled from the start instead of being switched on by a DynDOLOD script. The engine behaviour has not been checked in game yet.
 

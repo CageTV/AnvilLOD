@@ -19,13 +19,15 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Tree/terrain LOD not seasonal yet | 🧪 experimental |
 | Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
 | In-game settings (DynDOLOD MCM equivalent) | SKSE Menu Framework pages: LOD/fade/grass distances, dynamic LOD, water & animated objects | ✅ |
-| Glow windows, large refs | SKSE plugin | planned |
+| Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | 🧪 experimental |
+| Glow windows | SKSE plugin | planned |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |
 | Enable parents (quest-built places, e.g. Helgen Reborn) | Initial state resolved through the parent chain; start-disabled refs left out of static LOD | ✅ |
 | Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪, water look needs tuning) |
 | Walled cities in the parent's LOD (Dragonsreach etc.) | Child world references copied into Tamriel's LOD, driven by DynDOLOD's `Configs\DynDOLOD_SSE_childworld_*.ini` + ChildworldMatches | ✅ |
 | Child worldspaces with their own LOD | Generate for parent/child links | planned |
 | Occlusion.esp | Build from our own terrain data (xLODGen meanwhile) | planned |
+| LOD meshes from full models you pick (LOD Mesh Maker) | `name_lod_0/1/2.nif` (simplified, no collision, own textures) into a new mod or folder, plus a DynDOLOD-format rule file | 🧪 experimental |
 | PBR full models → matching object LOD textures | TexGen `pbr_lod` twins used as found; other textures with a `textures\pbr` version get a converted, shrunk copy (`textures\anvillod\pbr`). Tree LOD not yet | 🧪 experimental (conversion curve is an approximation) |
 | Terrain underside (volumetric lighting) | `<ws>_Underside.nif` from LAND (never above the terrain) + ESL ESM/ESP that place it, as DynDOLOD does | 🧪 experimental (in-game check pending) |
 | Terrain LOD | xLODGen for now; own GPU terrain step later | later |

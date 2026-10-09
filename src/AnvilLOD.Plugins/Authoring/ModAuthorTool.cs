@@ -26,7 +26,9 @@ public sealed record AuthorRequest(
     float MinTreeHeight = 256f,         // trees/plants lower than this don't need a billboard
     bool Overwrite = false,             // replace files already in the output folder (off: keep hand-edited ones)
     string? DynDolodFolder = null,
-    LodPreset Preset = LodPreset.High);
+    LodPreset Preset = LodPreset.High,
+    BudgetMode Budget = BudgetMode.Recommended,       // triangle budget for the generated LOD meshes (see LodBudgets)
+    IReadOnlyList<int>? CustomBudget = null);          // with Custom: the most triangles at LOD 0, 1 and 2 (0 = no limit)
 
 /// <summary>One row of the author report.</summary>
 public sealed record AuthorItem(
@@ -215,14 +217,15 @@ public static class ModAuthorTool
             string action = "";
             bool needs = !rulesSayNone && size >= req.MinObjectSize && (!hasLod || problems.Any(p => p.StartsWith("LOD mesh unreadable", StringComparison.Ordinal)));
             if (needs && req.LodMeshes)
-                action = WriteLodMeshes(full, mesh);
+                action = WriteLodMeshes(full, mesh, size);
             return new AuthorItem("Object", fk.ToString(), rec.EditorID, full, count, size, status, action);
         }
 
-        string WriteLodMeshes(string full, LodMesh mesh)
+        string WriteLodMeshes(string full, LodMesh mesh, float size)
         {
             var stem = Path.GetFileNameWithoutExtension(full);
-            var levels = LodMeshAuthor.Build(mesh);
+            var levels = LodMeshAuthor.Build(mesh, LodMeshAuthor.DefaultLevels
+                .Select(l => l with { MaxTriangles = LodBudgets.For(req.Budget, req.CustomBudget, l.Level, size) }).ToList());
             if (levels.Count == 0) return "Nothing usable to simplify (only blended/effect shapes)";
             var written = new List<string>();
             int sourceTris = mesh.Parts.Sum(p => p.TriangleCount);
@@ -234,7 +237,7 @@ public static class ModAuthorTool
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllBytes(path, LodNifWriter.Write($"{stem}_lod_{lv.Level}", lv.Parts));
                 meshesWritten++;
-                written.Add($"L{lv.Level} {lv.Triangles:N0} tris");
+                written.Add($"L{lv.Level} {lv.Triangles:N0} tris" + (lv.OverBudget ? $" (over the budget of {lv.Budget:N0})" : ""));
             }
             var mask = full["meshes\\".Length..];
             ruleLines.Add($"{mask},Level0,Level1,Level2,Level2,FarLOD,Unchanged,0,AnvilLOD author");
@@ -385,6 +388,12 @@ public static class ModAuthorTool
         sb.AppendLine();
         sb.AppendLine($"Generated: {meshes} LOD meshes, {billboards} tree billboards{(ruleFile is null ? "" : $", rule file {Path.GetFileName(ruleFile)}")}");
         sb.AppendLine($"Thresholds: objects >= {req.MinObjectSize:F0} units need LOD, trees >= {req.MinTreeHeight:F0} units need a billboard");
+        sb.AppendLine(req.Budget switch
+        {
+            BudgetMode.Recommended => $"LOD mesh triangle budget: recommended for the model size (LOD 0 / 1 / 2): {LodBudgets.Describe()}. Basis: {LodBudgets.Basis}.",
+            BudgetMode.Custom => $"LOD mesh triangle budget: custom, LOD 0 / 1 / 2 = {string.Join(" / ", Enumerable.Range(0, 3).Select(i => LodBudgets.For(BudgetMode.Custom, req.CustomBudget, i, 0f) is { } n ? n.ToString("N0") : "no limit"))}",
+            _ => "LOD mesh triangle budget: off",
+        });
         sb.AppendLine();
         foreach (var kind in new[] { "Object", "Tree" })
         {

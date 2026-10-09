@@ -25,11 +25,13 @@ public sealed record ScanRequest(
     bool Seasons = false,                          // EXPERIMENTAL: Seasons of Skyrim seasonal object LOD (<block>.WIN.bto, …)
     bool ChildWorlds = true,                       // copy walled-city child worldspaces into the parent's LOD (DynDOLOD Configs)
     SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
-    bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD Underside.esm (ESL)
+    bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD.esp (ESL)
     int UndersideStep = UndersideMesher.DefaultStep, // LAND vertices per underside quad (smaller = finer and heavier)
     bool PbrLod = false,                           // object LOD textures that match PBR full models (TexGen pbr_lod twins, converted PBR albedo)
     float PbrLodBrightness = 1f,                   // multiplier on DynDOLOD's default PBR scale (0.65) for the converted copies
-    int PbrLodSize = 512);                         // largest side of a converted copy
+    int PbrLodSize = 512,                          // largest side of a converted copy
+    bool LargeReferences = false,                  // list missing large references in AnvilLOD.esm, for the engine's large reference grid
+    bool LargeRefsEsl = true);                     // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -382,13 +384,28 @@ public static class ScanPipeline
             }
             else PbrLodStage.RemoveAll(output);
 
+            if (req.LargeReferences)
+            {
+                try
+                {
+                    var lr = LargeReferenceStage.Run(game, scan.Grids.Keys.Where(w => !UndersideStage.IgnoredWorlds.Contains(w)).ToList(), output, progress, Warn, ct,
+                        flagEsl: req.LargeRefsEsl, dyndolodDllInstalled: assets.Exists("skse\\plugins\\dyndolod.dll"));
+                    progress?.Report($"Large references: {lr.Listed:N0} listed in {lr.Elapsed.TotalSeconds:F1}s. Report: {lr.ReportFile}");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"Large references failed: {ex.Message}");
+                }
+            }
+            else LargeReferenceStage.Remove(output);
+
             if (req.Underside && terrain is not null)
             {
                 try
                 {
                     var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct);
                     progress?.Report($"Underside: {u.Worldspaces} worldspaces, {u.Blocks:N0} blocks, {u.Triangles:N0} triangles in {u.Elapsed.TotalSeconds:F1}s"
-                                     + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} and {UndersidePluginWriter.PlacementFileName} (both flagged ESL, no plugin slot) in your mod manager."));
+                                     + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} (flagged ESL, no plugin slot) in your mod manager."));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

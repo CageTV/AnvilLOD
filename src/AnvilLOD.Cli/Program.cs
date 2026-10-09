@@ -19,6 +19,20 @@ public static class Program
                                          into their own folder. Options: --no-meshes --no-billboards --no-rules
                                          --min-size <units, default 400> --min-tree-height <units, default 256>
                                          --overwrite (replace files already in --author-out)
+                                         --budget recommended|off|<LOD0,LOD1,LOD2> triangle budget for the LOD meshes (default
+                                         recommended, by model size; see lodmaker)
+
+          AnvilLOD lodmaker --input <file|folder> [--input ...] (--output <folder> | --mo2 <instance> --new-mod <name>) [options]
+                                         LOD Mesh Maker: make LOD meshes (name_lod_0/1/2.nif, simplified, no collision, the
+                                         model's own textures) from full models, plus a DynDOLOD-format rule file.
+                                         --input is a .nif, a mod folder, its meshes folder or any folder of models.
+                                         --new-mod <name> creates the mod folder in the MO2 mods folder (needs --mo2).
+                                         Options: --group <name> (meshes\lod\<name>, default the output folder's name)
+                                         --levels 0,1,2 (LOD4, LOD8, LOD16; default all) --detail <0.1-10, default 1;
+                                         lower keeps more detail> --min-size <units> --no-rules --overwrite
+                                         --budget recommended|off|<LOD0,LOD1,LOD2>  triangle budget per model: the default,
+                                         "recommended", scales with the model's size (from real SE/AE LOD meshes);
+                                         "off" has none; three numbers set the maximums (0 = no limit), e.g. 800,500,300
 
         Options:
           --mo2 <path>           MO2 instance folder (with ModOrganizer.ini) — reads mods directly, no need to launch from MO2
@@ -56,13 +70,17 @@ public static class Program
           --mo2-profiles <dir>   With --mo2: the profiles folder, instead of the ini's
           --mo2-overwrite <dir>  With --mo2: the overwrite folder, instead of the ini's
                                  (Give the game, mods and profiles folders and ModOrganizer.ini isn't needed.)
+          --large-refs           List the references that qualify for the engine's large reference grid but that no plugin
+                                 lists yet in AnvilLOD.esm (flagged ESL). Enable it after your other ESMs
+          --large-refs-no-esl    With --large-refs: don't flag AnvilLOD.esm as ESL; it is then a normal ESM that uses a
+                                 plugin slot (try it if large references flicker and you want to rule the ESL flag out)
           --pbr-lod              Make object LOD textures match PBR full models: use TexGen's pbr_lod twins and
                                  convert PBR albedo copies (textures\anvillod\pbr) for LOD meshes that use a texture
                                  the full model replaces with textures\pbr\...
           --pbr-lod-brightness <pct> Brightness of the converted copies, 10-150 (default 100 = DynDOLOD's PBR scale 0.65)
           --pbr-lod-size <px>    Largest side of a converted copy: 256, 512 (default), 1024 or 2048
           --underside            Build the terrain underside for volumetric lighting mods (DVLaSS, EVLaS, Community
-                                 Shaders sky sync): meshes\Terrain\<ws>\<ws>_Underside.nif plus AnvilLOD Underside.esm
+                                 Shaders sky sync): meshes\Terrain\<ws>\<ws>_Underside.nif plus AnvilLOD.esp
                                  (flagged ESL, no plugin slot). Enable the ESM; load it after plugins that edit worldspaces
           --underside-detail <n> LAND vertices per underside quad: 4, 8, 16 (default), 32, 64 or 128. Smaller is finer and heavier
           --no-enable-parented   Exclude every reference with an enable parent (by default only
@@ -75,7 +93,7 @@ public static class Program
     private static CliArgs Checked(CliArgs a)
     {
         _ = Mo2LocationsFromArgs(a);
-        return a;
+        return CheckedLargeRefs(a);
     }
 
     private static AnvilLOD.Plugins.Mo2.Mo2Locations? Mo2LocationsFromArgs(CliArgs a)
@@ -84,6 +102,13 @@ public static class Program
         if (l.IsEmpty) return null;
         if (a.Get("mo2") is null) throw new CliArgException("--mo2-game, --mo2-mods, --mo2-profiles and --mo2-overwrite only apply together with --mo2 <instance folder>.");
         return l;
+    }
+
+    private static CliArgs CheckedLargeRefs(CliArgs a)
+    {
+        if (a.Has("large-refs-no-esl") && !a.Has("large-refs"))
+            throw new CliArgException("--large-refs-no-esl only applies together with --large-refs.");
+        return a;
     }
 
     private static int PbrLodSizeFromArgs(CliArgs a)
@@ -131,6 +156,7 @@ public static class Program
                 "scan" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: false),
                 "generate" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: true),
                 "author" => RunAuthor(Checked(CliArgs.Parse(args[1..]))),
+                "lodmaker" => RunLodMaker(Checked(CliArgs.Parse(args[1..]))),
                 _ => Fail($"Unknown command '{args[0]}'.\n\n{Usage}"),
             };
         }
@@ -168,6 +194,8 @@ public static class Program
             Seasons: a.Has("seasons"),
             Underside: a.Has("underside"),
             PbrLod: a.Has("pbr-lod"),
+            LargeReferences: a.Has("large-refs"),
+            LargeRefsEsl: !a.Has("large-refs-no-esl"),
             PbrLodBrightness: (a.Get("pbr-lod-brightness") is { } pb && float.TryParse(pb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pbp) ? Math.Clamp(pbp, 10f, 150f) : 100f) / 100f,
             PbrLodSize: PbrLodSizeFromArgs(a),
             UndersideStep: UndersideStepFromArgs(a),
@@ -242,7 +270,9 @@ public static class Program
             MinTreeHeight: F("min-tree-height", 256f),
             Overwrite: a.Has("overwrite"),
             DynDolodFolder: a.Get("dyndolod"),
-            Preset: ParsePreset(a.Get("preset")));
+            Preset: ParsePreset(a.Get("preset")),
+            Budget: ParseBudget(a.Get("budget")).Mode,
+            CustomBudget: ParseBudget(a.Get("budget")).Custom);
         Console.WriteLine("WARNING: " + AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning);
         var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));
         var r = AnvilLOD.Plugins.Authoring.ModAuthorTool.Run(req, sync);
@@ -250,6 +280,57 @@ public static class Program
         foreach (var g in r.Items.GroupBy(i => (i.Kind, Status: i.Status.Split(':')[0])).OrderBy(g => g.Key.Kind).ThenBy(g => g.Key.Status))
             Console.WriteLine($"  {g.Key.Kind,-7} {g.Key.Status,-45} {g.Count(),5}");
         Console.WriteLine($"Generated {r.MeshesWritten} LOD meshes, {r.BillboardsWritten} billboards{(r.RuleFile is null ? "" : ", rule file " + r.RuleFile)}");
+        Console.WriteLine($"Report: {r.ReportFile}");
+        return 0;
+    }
+
+    private static (AnvilLOD.Meshes.Authoring.BudgetMode Mode, IReadOnlyList<int>? Custom) ParseBudget(string? v)
+    {
+        if (v is null || v.Equals("recommended", StringComparison.OrdinalIgnoreCase)) return (AnvilLOD.Meshes.Authoring.BudgetMode.Recommended, null);
+        if (v.Equals("off", StringComparison.OrdinalIgnoreCase)) return (AnvilLOD.Meshes.Authoring.BudgetMode.Off, null);
+        var nums = v.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => int.TryParse(x, out var n) && n >= 0 ? n : -1).ToList();
+        if (nums.Count is < 1 or > 3 || nums.Any(n => n < 0))
+            throw new CliArgException($"--budget must be recommended, off, or up to three numbers LOD0,LOD1,LOD2 (got '{v}').");
+        while (nums.Count < 3) nums.Add(0);
+        return (AnvilLOD.Meshes.Authoring.BudgetMode.Custom, nums);
+    }
+
+    private static int RunLodMaker(CliArgs a)
+    {
+        var inputs = a.GetAll("input") ?? throw new CliArgException("lodmaker needs at least one --input <file or folder>.");
+        string output;
+        if (a.Get("new-mod") is { } modName)
+        {
+            var mo2 = a.Get("mo2") ?? throw new CliArgException("--new-mod needs --mo2 <instance folder>, to find the mods folder.");
+            if (a.Get("output") is not null) throw new CliArgException("Use either --output or --new-mod, not both.");
+            output = Path.Combine(AnvilLOD.Plugins.Mo2.Mo2Instance.Open(mo2, Mo2LocationsFromArgs(a)).ModsFolder, modName.Trim());
+        }
+        else output = a.Get("output") ?? throw new CliArgException("lodmaker needs --output <folder> (or --mo2 <instance> --new-mod <name>).");
+
+        float F(string key, float def) => a.Get(key) is { } v && float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f) ? f : def;
+        IReadOnlyList<int>? levels = null;
+        if (a.Get("levels") is { } lv)
+        {
+            var parsed = lv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(x => int.TryParse(x, out var n) ? n : -1).ToList();
+            if (parsed.Count == 0 || parsed.Any(n => n is < 0 or > 2)) throw new CliArgException($"--levels must be a list of 0, 1 and 2 (got '{lv}').");
+            levels = parsed;
+        }
+        var detail = F("detail", 1f);
+        if (!(detail >= 0.1f && detail <= 10f)) throw new CliArgException("--detail must be between 0.1 and 10.");
+        var group = a.Get("group") ?? Path.GetFileName(Path.TrimEndingDirectorySeparator(output));
+        var (budget, custom) = ParseBudget(a.Get("budget"));
+
+        var total = Stopwatch.StartNew();
+        var req = new AnvilLOD.Plugins.Authoring.LodMakerRequest(inputs.ToList(), output, group, levels, detail, F("min-size", 0f),
+            RuleFile: !a.Has("no-rules"), Overwrite: a.Has("overwrite"), Budget: budget, CustomBudget: custom);
+        Console.WriteLine("WARNING: " + AnvilLOD.Plugins.Authoring.LodMeshMaker.Warning);
+        var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));
+        var r = AnvilLOD.Plugins.Authoring.LodMeshMaker.Run(req, sync);
+        Console.WriteLine();
+        foreach (var g in r.Items.GroupBy(i => i.Status.Split(':')[0]).OrderBy(g => g.Key))
+            Console.WriteLine($"  {g.Key,-48} {g.Count(),5}");
+        Console.WriteLine($"{r.ModelsDone} models, {r.MeshesWritten} LOD meshes{(r.RuleFile is null ? "" : ", rule file " + r.RuleFile)}");
+        Console.WriteLine($"Output: {output}");
         Console.WriteLine($"Report: {r.ReportFile}");
         return 0;
     }

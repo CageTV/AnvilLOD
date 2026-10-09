@@ -7,7 +7,7 @@ namespace AnvilLOD.Plugins;
 
 /// <summary>
 /// The terrain underside step of a Generate run: one <c>meshes\Terrain\&lt;ws&gt;\&lt;ws&gt;_Underside.nif</c> per worldspace
-/// that has LOD32 blocks, plus <c>AnvilLOD Underside.esm</c> (ESL) that places them. Volumetric lighting mods (DVLaSS,
+/// that has LOD32 blocks, plus <c>AnvilLOD.esp</c> (ESL) that places them. Volumetric lighting mods (DVLaSS,
 /// EVLaS, Community Shaders' sky sync) need it to stop rays and shadows leaking through the landscape.
 /// </summary>
 public static class UndersideStage
@@ -71,7 +71,7 @@ public static class UndersideStage
         {
             var r = UndersidePluginWriter.Write(game, made, output);
             plugin = r.Path;
-            progress?.Report($"Underside: {UndersidePluginWriter.FileName} and {UndersidePluginWriter.PlacementFileName} written for {r.Worldspaces.Count} worldspaces (placement masters: {string.Join(", ", r.Masters)})");
+            progress?.Report($"Underside: {UndersidePluginWriter.FileName} written for {r.Worldspaces.Count} worldspaces (placement masters: {string.Join(", ", r.Masters)})");
             if (r.Skipped.Count > 0)
                 warn($"Underside: no worldspace record found for {string.Join(", ", r.Skipped)}; they get no placement (their NIF is still written).");
         }
@@ -91,7 +91,7 @@ public static class UndersideStage
     {
         try
         {
-            foreach (var name in new[] { UndersidePluginWriter.FileName, UndersidePluginWriter.PlacementFileName })
+            foreach (var name in UndersidePluginWriter.LegacyFileNames.Append(UndersidePluginWriter.FileName))
             {
                 var file = Path.Combine(output, name);
                 if (File.Exists(file)) File.Delete(file);

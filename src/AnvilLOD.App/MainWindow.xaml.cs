@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
@@ -28,9 +30,12 @@ public partial class MainWindow : Window
         StartupLog.Write("MainWindow: InitializeComponent");
         InitializeComponent();
         Loaded += (_, _) => StartupLog.Write("MainWindow loaded (UI is up)");
-        VersionText.Text = "v" + (typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "?");
+        var version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "?";
+        VersionText.Text = "v" + version;
+        Title = "AnvilLOD " + version;
         _clock.Tick += (_, _) => StatusText.Text = $"Running… {_elapsed.Elapsed:mm\\:ss}";
         ApplySettings();
+        InitPresets();
         AuthorWarningText.Text = AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning;
         if (StartupLog.IsUnderMo2()) Title = "AnvilLOD  (running under MO2)";
     }
@@ -46,7 +51,13 @@ public partial class MainWindow : Window
         Mo2ModsBox.Text = _settings.Mo2ModsFolder ?? "";
         Mo2ProfilesBox.Text = _settings.Mo2ProfilesFolder ?? "";
         Mo2OverwriteBox.Text = _settings.Mo2OverwriteFolder ?? "";
-        Mo2LocationsExpander.IsExpanded = Mo2LocationsFromBoxes() is not null;
+        UpdateLocationsButton();
+        MakerInputBox.Text = _settings.MakerInputs ?? "";
+        MakerModNameBox.Text = _settings.MakerModName ?? "AnvilLOD LOD Meshes";
+        MakerOutBox.Text = _settings.MakerOutput ?? "";
+        if (_settings.MakerFolderMode) MakerFolderRadio.IsChecked = true; else MakerNewModRadio.IsChecked = true;
+        MakerOutMode_Changed(this, new RoutedEventArgs());
+        MakerBudget_Changed(this, new RoutedEventArgs());
         LoadProfiles(_settings.Mo2Profile);
         if (_settings.UseMo2) Mo2Radio.IsChecked = true; else if (_settings.UseVortex) VortexRadio.IsChecked = true; else DataRadio.IsChecked = true;
         DataBox.Text = _settings.DataFolder ?? "";
@@ -61,6 +72,8 @@ public partial class MainWindow : Window
         Lod32Check.IsChecked = _settings.Lod32;
         RemoveBuriedCheck.IsChecked = _settings.RemoveBuried;
         TreeLodCheck.IsChecked = _settings.TreeLod;
+        LargeRefsCheck.IsChecked = _settings.LargeReferences;
+        LargeRefsEslCheck.IsChecked = _settings.LargeRefsEsl;
         PbrLodCheck.IsChecked = _settings.PbrLod;
         PbrLodBrightnessBox.SelectedIndex = BrightnessIndex(_settings.PbrLodBrightness);
         UndersideCheck.IsChecked = _settings.Underside;
@@ -102,6 +115,8 @@ public partial class MainWindow : Window
         _settings.Preset = PresetBox.SelectedIndex switch { 0 => "Low", 1 => "Medium", _ => "High" };
         _settings.RemoveBuried = RemoveBuriedCheck.IsChecked == true;
         _settings.TreeLod = TreeLodCheck.IsChecked == true;
+        _settings.LargeReferences = LargeRefsCheck.IsChecked == true;
+        _settings.LargeRefsEsl = LargeRefsEslCheck.IsChecked == true;
         _settings.PbrLod = PbrLodCheck.IsChecked == true;
         _settings.PbrLodBrightness = BrightnessPercent(PbrLodBrightnessBox.SelectedIndex);
         _settings.Underside = UndersideCheck.IsChecked == true;
@@ -118,6 +133,7 @@ public partial class MainWindow : Window
         _settings.GrassDensity = GrassDensityBox.SelectedIndex switch { 0 => 4, 2 => 15, _ => 8 };
         _settings.IncludeDisabled = IncludeDisabledCheck.IsChecked == true;
         _settings.IncludeEnableParented = IncludeEnableParentCheck.IsChecked == true;
+        _settings.StoreActivePreset();   // the active preset always mirrors the column
     }
 
     private static string? Blank(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
@@ -185,7 +201,11 @@ public partial class MainWindow : Window
         return l.IsEmpty ? null : l;
     }
 
-    private void Mo2Box_LostFocus(object sender, RoutedEventArgs e) => LoadProfiles(ProfileBox.SelectedItem as string);
+    private void Mo2Box_LostFocus(object sender, RoutedEventArgs e)
+    {
+        LoadProfiles(ProfileBox.SelectedItem as string);
+        UpdateLocationsButton();
+    }
 
     /// <summary>Reads the instance's profiles into the dropdown and selects the wanted (or MO2's selected) one.</summary>
     private void LoadProfiles(string? wanted)
@@ -329,6 +349,8 @@ public partial class MainWindow : Window
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
             PbrLod: _settings.PbrLod,
+            LargeReferences: _settings.LargeReferences,
+            LargeRefsEsl: _settings.LargeRefsEsl,
             PbrLodBrightness: _settings.PbrLodBrightness / 100f,
             GrassDensity: _settings.GrassDensity / 100f,
             SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 3),
@@ -476,6 +498,7 @@ public partial class MainWindow : Window
             MinObjectSize: Num(AuthorMinSizeBox, 400f),
             MinTreeHeight: Num(AuthorMinTreeBox, 256f),
             Overwrite: AuthorOverwriteCheck.IsChecked == true,
+            Budget: AuthorBudgetCheck.IsChecked == true ? AnvilLOD.Meshes.Authoring.BudgetMode.Recommended : AnvilLOD.Meshes.Authoring.BudgetMode.Off,
             DynDolodFolder: _settings.DynDolodFolder,
             Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });
 
@@ -527,12 +550,210 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---------- LOD Mesh Maker ----------
+
+    private void MakerAgree_Changed(object sender, RoutedEventArgs e)
+    {
+        MakerPanel.IsEnabled = MakerAgreeCheck.IsChecked == true;
+        MakerTab_GotFocus(sender, e);
+    }
+
+    private void MakerTab_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (MakerWarningText.Text.Length == 0) MakerWarningText.Text = AnvilLOD.Plugins.Authoring.LodMeshMaker.Warning;
+    }
+
+    private void MakerBudget_Changed(object sender, RoutedEventArgs e)
+    {
+        if (MakerBudget0Box is null || MakerBudgetHint is null) return;   // fires while the window is being built
+        bool custom = MakerBudgetBox.SelectedIndex == 1;
+        MakerBudget0Box.IsEnabled = MakerBudget1Box.IsEnabled = MakerBudget2Box.IsEnabled = custom;
+        MakerBudgetHint.Text = MakerBudgetBox.SelectedIndex switch
+        {
+            0 => "Most triangles at LOD 0 / 1 / 2, by the model's largest dimension: " + AnvilLOD.Meshes.Authoring.LodBudgets.Describe()
+                 + ". Based on the " + AnvilLOD.Meshes.Authoring.LodBudgets.Basis + ".",
+            1 => "Your own maximums per level; 0 means no limit for that level. A farther level never gets more triangles than a nearer one.",
+            _ => "No budget: only the Detail setting limits the triangles, so very dense models stay heavy.",
+        };
+    }
+
+    private void MakerOutMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (MakerModNameBox is null || MakerOutBox is null) return;   // fires while the window is being built
+        MakerModNameBox.IsEnabled = MakerNewModRadio.IsChecked == true;
+        MakerOutBox.IsEnabled = MakerFolderRadio.IsChecked == true;
+    }
+
+    private void AppendMakerInput(string path)
+    {
+        var lines = MakerInputBox.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (!lines.Contains(path, StringComparer.OrdinalIgnoreCase)) lines.Add(path);
+        MakerInputBox.Text = string.Join(Environment.NewLine, lines);
+    }
+
+    private void MakerAddFiles_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFileDialog { Title = "Select full models", Filter = "Models (*.nif)|*.nif", Multiselect = true };
+        if (d.ShowDialog(this) != true) return;
+        foreach (var f in d.FileNames) AppendMakerInput(f);
+    }
+
+    private void MakerAddFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFolderDialog { Title = "Select a mod folder, a meshes folder or a folder of models", Multiselect = true };
+        if (d.ShowDialog(this) != true) return;
+        foreach (var f in d.FolderNames) AppendMakerInput(f);
+    }
+
+    private void MakerClear_Click(object sender, RoutedEventArgs e) => MakerInputBox.Clear();
+
+    private void BrowseMakerOut_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFolderDialog { Title = "Select a folder for the LOD meshes (a new or existing mod folder)" };
+        if (Directory.Exists(MakerOutBox.Text)) d.InitialDirectory = MakerOutBox.Text;
+        if (d.ShowDialog(this) == true) MakerOutBox.Text = d.FolderName;
+    }
+
+    private string? _makerOutput;
+
+    private void MakerOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (_makerOutput is { } dir && Directory.Exists(dir))
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
+    }
+
+    private void MakerGenerate_Click(object sender, RoutedEventArgs e) => _ = RunMakerAsync();
+
+    private async Task RunMakerAsync()
+    {
+        CaptureSettings();
+        _settings.MakerInputs = Blank(MakerInputBox.Text);
+        _settings.MakerFolderMode = MakerFolderRadio.IsChecked == true;
+        _settings.MakerModName = Blank(MakerModNameBox.Text);
+        _settings.MakerOutput = Blank(MakerOutBox.Text);
+        _settings.Save();
+
+        var inputs = MakerInputBox.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (inputs.Length == 0)
+        {
+            MessageBox.Show(this, "Add the models (or folders of models) to make LOD meshes from.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        string output;
+        if (MakerFolderRadio.IsChecked == true)
+        {
+            if (Blank(MakerOutBox.Text) is not { } typed)
+            {
+                MessageBox.Show(this, "Choose the output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            output = typed;
+        }
+        else
+        {
+            if (Blank(MakerModNameBox.Text) is not { } name || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                MessageBox.Show(this, "Give the new mod a name (no \\ / : * ? \" < > |).", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (!_settings.UseMo2 || _settings.Mo2Instance is null)
+            {
+                MessageBox.Show(this, "A new mod needs MO2 instance mode (to find your mods folder). Choose \"A folder I choose\" instead, or switch the source to MO2 instance.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            try
+            {
+                output = Path.Combine(Mo2Instance.Open(_settings.Mo2Instance, TypedLocations()).ModsFolder, name);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+        }
+        if (_settings.OutputFolder is { } lodOut && Path.GetFullPath(output).TrimEnd('\\').Equals(Path.GetFullPath(lodOut).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Use a separate folder, not your LOD output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var levels = new List<int>();
+        if (MakerLod0Check.IsChecked == true) levels.Add(0);
+        if (MakerLod1Check.IsChecked == true) levels.Add(1);
+        if (MakerLod2Check.IsChecked == true) levels.Add(2);
+        if (levels.Count == 0)
+        {
+            MessageBox.Show(this, "Choose at least one LOD level.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        float detail = MakerDetailBox.SelectedIndex switch { 0 => 0.5f, 2 => 2f, 3 => 4f, _ => 1f };
+        float minSize = float.TryParse(MakerMinSizeBox.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ms) && ms > 0 ? ms : 0f;
+
+        int Num0(TextBox b) => int.TryParse(b.Text, out var v) && v > 0 ? v : 0;
+        var budgetMode = MakerBudgetBox.SelectedIndex switch
+        {
+            1 => AnvilLOD.Meshes.Authoring.BudgetMode.Custom,
+            2 => AnvilLOD.Meshes.Authoring.BudgetMode.Off,
+            _ => AnvilLOD.Meshes.Authoring.BudgetMode.Recommended,
+        };
+        var req = new AnvilLOD.Plugins.Authoring.LodMakerRequest(inputs, output, Path.GetFileName(Path.TrimEndingDirectorySeparator(output)), levels, detail, minSize,
+            RuleFile: MakerRulesCheck.IsChecked == true, Overwrite: MakerOverwriteCheck.IsChecked == true,
+            Budget: budgetMode, CustomBudget: [Num0(MakerBudget0Box), Num0(MakerBudget1Box), Num0(MakerBudget2Box)]);
+
+        SetBusy(true);
+        MakerPanel.IsEnabled = false;
+        LogBox.Clear();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+        var progress = new Progress<string>(m =>
+        {
+            ProgressText.Text = m;
+            MakerSummaryText.Text = m;
+            LogBox.AppendText($"[{_elapsed.Elapsed:mm\\:ss\\.f}] {m}{Environment.NewLine}");
+            LogBox.ScrollToEnd();
+        });
+        try
+        {
+            var r = await Task.Run(() => AnvilLOD.Plugins.Authoring.LodMeshMaker.Run(req, progress, ct), ct);
+            MakerGrid.ItemsSource = r.Items.OrderBy(i => i.Status == "Done" ? 1 : 0).ThenByDescending(i => i.Size).ToList();
+            int skipped = r.Items.Count - r.ModelsDone;
+            MakerSummaryText.Text = $"{r.ModelsDone} models done, {r.MeshesWritten} LOD meshes written"
+                + (skipped > 0 ? $", {skipped} skipped (see the table)" : "") + (r.RuleFile is null ? "" : ", rule file written")
+                + $". Output: {output}. Report: {r.ReportFile}";
+            _makerOutput = output;
+            MakerOpenButton.IsEnabled = true;
+            StatusText.Text = $"LOD Mesh Maker finished in {r.Elapsed.TotalSeconds:F0}s";
+            ProgressText.Text = "Done";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Cancelled";
+            ProgressText.Text = "Cancelled";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Failed — see Log";
+            MakerSummaryText.Text = ex.Message;
+            LogBox.AppendText(Environment.NewLine + "ERROR: " + ex + Environment.NewLine);
+            MessageBox.Show(this, ex.Message, "LOD Mesh Maker", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            MakerPanel.IsEnabled = MakerAgreeCheck.IsChecked == true;
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
+
     private void SetBusy(bool busy)
     {
         ScanButton.IsEnabled = !busy;
         GenerateButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
         SettingsPanel.IsEnabled = !busy;
+        PresetBar.IsEnabled = !busy;
         ExportButton.IsEnabled = !busy && _lastScan is not null;
         Progress.IsIndeterminate = busy;
         if (busy)
@@ -547,6 +768,181 @@ public partial class MainWindow : Window
             _clock.Stop();
         }
     }
+
+    // ---------- presets: three tabs that each remember the whole settings column ----------
+
+    private bool _presetsReady;
+    private bool _presetSwitching;
+    private int _shownPreset;
+    private int _renaming = -1;
+
+    private RadioButton PresetTab(int i) => i switch { 0 => PresetTab0, 1 => PresetTab1, _ => PresetTab2 };
+
+    private int CheckedPreset() => PresetTab1.IsChecked == true ? 1 : PresetTab2.IsChecked == true ? 2 : 0;
+
+    /// <summary>Puts the saved names on the tabs and selects the active one, without animation. Called once the settings are on screen.</summary>
+    private void InitPresets()
+    {
+        _settings.EnsurePresets();
+        for (int i = 0; i < AppSettings.PresetCount; i++) PresetTab(i).Content = _settings.Presets[i].Name;
+        _shownPreset = _settings.ActivePreset;
+        _presetsReady = false;
+        PresetTab(_shownPreset).IsChecked = true;
+        _presetsReady = true;
+        PresetIndicator.Loaded += (_, _) => MoveIndicator(_shownPreset, animate: false);
+        MoveIndicator(_shownPreset, animate: false);
+    }
+
+    private void PresetGrid_SizeChanged(object sender, SizeChangedEventArgs e) => MoveIndicator(_shownPreset, animate: false);
+
+    private void PresetTab_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_presetsReady) return;
+        _ = SwitchPresetAsync(CheckedPreset());
+    }
+
+    /// <summary>The indicator under the active tab slides there, and glows while it travels.</summary>
+    private void MoveIndicator(int index, bool animate)
+    {
+        double column = PresetGrid.ActualWidth / AppSettings.PresetCount;
+        if (column <= 0) return;
+        PresetIndicator.Width = Math.Max(0, column - 8);
+        double x = index * column + 4;
+        if (!animate)
+        {
+            PresetIndicatorMove.BeginAnimation(TranslateTransform.XProperty, null);
+            PresetIndicatorMove.X = x;
+            return;
+        }
+        PresetIndicatorMove.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(x, TimeSpan.FromMilliseconds(360))
+        {
+            EasingFunction = new BackEase { Amplitude = 0.4, EasingMode = EasingMode.EaseOut },
+        });
+        var pulse = new DoubleAnimation(8, 26, TimeSpan.FromMilliseconds(180)) { AutoReverse = true, EasingFunction = new QuadraticEase() };
+        PresetGlow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.BlurRadiusProperty, pulse);
+        PresetGlow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+            new DoubleAnimation(0.7, 1.0, TimeSpan.FromMilliseconds(180)) { AutoReverse = true });
+    }
+
+    private static Task AnimateAsync(Action<TaskCompletionSource> start)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        start(done);
+        return done.Task;
+    }
+
+    /// <summary>Slides and fades the settings column out (or back in) in the direction of travel.</summary>
+    private Task SlideAsync(bool show, int direction)
+    {
+        const double distance = 30;
+        double fromX = show ? direction * distance : 0, toX = show ? 0 : -direction * distance;
+        double fromO = show ? 0 : 1, toO = show ? 1 : 0;
+        var span = TimeSpan.FromMilliseconds(show ? 240 : 150);
+        IEasingFunction ease = show ? new CubicEase { EasingMode = EasingMode.EaseOut } : new QuadraticEase { EasingMode = EasingMode.EaseIn };
+        return AnimateAsync(done =>
+        {
+            var opacity = new DoubleAnimation(fromO, toO, span) { EasingFunction = ease };
+            opacity.Completed += (_, _) =>
+            {
+                SettingsScroll.BeginAnimation(OpacityProperty, null);
+                SettingsMove.BeginAnimation(TranslateTransform.XProperty, null);
+                SettingsScroll.Opacity = toO;
+                SettingsMove.X = toX;
+                done.TrySetResult();
+            };
+            SettingsMove.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(fromX, toX, span) { EasingFunction = ease });
+            SettingsScroll.BeginAnimation(OpacityProperty, opacity);
+        });
+    }
+
+    /// <summary>A bright line runs across the top of the settings column.</summary>
+    private void Sweep(int direction)
+    {
+        double width = SettingsScroll.ActualWidth;
+        if (width <= 0) return;
+        double from = direction > 0 ? -PresetSweep.Width : width, to = direction > 0 ? width : -PresetSweep.Width;
+        PresetSweepMove.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(520)) { EasingFunction = new QuadraticEase() });
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(0)));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromPercent(0.25)));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromPercent(1)));
+        fade.Duration = TimeSpan.FromMilliseconds(520);
+        PresetSweep.BeginAnimation(OpacityProperty, fade);
+    }
+
+    /// <summary>
+    /// Switches to another preset: the column slides out, the saved values of the new preset replace the settings, and the column
+    /// slides back in while the indicator glides to the new tab. The old preset is saved first, so nothing is lost.
+    /// </summary>
+    private async Task SwitchPresetAsync(int index)
+    {
+        if (_presetSwitching) return;   // the loop below picks up a click made meanwhile
+        _presetSwitching = true;
+        try
+        {
+            while (index != _shownPreset)
+            {
+                int direction = index > _shownPreset ? 1 : -1;
+                CaptureSettings();   // controls -> settings, and into the slot that is leaving
+                MoveIndicator(index, animate: true);
+                await SlideAsync(show: false, direction);
+                _settings.ActivatePreset(index);
+                _shownPreset = index;
+                ApplySettings();
+                SettingsScroll.ScrollToTop();
+                Sweep(direction);
+                await SlideAsync(show: true, direction);
+                _settings.Save();
+                index = CheckedPreset();
+            }
+        }
+        finally
+        {
+            _presetSwitching = false;
+        }
+    }
+
+    private void PresetTab_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not RadioButton tab || !int.TryParse(tab.Tag as string, out var index)) return;
+        _renaming = index;
+        Grid.SetColumn(PresetRenameBox, index);
+        PresetRenameBox.Text = _settings.Presets[index].Name;
+        PresetRenameBox.Visibility = Visibility.Visible;
+        PresetRenameBox.Focus();
+        PresetRenameBox.SelectAll();
+        e.Handled = true;
+    }
+
+    private void CommitRename()
+    {
+        if (_renaming < 0) return;
+        var name = PresetRenameBox.Text.Trim();
+        if (name.Length > 0)
+        {
+            _settings.Presets[_renaming].Name = name;
+            PresetTab(_renaming).Content = name;
+            _settings.Save();
+        }
+        _renaming = -1;
+        PresetRenameBox.Visibility = Visibility.Collapsed;
+    }
+
+    private void PresetRename_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) { CommitRename(); e.Handled = true; }
+        else if (e.Key == System.Windows.Input.Key.Escape) { _renaming = -1; PresetRenameBox.Visibility = Visibility.Collapsed; e.Handled = true; }
+    }
+
+    private void PresetRename_LostFocus(object sender, RoutedEventArgs e) => CommitRename();
+
+    // ---------- locations popup (top bar) ----------
+
+    private void Mo2Locations_Click(object sender, RoutedEventArgs e) => Mo2LocationsPopup.IsOpen = true;
+
+    /// <summary>The button shows a dot when any location is typed, so an override can't hide.</summary>
+    private void UpdateLocationsButton() =>
+        Mo2LocationsButton.Content = Mo2LocationsFromBoxes() is null ? "Locations ▾" : "Locations ● ▾";
 
     // ---------- results ----------
 
