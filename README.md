@@ -144,6 +144,19 @@ Pick "Vortex" as the game source: Vortex deploys mods into the game's Data folde
 
 Package versions are pinned centrally in `Directory.Packages.props`.
 
-## Licensing note
+## License
 
-AnvilLOD contains no DynDOLOD code and ships no DynDOLOD assets. Like xLODGen, it reads whatever LOD meshes are installed in the user's own setup (via MNAM), and the generated output must not be redistributed if it contains other mods' assets without their authors' permission.
+AnvilLOD is released under the **GNU General Public License, version 3** (GPL-3.0-only); see [LICENSE.txt](LICENSE.txt), which also lists the
+third-party libraries and why GPL applies (Mutagen, GameFinder and CommonLibSSE-NG by alandtse are GPL-3.0 libraries).
+
+    AnvilLOD
+    Copyright (c) 2026 CageTV
+
+    This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, version 3 of the License. This program is distributed in the hope that it will be useful, but WITHOUT ANY
+    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+    more details. You should have received a copy of the GNU General Public License along with this program. If not, see
+    <https://www.gnu.org/licenses/>.
+
+AnvilLOD contains no DynDOLOD code and ships no DynDOLOD assets. Like xLODGen, it reads whatever LOD meshes are installed in the user's own setup
+(via MNAM), and the generated output must not be redistributed if it contains other mods' assets without their authors' permission.

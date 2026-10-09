@@ -45,6 +45,7 @@ New-Item -ItemType Directory -Force -Path $release | Out-Null
 # 1) The tool
 $toolZip = Join-Path $release "AnvilLOD-$version.zip"
 Copy-Item "$PSScriptRoot\README.md" $toolDist -Force
+Copy-Item "$PSScriptRoot\LICENSE.txt" $toolDist -Force
 New-Zip $toolDist $toolZip
 Write-Host "Tool:  $toolZip" -ForegroundColor Green
 
@@ -56,6 +57,7 @@ New-Item -ItemType Directory -Force -Path "$stage\fomod\images", "$stage\common\
 Copy-Item "$PSScriptRoot\packaging\fomod\ModuleConfig.xml" "$stage\fomod\"
 Copy-Item "$PSScriptRoot\assets\fomod.jpg" "$stage\fomod\images\anvillod.jpg"
 Copy-Item "$PSScriptRoot\packaging\AnvilLOD.ini" "$stage\common\SKSE\Plugins\AnvilLOD.ini"
+Copy-Item "$PSScriptRoot\LICENSE.txt" "$stage\LICENSE.txt"
 foreach ($line in "1.5.97-1.6.1170", "1.7.x") {
     $src = Join-Path $PSScriptRoot "skse\dist\$line\SKSE\Plugins\AnvilLOD.dll"
     if (-not (Test-Path $src)) { throw "Missing $src - build it with skse\build.ps1 -Line both" }
