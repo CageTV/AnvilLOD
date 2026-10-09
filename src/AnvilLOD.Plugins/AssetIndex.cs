@@ -42,9 +42,21 @@ public sealed class AssetIndex : IAssetSource
 
     /// <summary>Plain Data folder (or MO2 VFS): Mutagen decides which BSAs load; loose files are checked on demand.</summary>
     /// <param name="pathFilter">Optional filter on normalized paths (e.g. "meshes\\") to keep the index small.</param>
-    public static AssetIndex Build(GameRelease release, string dataFolder, Func<string, bool>? pathFilter = null)
+    /// <param name="pluginOrder">Plugin file names in load order; only used to order the archives if Mutagen can't.</param>
+    public static AssetIndex Build(GameRelease release, string dataFolder, Func<string, bool>? pathFilter = null,
+        IReadOnlyList<string>? pluginOrder = null)
     {
-        var archives = Archive.GetApplicableArchivePaths(release, dataFolder).Select(p => p.Path).ToList();
+        List<string> archives;
+        try
+        {
+            archives = Archive.GetApplicableArchivePaths(release, dataFolder).Select(p => p.Path).ToList();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotImplementedException)
+        {
+            // Mutagen's archive ordering throws for some archive names (seen on a 3,600-plugin Steam install).
+            // Order them ourselves: base game first, then each plugin's archives in load order.
+            archives = ArchiveOrder.LowToHigh(Directory.EnumerateFiles(dataFolder, "*.bsa"), pluginOrder ?? []);
+        }
         IEnumerable<string> EnumerateLoose(string prefix)
         {
             var dir = Path.Combine(dataFolder, prefix.TrimEnd('\\').Replace('\\', Path.DirectorySeparatorChar));

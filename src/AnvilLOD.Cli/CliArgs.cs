@@ -6,7 +6,7 @@ public sealed class CliArgException(string message) : Exception(message);
 public sealed class CliArgs
 {
     private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic", "no-child-worlds", "no-grid-objects", "seasons", "tree-3d", "tree-3d-lod8", "tree-3d-by-name", "underside", "pbr-lod"];
-    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness", "object-brightness", "skse-dll"];
+    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness", "object-brightness", "skse-dll", "underside-detail", "pbr-lod-brightness", "pbr-lod-size", "mo2-game", "mo2-mods", "mo2-profiles", "mo2-overwrite"];
 
     private readonly Dictionary<string, List<string>> _values = new(StringComparer.OrdinalIgnoreCase);
 

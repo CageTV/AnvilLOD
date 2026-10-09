@@ -10,6 +10,10 @@ public sealed class AppSettings
     public bool UseVortex { get; set; }   // when UseMo2 is false: Vortex (true) or a plain Data folder (false)
     public string? Mo2Instance { get; set; }
     public string? Mo2Profile { get; set; }
+    public string? Mo2GamePath { get; set; }        // typed over ModOrganizer.ini's gamePath (empty = auto-detect)
+    public string? Mo2ModsFolder { get; set; }      // typed over the ini's mods folder
+    public string? Mo2ProfilesFolder { get; set; }  // typed over the ini's profiles folder
+    public string? Mo2OverwriteFolder { get; set; } // typed over the ini's overwrite folder
     public string? DataFolder { get; set; }
     public string? PluginsTxt { get; set; }
     public string? OutputFolder { get; set; }

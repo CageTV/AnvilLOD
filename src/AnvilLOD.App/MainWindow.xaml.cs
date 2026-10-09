@@ -42,6 +42,11 @@ public partial class MainWindow : Window
         DynDolodBox.Text = _settings.DynDolodFolder ?? "";
         PresetBox.SelectedIndex = _settings.Preset switch { "Low" => 0, "Medium" => 1, _ => 2 };
         Mo2Box.Text = _settings.Mo2Instance ?? "";
+        Mo2GameBox.Text = _settings.Mo2GamePath ?? "";
+        Mo2ModsBox.Text = _settings.Mo2ModsFolder ?? "";
+        Mo2ProfilesBox.Text = _settings.Mo2ProfilesFolder ?? "";
+        Mo2OverwriteBox.Text = _settings.Mo2OverwriteFolder ?? "";
+        Mo2LocationsExpander.IsExpanded = Mo2LocationsFromBoxes() is not null;
         LoadProfiles(_settings.Mo2Profile);
         if (_settings.UseMo2) Mo2Radio.IsChecked = true; else if (_settings.UseVortex) VortexRadio.IsChecked = true; else DataRadio.IsChecked = true;
         DataBox.Text = _settings.DataFolder ?? "";
@@ -80,6 +85,10 @@ public partial class MainWindow : Window
         _settings.UseVortex = VortexRadio.IsChecked == true;
         _settings.Mo2Instance = Blank(Mo2Box.Text);
         _settings.Mo2Profile = ProfileBox.SelectedItem as string;
+        _settings.Mo2GamePath = Blank(Mo2GameBox.Text);
+        _settings.Mo2ModsFolder = Blank(Mo2ModsBox.Text);
+        _settings.Mo2ProfilesFolder = Blank(Mo2ProfilesBox.Text);
+        _settings.Mo2OverwriteFolder = Blank(Mo2OverwriteBox.Text);
         _settings.DataFolder = Blank(DataBox.Text);
         _settings.PluginsTxt = Blank(PluginsBox.Text);
         _settings.OutputFolder = Blank(OutputBox.Text);
@@ -163,6 +172,19 @@ public partial class MainWindow : Window
         LoadProfiles(null);
     }
 
+    /// <summary>The folders typed under Locations, or null when they are all empty (= auto-detect everything).</summary>
+    private Mo2Locations? Mo2LocationsFromBoxes()
+    {
+        var l = new Mo2Locations(Blank(Mo2GameBox.Text), Blank(Mo2ModsBox.Text), Blank(Mo2ProfilesBox.Text), Blank(Mo2OverwriteBox.Text));
+        return l.IsEmpty ? null : l;
+    }
+
+    private Mo2Locations? TypedLocations()
+    {
+        var l = new Mo2Locations(_settings.Mo2GamePath, _settings.Mo2ModsFolder, _settings.Mo2ProfilesFolder, _settings.Mo2OverwriteFolder);
+        return l.IsEmpty ? null : l;
+    }
+
     private void Mo2Box_LostFocus(object sender, RoutedEventArgs e) => LoadProfiles(ProfileBox.SelectedItem as string);
 
     /// <summary>Reads the instance's profiles into the dropdown and selects the wanted (or MO2's selected) one.</summary>
@@ -177,7 +199,7 @@ public partial class MainWindow : Window
         }
         try
         {
-            var inst = Mo2Instance.Open(folder);
+            var inst = Mo2Instance.Open(folder, Mo2LocationsFromBoxes());
             var profiles = inst.ListProfiles();
             ProfileBox.ItemsSource = profiles;
             ProfileBox.SelectedItem =
@@ -286,7 +308,7 @@ public partial class MainWindow : Window
 
         var req = new ScanRequest(
             _settings.UseMo2
-                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile)
+                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile, Mo2Locations: TypedLocations())
                 : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt, Mode: _settings.UseVortex ? GameSourceMode.Vortex : GameSourceMode.DataFolder),
             new ScanOptions(
                 Worldspaces: worldspaces is { Length: > 0 } ? worldspaces : null,
@@ -381,7 +403,7 @@ public partial class MainWindow : Window
             CaptureSettings();
             IEnumerable<string> plugins = [];
             if (_settings.UseMo2 && _settings.Mo2Instance is not null)
-                plugins = Mo2Instance.Open(_settings.Mo2Instance).OpenProfile(_settings.Mo2Profile).EnabledPlugins;
+                plugins = Mo2Instance.Open(_settings.Mo2Instance, TypedLocations()).OpenProfile(_settings.Mo2Profile).EnabledPlugins;
             else if (_settings.PluginsTxt is not null && File.Exists(_settings.PluginsTxt))
                 plugins = File.ReadAllLines(_settings.PluginsTxt).Where(l => l.StartsWith('*')).Select(l => l[1..].Trim());
             foreach (var p in plugins.OrderBy(p => p, StringComparer.OrdinalIgnoreCase)) AuthorPluginBox.Items.Add(p);
@@ -402,7 +424,7 @@ public partial class MainWindow : Window
         if (Blank(AuthorOutBox.Text) is { } current && current != _authorOutputShown) return; // the user typed their own
         try
         {
-            var mods = Mo2Instance.Open(_settings.Mo2Instance).ModsFolder;
+            var mods = Mo2Instance.Open(_settings.Mo2Instance, TypedLocations()).ModsFolder;
             AuthorOutBox.Text = _authorOutputShown = Path.Combine(mods, "AnvilLOD Author - " + Path.GetFileNameWithoutExtension(plugin));
         }
         catch { /* leave it empty */ }
@@ -445,7 +467,7 @@ public partial class MainWindow : Window
 
         var req = new AnvilLOD.Plugins.Authoring.AuthorRequest(
             _settings.UseMo2
-                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile)
+                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile, Mo2Locations: TypedLocations())
                 : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt),
             plugin, output,
             LodMeshes: generate && AuthorMeshesCheck.IsChecked == true,

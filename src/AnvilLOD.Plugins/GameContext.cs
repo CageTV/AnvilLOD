@@ -30,7 +30,8 @@ public sealed record GameContextOptions(
     string? Mo2InstanceFolder = null,
     string? Mo2Profile = null,      // null = the instance's selected profile
     string? ExcludeFolder = null,   // MO2 mode: never read this folder (AnvilLOD's own output) as a mod
-    IReadOnlyList<string>? ExtraLooseRoots = null); // MO2 mode: more loose folders to index (e.g. "textures" for the author tools)
+    IReadOnlyList<string>? ExtraLooseRoots = null, // MO2 mode: more loose folders to index (e.g. "textures" for the author tools)
+    Mo2Locations? Mo2Locations = null);             // MO2 mode: folders typed in, which win over ModOrganizer.ini (empty = auto-detect)
 
 /// <summary>
 /// Load order + link cache + asset access, regardless of where they come from.
@@ -146,7 +147,7 @@ public sealed class GameContext : IDisposable
         var data = env.DataFolderPath.Path;
         var ctx = new GameContext(
             o.Release, env.LoadOrder, env.LinkCache, data, $"Data folder {data}",
-            filter => AssetIndex.Build(o.Release, data, filter),
+            filter => AssetIndex.Build(o.Release, data, filter, env.LoadOrder.ListedOrder.Select(l => l.ModKey.FileName.String).ToList()),
             warnings, env);
         ctx._rootFiles = () => Directory.EnumerateFiles(data).Select(f => (Path.GetFileName(f), f));
 
@@ -182,7 +183,7 @@ public sealed class GameContext : IDisposable
             throw new ArgumentException("Choose the MO2 instance folder (the one with ModOrganizer.ini).");
 
         var warnings = new List<string>();
-        var instance = Mo2Instance.Open(o.Mo2InstanceFolder.Trim());
+        var instance = Mo2Instance.Open(o.Mo2InstanceFolder.Trim(), o.Mo2Locations);
         var profile = instance.OpenProfile(string.IsNullOrWhiteSpace(o.Mo2Profile) ? null : o.Mo2Profile.Trim());
         progress?.Report($"MO2 instance {instance.InstanceFolder}, profile \"{profile.Name}\": " +
                          $"{profile.EnabledModsLowToHigh.Count:N0} enabled mods, {profile.EnabledPlugins.Count:N0} enabled plugins");

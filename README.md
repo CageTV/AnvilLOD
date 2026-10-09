@@ -58,6 +58,8 @@ dotnet test
 
 **MO2 users (recommended):** point AnvilLOD at your MO2 instance folder. It reads the profile's modlist, plugins and load order and layers the mod folders itself, the way MO2's VFS would. There's no need to launch it through MO2.
 
+**Folders on different drives, or a wrong auto-detect:** AnvilLOD reads the game folder, mods, profiles and overwrite folders from the instance's `ModOrganizer.ini`. Open **Locations** under the instance folder (or use `--mo2-game`, `--mo2-mods`, `--mo2-profiles`, `--mo2-overwrite`) and type any of them to override what the ini says; a box you leave empty keeps the auto-detect. The game folder can be given as the folder with `SkyrimSE.exe` or as its `Data` folder. With the game, mods and profiles folders typed, `ModOrganizer.ini` isn't needed at all (name the profile with the Profile box or `--profile`).
+
 ```powershell
 AnvilLOD.exe scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel
 AnvilLOD.exe scan --mo2 "D:\Modlists\MyList" --profile "Default" --worldspace Tamriel --report tamriel.json

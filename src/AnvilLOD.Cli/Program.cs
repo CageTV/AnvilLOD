@@ -51,6 +51,11 @@ public static class Program
           --tree-3d-lod8         With --tree-3d: use the 3D model at LOD8 too (bigger files)
           --tree-3d-by-name      With --tree-3d: when no model matches the CRC32, accept the one stored under the
                                  plain tree name (it may be for another version of the mesh)
+          --mo2-game <dir>       With --mo2: the game folder (SkyrimSE.exe), instead of the gamePath in ModOrganizer.ini
+          --mo2-mods <dir>       With --mo2: the mods folder, instead of the ini's (for lists on another drive)
+          --mo2-profiles <dir>   With --mo2: the profiles folder, instead of the ini's
+          --mo2-overwrite <dir>  With --mo2: the overwrite folder, instead of the ini's
+                                 (Give the game, mods and profiles folders and ModOrganizer.ini isn't needed.)
           --pbr-lod              Make object LOD textures match PBR full models: use TexGen's pbr_lod twins and
                                  convert PBR albedo copies (textures\anvillod\pbr) for LOD meshes that use a texture
                                  the full model replaces with textures\pbr\...
@@ -65,6 +70,21 @@ public static class Program
 
         Example: AnvilLOD scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel
         """;
+
+    /// <summary>Refuses options that would otherwise be silently ignored.</summary>
+    private static CliArgs Checked(CliArgs a)
+    {
+        _ = Mo2LocationsFromArgs(a);
+        return a;
+    }
+
+    private static AnvilLOD.Plugins.Mo2.Mo2Locations? Mo2LocationsFromArgs(CliArgs a)
+    {
+        var l = new AnvilLOD.Plugins.Mo2.Mo2Locations(a.Get("mo2-game"), a.Get("mo2-mods"), a.Get("mo2-profiles"), a.Get("mo2-overwrite"));
+        if (l.IsEmpty) return null;
+        if (a.Get("mo2") is null) throw new CliArgException("--mo2-game, --mo2-mods, --mo2-profiles and --mo2-overwrite only apply together with --mo2 <instance folder>.");
+        return l;
+    }
 
     private static int PbrLodSizeFromArgs(CliArgs a)
     {
@@ -108,9 +128,9 @@ public static class Program
         {
             return args[0].ToLowerInvariant() switch
             {
-                "scan" => RunScan(CliArgs.Parse(args[1..]), generate: false),
-                "generate" => RunScan(CliArgs.Parse(args[1..]), generate: true),
-                "author" => RunAuthor(CliArgs.Parse(args[1..])),
+                "scan" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: false),
+                "generate" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: true),
+                "author" => RunAuthor(Checked(CliArgs.Parse(args[1..]))),
                 _ => Fail($"Unknown command '{args[0]}'.\n\n{Usage}"),
             };
         }
@@ -128,7 +148,7 @@ public static class Program
 
         var req = new ScanRequest(
             a.Get("mo2") is { } mo2
-                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2, Mo2Profile: a.Get("profile"))
+                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2, Mo2Profile: a.Get("profile"), Mo2Locations: Mo2LocationsFromArgs(a))
                 : new GameContextOptions(a.Get("data"), a.Get("plugins")),
             new ScanOptions(
                 Worldspaces: a.GetAll("worldspace"),
@@ -212,7 +232,7 @@ public static class Program
         var total = Stopwatch.StartNew();
         var req = new AnvilLOD.Plugins.Authoring.AuthorRequest(
             a.Get("mo2") is { } mo2
-                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2, Mo2Profile: a.Get("profile"))
+                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2, Mo2Profile: a.Get("profile"), Mo2Locations: Mo2LocationsFromArgs(a))
                 : new GameContextOptions(a.Get("data"), a.Get("plugins")),
             plugin, output,
             LodMeshes: !a.Has("no-meshes"),

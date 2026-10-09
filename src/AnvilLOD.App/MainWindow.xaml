@@ -65,6 +65,19 @@
                             </DockPanel>
                             <TextBlock Text="Profile" Style="{StaticResource FieldLabel}" />
                             <ComboBox x:Name="ProfileBox" />
+                            <Expander x:Name="Mo2LocationsExpander" Header="Locations (optional: type them to override the auto-detect)" Margin="0,8,0,0"
+                                      ToolTip="Auto-detect reads these from ModOrganizer.ini. Type a folder here only if it is wrong, or your game, mods or profiles are on another drive. Leave a box empty to keep the auto-detect for it. With the game, mods and profiles folders typed, ModOrganizer.ini isn't needed.">
+                                <StackPanel>
+                                    <TextBlock Text="Game folder (the one with SkyrimSE.exe)" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="Mo2GameBox" ToolTip="Empty = gamePath from ModOrganizer.ini. Example: F:\Games\Stock Game" LostFocus="Mo2Box_LostFocus" />
+                                    <TextBlock Text="Mods folder" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="Mo2ModsBox" ToolTip="Empty = the ini's mod_directory (usually &lt;instance&gt;\mods)" LostFocus="Mo2Box_LostFocus" />
+                                    <TextBlock Text="Profiles folder" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="Mo2ProfilesBox" ToolTip="Empty = the ini's profiles_directory (usually &lt;instance&gt;\profiles)" LostFocus="Mo2Box_LostFocus" />
+                                    <TextBlock Text="Overwrite folder" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="Mo2OverwriteBox" ToolTip="Empty = the ini's overwrite_directory (usually &lt;instance&gt;\overwrite)" LostFocus="Mo2Box_LostFocus" />
+                                </StackPanel>
+                            </Expander>
                             <TextBlock x:Name="Mo2InfoText" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
                                        Text="Reads your mods directly. No need to launch AnvilLOD from MO2." />
                         </StackPanel>
