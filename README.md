@@ -48,7 +48,7 @@ The tools are behind a confirmation: generated files are a starting point to che
 ## Build
 
 ```powershell
-cd "H:\LOD Project\AnvilLOD"
+cd path\to\AnvilLOD
 dotnet restore
 dotnet build -c Release
 dotnet test
@@ -59,14 +59,14 @@ dotnet test
 **MO2 users (recommended):** point AnvilLOD at your MO2 instance folder. It reads the profile's modlist, plugins and load order and layers the mod folders itself, the way MO2's VFS would. There's no need to launch it through MO2.
 
 ```powershell
-AnvilLOD.exe scan --mo2 "E:\Tabula Rasa" --worldspace Tamriel
-AnvilLOD.exe scan --mo2 "E:\Tabula Rasa" --profile "tabula rasa!" --worldspace Tamriel --report tamriel.json
+AnvilLOD.exe scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel
+AnvilLOD.exe scan --mo2 "D:\Modlists\MyList" --profile "Default" --worldspace Tamriel --report tamriel.json
 ```
 
 Write the LOD files with `generate` (same options plus `--output`):
 
 ```powershell
-AnvilLOD.exe generate --mo2 "E:\Tabula Rasa" --worldspace Tamriel --output "E:\Tabula Rasa\mods\AnvilLOD Output"
+AnvilLOD.exe generate --mo2 "D:\Modlists\MyList" --worldspace Tamriel --output "D:\Modlists\MyList\mods\AnvilLOD Output"
 ```
 
 Then enable that mod in MO2 and put it below other LOD outputs.
@@ -90,10 +90,10 @@ DynDOLOD's rules mark some objects with a Grid ("Near LOD", "Far LOD", "Far Full
 Build it with Visual Studio 2026 (bundled vcpkg):
 
 ```powershell
-cd "H:\LOD Project\AnvilLOD\skse"
-.\build.ps1 -Dest "E:\Tabula Rasa\mods\ANvilLOD"              # SE 1.5.97 / AE 1.6.x (default)
+cd path\to\AnvilLOD\skse
+.\build.ps1 -Dest "D:\Modlists\MyList\mods\AnvilLOD"          # SE 1.5.97 / AE 1.6.x (default)
 .\build.ps1 -Line 17                                            # newer than 1.6.1170 -> skse\dist\1.7.x
-.\build.ps1 -Line both -Dest "E:\Tabula Rasa\mods\ANvilLOD"   # both into skse\dist, line 1 into Dest
+.\build.ps1 -Line both -Dest "D:\Modlists\MyList\mods\AnvilLOD" # both into skse\dist, line 1 into Dest
 ```
 
 There are two build lines from the same source: SE 1.5.97 up to AE 1.6.1170, and everything newer. Skyrim 1.7.99/1.7.104 ship Address Library in a new file format that the CommonLibSSE-NG used for SE/AE can't read, so 1.7.x gets its own DLL built on CommonLibSSE-NG 7.2.0 (alandtse, `ng` branch; `cmake\manifest-17`, `cmake\ports-17`). Each DLL refuses to load on the other game version. CommonLibSSE-NG 7.2.0 is GPL-3.0-or-later (with a modding exception), so the 1.7 DLL has to be shared under GPL-compatible terms with its source.
@@ -116,7 +116,35 @@ With "Seasons of Skyrim LOD" ticked (`--seasons`), Generate reads the form-swap 
 
 ## Brightness
 
+## 3D tree LOD (opt-in)
+
+Tick **3D tree LOD** (`--tree-3d`) to put real 3D trees into object LOD, the way DynDOLOD's "ultra tree LOD" does. A tree uses a 3D tree LOD model, a `<tree>_<CRC32>passthru_lod.nif` in `meshes\DynDOLOD\lod\trees`, when one matches. The CRC32 is the checksum of the tree's own mesh file, so a model is only used for the exact mesh it was made for. Resource packs such as DynDOLOD Resources and Happy Little Trees' 3D LOD add-on ship them.
+
+- Trees with a model get the 3D model at LOD4 and billboard cards at LOD8, LOD16 and LOD32 (`--tree-3d-lod8` uses the model at LOD8 too, with much bigger files). They are taken out of the billboard tree LOD (`.btt`); every other tree keeps billboard tree LOD.
+- Models are read with their shaders untouched ("passthru"). `spherenormals` shapes get normals pointing away from the model's centre, and the **tree LOD brightness** setting applies to the 3D models and the cards alike.
+- **Accept models by tree name** (`--tree-3d-by-name`, off by default): when no model matches the CRC32, a model stored under the plain tree name is used. DynDOLOD Resources ships most of its models that way. It may have been made for another version of the mesh (for example before a mod or a patcher changed it), so it's your choice. The log says how many tree types would be picked up by turning it on.
+- A model whose textures can't be found isn't used, and the trees keep billboard tree LOD. The usual cause is the flat trunk textures (`textures\DynDOLOD\LOD\Trees\<tree>_<CRC32>_trunk_1.dds`), which TexGen renders from the model's `_trunk.nif` in `DynDOLOD\Render\Billboards`. Run TexGen with that resource installed, or use a pack that ships the textures.
+- The log estimates how many triangles and megabytes the models add to the blocks before you generate. 3D trees can make LOD4 files much larger (about 40 KB per tree in a real list).
+
 Tree LOD and object LOD brightness go from 10% to 110% in 10% steps (`--tree-brightness`, `--object-brightness`). Object LOD is darkened through vertex colours, so the LOD textures themselves, which other mods share, are never changed.
+
+## PBR textures in object LOD (opt-in)
+
+LOD is drawn with vanilla shaders, which don't do PBR. A LOD mesh that uses a texture your PBR mods replace (`textures\pbr\<same path>`) shows the vanilla look while the real object shows the PBR one, so mountains and buildings don't match their LOD. Tick **Match PBR textures in object LOD** (`--pbr-lod`) and AnvilLOD handles it the way DynDOLOD does:
+
+- A LOD texture that TexGen has made a PBR twin of (`textures\lod\<name>lod.dds` → `<name>pbr_lod.dds`, with its `_n`) uses the twin. Run TexGen first; AnvilLOD reads its output like any other mod.
+- Any other texture that has a PBR version gets a converted copy of the PBR albedo in `textures\anvillod\pbr\...`, and the LOD points at the copy. The vanilla path is never overwritten, so nothing else changes. Copies are shrunk (`--pbr-lod-size`, 512 by default) and written as BC7 with mips.
+- The conversion darkens the PBR colours (a gentle power curve and DynDOLOD's default PBR scale of 0.65) because the PBR albedo is meant for linear lighting. It is an approximation fitted to TexGen's own output, so tune **PBR LOD texture brightness** (`--pbr-lod-brightness`, 100 = default) in game: lower it if the LOD looks brighter than the real objects. Changing the option or the brightness rebuilds every block.
+- Tree LOD (billboards and 3D models) isn't covered yet.
+
+## Terrain underside (opt-in)
+
+Volumetric lighting mods (DVLaSS, EVLaS, Community Shaders' sky sync) need a low-resolution copy of the terrain facing downward under the world, or sun rays and shadows leak through the landscape. DynDOLOD makes it ("Terrain underside"); tick **Terrain underside** (`--underside`) and AnvilLOD does too, for every worldspace that has LOD32 blocks, including ones added by mods.
+
+- `meshes\Terrain\<worldspace>\<worldspace>_Underside.nif`: one shape per LOD32 block, built from the winning LAND heights. Each vertex is the lowest LAND height within one step around it, so the mesh stays at or below the terrain everywhere and can't poke through. Neighbouring blocks agree along their shared edge. `--underside-detail <4|8|16|32|64|128>` sets the LAND vertices per underside square (default 16: about 90,000 triangles and 1.5 MB for Tamriel; smaller is finer and heavier).
+- `AnvilLOD Underside.esm` and `AnvilLOD Underside.esp`, both flagged ESL, so they take no plugin slot. The ESM only holds one moveable static per worldspace and has no masters. The ESP places it: a persistent reference 500 units below the world, in each worldspace's own persistent cell. Enable both in your mod manager. The ESP needs the plugins that define the worldspaces as masters, and it overrides the worldspace and its persistent cell as they were when you generated, so load it after plugins that edit worldspaces and generate again when they change.
+- Don't combine it with DynDOLOD's own underside (they would both place one). Worldspaces DynDOLOD ignores (Blackreach, Soul Cairn, Apocrypha, the Deadlands, Japhet's Folly, the Creation Club Qasmoke world) get none. Hidden quads and the Solstheim and Markarth trims DynDOLOD's INI can set are not applied.
+- Experimental: the placement is the same as DynDOLOD's except that the reference is enabled from the start instead of being switched on by a DynDOLOD script. The engine behaviour has not been checked in game yet.
 
 ## Vortex
 

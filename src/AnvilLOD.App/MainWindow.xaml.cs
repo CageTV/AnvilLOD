@@ -56,13 +56,19 @@ public partial class MainWindow : Window
         Lod32Check.IsChecked = _settings.Lod32;
         RemoveBuriedCheck.IsChecked = _settings.RemoveBuried;
         TreeLodCheck.IsChecked = _settings.TreeLod;
+        PbrLodCheck.IsChecked = _settings.PbrLod;
+        PbrLodBrightnessBox.SelectedIndex = BrightnessIndex(_settings.PbrLodBrightness);
+        UndersideCheck.IsChecked = _settings.Underside;
+        Tree3DCheck.IsChecked = _settings.Tree3D;
+        Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
+        Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
         GrassLodCheck.IsChecked = _settings.GrassLod;
         TreeBrightnessBox.SelectedIndex = BrightnessIndex(_settings.TreeBrightness);
         ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
         SeasonsCheck.IsChecked = _settings.Seasons;
-        SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 3);
+        SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 4);
         GrassDensityBox.SelectedIndex = _settings.GrassDensity switch { <= 5 => 0, >= 12 => 2, _ => 1 };
         IncludeDisabledCheck.IsChecked = _settings.IncludeDisabled;
         IncludeEnableParentCheck.IsChecked = _settings.IncludeEnableParented;
@@ -87,6 +93,12 @@ public partial class MainWindow : Window
         _settings.Preset = PresetBox.SelectedIndex switch { 0 => "Low", 1 => "Medium", _ => "High" };
         _settings.RemoveBuried = RemoveBuriedCheck.IsChecked == true;
         _settings.TreeLod = TreeLodCheck.IsChecked == true;
+        _settings.PbrLod = PbrLodCheck.IsChecked == true;
+        _settings.PbrLodBrightness = BrightnessPercent(PbrLodBrightnessBox.SelectedIndex);
+        _settings.Underside = UndersideCheck.IsChecked == true;
+        _settings.Tree3D = Tree3DCheck.IsChecked == true;
+        _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
+        _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
         _settings.GrassLod = GrassLodCheck.IsChecked == true;
         _settings.TreeBrightness = BrightnessPercent(TreeBrightnessBox.SelectedIndex);
         _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
@@ -282,7 +294,8 @@ public partial class MainWindow : Window
                 IncludeEnableParented: _settings.IncludeEnableParented,
                 TreeLod: _settings.TreeLod,
                 DynamicLod: _settings.DynamicLod,
-                GridObjects: _settings.GridObjects),
+                GridObjects: _settings.GridObjects,
+                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,
             Generate: generate,
@@ -292,6 +305,9 @@ public partial class MainWindow : Window
             TreeBrightness: _settings.TreeBrightness / 100f,
             ObjectBrightness: _settings.ObjectBrightness / 100f,
             Seasons: _settings.Seasons,
+            Underside: _settings.Underside,
+            PbrLod: _settings.PbrLod,
+            PbrLodBrightness: _settings.PbrLodBrightness / 100f,
             GrassDensity: _settings.GrassDensity / 100f,
             SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 3),
             Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });

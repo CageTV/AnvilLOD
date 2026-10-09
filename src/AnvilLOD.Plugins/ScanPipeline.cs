@@ -24,7 +24,12 @@ public sealed record ScanRequest(
     float ObjectBrightness = 1f,                   // object LOD colour multiplier (vertex colours; textures untouched)
     bool Seasons = false,                          // EXPERIMENTAL: Seasons of Skyrim seasonal object LOD (<block>.WIN.bto, …)
     bool ChildWorlds = true,                       // copy walled-city child worldspaces into the parent's LOD (DynDOLOD Configs)
-    SkseDllChoice SkseDll = SkseDllChoice.Auto);   // which SKSE plugin build Generate puts in the output (None = installed separately)
+    SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
+    bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD Underside.esm (ESL)
+    int UndersideStep = UndersideMesher.DefaultStep, // LAND vertices per underside quad (smaller = finer and heavier)
+    bool PbrLod = false,                           // object LOD textures that match PBR full models (TexGen pbr_lod twins, converted PBR albedo)
+    float PbrLodBrightness = 1f,                   // multiplier on DynDOLOD's default PBR scale (0.65) for the converted copies
+    int PbrLodSize = 512);                         // largest side of a converted copy
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -48,7 +53,8 @@ public sealed record ScanSummary(
     int GrassCells = 0,
     IReadOnlyDictionary<string, long>? MissingGrassBillboards = null,
     IReadOnlySet<string>? SkippedByTexGen = null,
-    int DynamicRefs = 0);   // keys of MissingBillboards / MissingGrassBillboards that TexGen left out on purpose (too small)
+    int DynamicRefs = 0,
+    Tree3DStats? Tree3D = null);   // keys of MissingBillboards / MissingGrassBillboards that TexGen left out on purpose (too small)
 
 /// <summary>
 /// Load order → asset index → reference scan → quad buckets → hashes → build plan,
@@ -91,7 +97,7 @@ public static class ScanPipeline
             p => p.StartsWith("meshes\\", StringComparison.Ordinal) || p.StartsWith("lodsettings\\", StringComparison.Ordinal)
                  || p.StartsWith("dyndolod\\", StringComparison.Ordinal) || p.StartsWith("textures\\terrain\\lodgen\\", StringComparison.Ordinal)
                  || p.StartsWith("grass\\", StringComparison.Ordinal) || p.StartsWith("seasons\\", StringComparison.Ordinal)
-                 || (req.GrassLod && p.StartsWith("textures\\", StringComparison.Ordinal))); // grass model textures, for rendered grass billboards
+                 || ((req.GrassLod || req.Scan.Tree3D is { Enabled: true }) && p.StartsWith("textures\\", StringComparison.Ordinal))); // grass model textures (rendered grass billboards), and the textures 3D tree LOD models need
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
         if (assets.ArchiveCount == 0)
             Warn("No BSA archives were found. Vanilla LOD meshes and LOD settings live in BSAs, so check the Data folder / MO2 instance path.");
@@ -160,12 +166,14 @@ public static class ScanPipeline
         progress?.Report($"Scan: {scan.Stats.LodReferencesFound:N0} LOD refs from {scan.Stats.PlacedObjectsVisited:N0} refs in {scan.Stats.Elapsed.TotalSeconds:F1}s");
 
         TerrainReader.Result? terrain = null;
-        if (req.RemoveBuried && scan.Grids.Count > 0)
+        if ((req.RemoveBuried || req.Underside) && scan.Grids.Count > 0)
         {
             progress?.Report("Reading terrain heights (LAND)...");
             terrain = TerrainReader.Read(game, scan.Grids.Keys.ToList(), ct);
             progress?.Report($"Terrain: {terrain.Heights.CellCount:N0} cells in {terrain.Elapsed.TotalSeconds:F1}s");
         }
+        // Only the buried-triangle test (and the block hashes it feeds) depends on RemoveBuried; the underside reads the same heights.
+        var cullTerrain = req.RemoveBuried ? terrain : null;
 
         GrassLodSource? grass = null;
         IReadOnlyList<LodReference> allRefs = scan.References;
@@ -178,22 +186,85 @@ public static class ScanPipeline
                 Warn("Grass LOD is on, but no grass cache (grass\\<worldspace>x…y….cgid) was found. Generate one with NGIO or FasterNGIO.");
             allRefs = [.. scan.References, .. grassRefs];
         }
-        // Trees from light (ESL) plugins: the engine never hides their .btt tree LOD, so they become billboard
-        // cards in object LOD instead, which hides per cell.
+        // Trees that go into object LOD instead of the billboard tree LOD files:
+        //  - 3D tree LOD (opt-in): trees with a 3D model (DynDOLOD's passthru_lod.nif): the model at LOD4 (and LOD8), cards beyond.
+        //  - Trees from light (ESL) plugins: the engine never hides their .btt tree LOD, so they become billboard
+        //    cards instead, which hide per cell like any other object LOD.
         TreeCardSource? cards = null;
+        Tree3DSource? tree3d = null;
+        Tree3DStats? tree3dStats = null;
         IReadOnlyList<TreeReference>? bttTrees = scan.Trees;
+        var objectLodWorlds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (req.Scan.TreeLod && scan.Trees is { Count: > 0 } allTrees)
         {
-            var light = allTrees.Where(TreeCardSource.NeedsCards).ToList();
+            var in3d = new HashSet<TreeReference>(ReferenceEqualityComparer.Instance);
+            var t3 = req.Scan.Tree3D ?? Tree3DSettings.Off;
+            if (t3.Enabled)
+            {
+                tree3d = new Tree3DSource(assets, req.TreeBrightness);
+                var withModel = allTrees.Where(t => t.Model3D is not null).ToList();
+                var reasons = new System.Collections.Concurrent.ConcurrentDictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                Parallel.ForEach(withModel.Select(t => t.Model3D!).Distinct(StringComparer.OrdinalIgnoreCase), new ParallelOptions { CancellationToken = ct },
+                    m => reasons[m] = tree3d.Validate(m));
+                var t3Warnings = new List<string>();
+                var skippedTypes = reasons.Where(kv => kv.Value is not null).OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase).ToList();
+                long skippedTrees = 0;
+                foreach (var t in withModel)
+                {
+                    if (reasons[t.Model3D!] is not null) { skippedTrees++; continue; }
+                    in3d.Add(t);
+                }
+                if (skippedTypes.Count > 0)
+                {
+                    var missingTex = skippedTypes.Count(kv => kv.Value!.StartsWith("missing texture", StringComparison.Ordinal));
+                    var first = skippedTypes.First();
+                    Warn($"3D tree LOD: {skippedTypes.Count} models ({skippedTrees:N0} trees) can't be used and keep billboard tree LOD"
+                         + (missingTex > 0 ? $"; {missingTex} are missing textures (trunk billboards are made by TexGen from the model's _trunk.nif in DynDOLOD\\Render; run TexGen with it)" : "")
+                         + $". First: {Path.GetFileName(first.Key)}: {first.Value}.");
+                }
+                int byName = in3d.Where(t => t.Model3DByName).Select(t => t.Model3D!).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                int types = in3d.Select(t => t.Model3D!).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                int nameOnly = scanner.Tree3DNameOnlyAvailable;
+                long t3Tris = 0, t3Bytes = 0;
+                foreach (var g in in3d.GroupBy(t => t.Model3D!, StringComparer.OrdinalIgnoreCase))
+                {
+                    var (v, tr) = tree3d.Size(g.Key);
+                    t3Tris += (long)tr * g.Count();
+                    t3Bytes += ((long)v * 32 + (long)tr * 6) * g.Count();
+                }
+                int t3Levels = t3.Lod8 ? 2 : 1;
+                tree3dStats = new Tree3DStats(in3d.Count, types, types - byName, byName, skippedTypes.Count, skippedTrees, nameOnly, t3Warnings,
+                    t3Tris, t3Bytes / 1048576.0);
+                progress?.Report($"3D tree LOD: {in3d.Count:N0} of {allTrees.Count:N0} trees use a 3D model ({types} models: {types - byName} matched by CRC32, {byName} by name; "
+                                 + (t3.Lod8 ? "LOD4 and LOD8" : "LOD4 only") + "), billboard cards further out");
+                if (in3d.Count > 0)
+                    progress?.Report($"3D tree LOD: the models add about {t3Tris * t3Levels / 1e6:F1} million triangles and {t3Bytes * t3Levels / 1048576.0:F0} MB to the LOD blocks"
+                                     + (t3.Lod8 ? "" : " (turning on LOD8 would roughly double that)")
+                                     + ". Heavy models are the usual cause of huge LOD files; a lighter model set or fewer levels keeps them small.");
+                if (nameOnly > 0)
+                    progress?.Report($"3D tree LOD: {nameOnly} tree types have a 3D model under the plain tree name that doesn't match their mesh (changed by a mod or patcher). "
+                                     + "Turn on \"accept models by name\" to use them.");
+                if (allTrees.Count > 0 && in3d.Count == 0 && withModel.Count == 0)
+                    progress?.Report("3D tree LOD: no tree has a matching 3D model (meshes\\DynDOLOD\\lod\\trees\\<tree>_<CRC32>passthru_lod.nif). Install a 3D tree LOD resource such as DynDOLOD Resources or Happy Little Trees' 3D LOD add-on.");
+            }
+
+            var light = allTrees.Where(t => TreeCardSource.NeedsCards(t) && !in3d.Contains(t)).ToList();
+            if (light.Count > 0 || in3d.Count > 0) cards = new TreeCardSource(assets, req.TreeBrightness);
+            if (in3d.Count > 0)
+            {
+                allRefs = [.. allRefs, .. Tree3DSource.ToReferences(in3d, t3)];
+                foreach (var t in in3d) objectLodWorlds.Add(t.Worldspace);
+            }
             if (light.Count > 0)
             {
-                cards = new TreeCardSource(assets);
-                allRefs = [.. allRefs, .. cards.ToReferences(light)];
-                bttTrees = allTrees.Where(t => !TreeCardSource.NeedsCards(t)).ToList();
+                allRefs = [.. allRefs, .. cards!.ToReferences(light)];
+                foreach (var t in light) objectLodWorlds.Add(t.Worldspace);
                 progress?.Report($"Tree LOD: {light.Count:N0} trees from light (ESL) plugins go into object LOD as billboard cards (the engine can't hide their tree LOD)");
             }
+            if (light.Count > 0 || in3d.Count > 0)
+                bttTrees = allTrees.Where(t => !TreeCardSource.NeedsCards(t) && !in3d.Contains(t)).ToList();
         }
-        string? Fingerprint(string p) => grass?.Fingerprint(p) ?? cards?.Fingerprint(p) ?? assets.Fingerprint(p);
+        string? Fingerprint(string p) => grass?.Fingerprint(p) ?? cards?.Fingerprint(p) ?? tree3d?.Fingerprint(p) ?? assets.Fingerprint(p);
 
         var sw = Stopwatch.StartNew();
         var bucketer = new QuadBucketer(scan.Grids);
@@ -205,8 +276,8 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (terrain is null ? "|keep-buried"
-                    : "|terrain:" + (terrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
+                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (cullTerrain is null ? "|keep-buried"
+                    : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
         sw.Stop();
 
         var manifest = req.OutputFolder is null ? new BuildManifest() : BuildManifest.LoadOrEmpty(req.OutputFolder);
@@ -246,7 +317,8 @@ public static class ScanPipeline
         {
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
-            var generator = new LodGenerator(assets, terrain?.Heights, new CompositeSyntheticSource(grass, cards)) { Brightness = req.ObjectBrightness };
+            var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
 
             foreach (var stale in plan.StaleFiles)
@@ -275,7 +347,7 @@ public static class ScanPipeline
 
             if (req.Scan.TreeLod && bttTrees is { } treeRefs)
             {
-                trees = TreeLodGenerator.Generate(scan.Grids, treeRefs, assets, output, manifest, progress, ct, req.TreeBrightness);
+                trees = TreeLodGenerator.Generate(scan.Grids, treeRefs, assets, output, manifest, progress, ct, req.TreeBrightness, objectLodWorlds);
                 foreach (var w in trees.Warnings) Warn(w);
                 progress?.Report($"Tree LOD: {trees.Instances:N0} trees, {trees.TreeTypes} types, {trees.Blocks:N0} blocks"
                                  + $" ({trees.WorldspacesWritten} worldspaces written, {trees.WorldspacesUnchanged} unchanged) in {trees.Elapsed.TotalSeconds:F1}s");
@@ -291,6 +363,39 @@ public static class ScanPipeline
                 var dyn = BuildManifest.FullPath(output, DynamicLodWriter.RelativePath);
                 if (File.Exists(dyn)) File.Delete(dyn);
             }
+
+            if (pbrLod is not null)
+            {
+                try
+                {
+                    var p = PbrLodStage.Run(assets, pbrLod, output, req.PbrLodSize, req.PbrLodBrightness, progress, ct);
+                    progress?.Report(plan.Rebuild.Count == 0
+                        ? "PBR LOD textures: no blocks were rebuilt, so the existing ones are kept."
+                        : $"PBR LOD textures: {pbrLod.TwinsUsed} swapped for TexGen pbr_lod twins, {p.Converted + p.Unchanged} converted from PBR albedo"
+                          + $" ({p.Converted} written, {p.Unchanged} unchanged) in {p.Elapsed.TotalSeconds:F1}s");
+                    if (p.Failed > 0) Warn($"PBR LOD: {p.Failed} textures could not be converted (first: {p.Errors.FirstOrDefault()}).");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"PBR LOD textures failed: {ex.Message}");
+                }
+            }
+            else PbrLodStage.RemoveAll(output);
+
+            if (req.Underside && terrain is not null)
+            {
+                try
+                {
+                    var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct);
+                    progress?.Report($"Underside: {u.Worldspaces} worldspaces, {u.Blocks:N0} blocks, {u.Triangles:N0} triangles in {u.Elapsed.TotalSeconds:F1}s"
+                                     + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} and {UndersidePluginWriter.PlacementFileName} (both flagged ESL, no plugin slot) in your mod manager."));
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"Underside failed: {ex.Message}");
+                }
+            }
+            else UndersideStage.RemoveAll(output);
             try
             {
                 var skse = SksePluginInstaller.Install(output, game.DataFolder, req.SkseDll);
@@ -338,7 +443,8 @@ public static class ScanPipeline
             grass?.CellsFound ?? 0,
             grass?.MissingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             skippedByTexGen,
-            scan.Dynamic?.Count ?? 0);
+            scan.Dynamic?.Count ?? 0,
+            tree3dStats);
 
         // "plugin.esm\\model_000a7329" -> "plugin.esm;000a7329"
         static string TexGenKey(string missingKey)

@@ -1,0 +1,21 @@
+{
+  "name": "commonlibsse-ng",
+  "version-semver": "7.2.0",
+  "description": "CommonLibSSE-NG 7.2.0 (alandtse ng branch): reads Address Library's format-5 databases and has the Skyrim 1.7.x layouts. Licensed GPL-3.0-or-later with a modding exception: a DLL that links it is distributed under GPL-compatible terms.",
+  "homepage": "https://github.com/alandtse/CommonLibSSE-NG",
+  "license": "GPL-3.0-or-later",
+  "supports": "windows & x64",
+  "dependencies": [
+    { "name": "vcpkg-cmake", "host": true },
+    { "name": "vcpkg-cmake-config", "host": true },
+    "directxmath",
+    "directxtk",
+    "fmt",
+    "nlohmann-json",
+    "rapidcsv",
+    "simpleini",
+    "spdlog",
+    "toml11",
+    "xbyak"
+  ]
+}

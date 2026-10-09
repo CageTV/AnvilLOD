@@ -17,9 +17,15 @@ public sealed class TreeCardSource : ISyntheticMeshSource
     private const int Version = 1;
 
     private readonly AssetIndex _assets;
+    private readonly float _brightness;
     private readonly ConcurrentDictionary<string, LodMesh?> _cache = new(StringComparer.OrdinalIgnoreCase);
 
-    public TreeCardSource(AssetIndex assets) => _assets = assets;
+    /// <param name="brightness">Tree LOD brightness (1 = as the billboard is). Applied through vertex colours.</param>
+    public TreeCardSource(AssetIndex assets, float brightness = 1f)
+    {
+        _assets = assets;
+        _brightness = brightness;
+    }
 
     public static bool NeedsCards(TreeReference t) => t.ObjectLod || (t.RuntimeFormId >> 24) == 0xFE;
 
@@ -49,7 +55,7 @@ public sealed class TreeCardSource : ISyntheticMeshSource
     {
         if (!Owns(path)) return null;
         var (dds, normal, txt) = Files(path[Prefix.Length..]);
-        return $"c{Version}|{_assets.Fingerprint(dds)}|{_assets.Fingerprint(normal)}|{_assets.Fingerprint(txt)}";
+        return $"c{Version}|b{_brightness:F3}|{_assets.Fingerprint(dds)}|{_assets.Fingerprint(normal)}|{_assets.Fingerprint(txt)}";
     }
 
     public LodMesh? Build(string path) => _cache.GetOrAdd(path, p => Create(p[Prefix.Length..]));
@@ -101,10 +107,17 @@ public sealed class TreeCardSource : ISyntheticMeshSource
             tris[t] = (ushort)v; tris[t + 1] = (ushort)(v + 1); tris[t + 2] = (ushort)(v + 2);
             tris[t + 3] = (ushort)v; tris[t + 4] = (ushort)(v + 2); tris[t + 5] = (ushort)(v + 3);
         }
+        uint[]? colors = null;
+        if (MathF.Abs(_brightness - 1f) > 0.001f)
+        {
+            var c = BtoBuilder.Scale(0xFFFF_FFFFu, _brightness);
+            colors = new uint[pos.Length];
+            Array.Fill(colors, c);
+        }
         return new LodMesh
         {
             Path = Prefix + plainDds,
-            Parts = [new LodMeshPart { Material = material, Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit, Triangles = tris }],
+            Parts = [new LodMeshPart { Material = material, Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit, Colors = colors, Triangles = tris }],
         };
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using AnvilLOD.Core.Lod;
 using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
 using AnvilLOD.Meshes.Nif;
@@ -36,6 +37,9 @@ public sealed class LodGenerator
 
     private readonly TerrainHeights? _terrain;
     private readonly ISyntheticMeshSource? _synthetic;
+
+    /// <summary>When set, textures that the full models replace with PBR ones are swapped for matching LOD textures.</summary>
+    public PbrLodTextures? Pbr { get; init; }
 
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
@@ -77,6 +81,7 @@ public sealed class LodGenerator
                 }
             }
             var mesh = NifGeometryReader.Read(path, bytes);
+            if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
             if (mesh.Parts.Count == 0)
                 _meshErrors[path] = mesh.Warnings.Count > 0 ? string.Join("; ", mesh.Warnings.Distinct()) : "no usable shapes";
             return mesh;
@@ -86,6 +91,34 @@ public sealed class LodGenerator
             _meshErrors[path] = ex.Message;
             return null;
         }
+    }
+
+    private static LodMesh ApplyPbr(LodMesh mesh, PbrLodTextures pbr)
+    {
+        var cache = new Dictionary<string, LodMaterial>(StringComparer.Ordinal);
+        var parts = new List<LodMeshPart>(mesh.Parts.Count);
+        foreach (var p in mesh.Parts)
+        {
+            var m = p.Material;
+            if (!cache.TryGetValue(m.Key, out var swapped))
+            {
+                swapped = m;
+                if (m.Textures.Count > 0 && pbr.MapDiffuse(m.Textures[0]) is { } diffuse)
+                {
+                    var tex = m.Textures.ToList();
+                    tex[0] = diffuse;
+                    if (tex.Count > 1 && !string.IsNullOrWhiteSpace(tex[1]) && pbr.MapNormal(m.Textures[0], tex[1]) is { } normal) tex[1] = normal;
+                    swapped = m with { Textures = tex };
+                }
+                cache[m.Key] = swapped;
+            }
+            parts.Add(ReferenceEquals(swapped, m) ? p : new LodMeshPart
+            {
+                Name = p.Name, Material = swapped, Positions = p.Positions, UVs = p.UVs, Normals = p.Normals,
+                Tangents = p.Tangents, Bitangents = p.Bitangents, Colors = p.Colors, Triangles = p.Triangles,
+            });
+        }
+        return new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings };
     }
 
     public GenerateStats Generate(

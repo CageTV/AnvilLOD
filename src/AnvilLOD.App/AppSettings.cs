@@ -23,6 +23,12 @@ public sealed class AppSettings
     public string Preset { get; set; } = "High";
     public bool RemoveBuried { get; set; } = true;
     public bool TreeLod { get; set; } = true;
+    public bool PbrLod { get; set; }            // object LOD textures that match PBR full models (off by default)
+    public int PbrLodBrightness { get; set; } = 100; // percent of DynDOLOD's PBR scale for the converted copies, 10-110
+    public bool Underside { get; set; }         // terrain underside (NIFs + AnvilLOD Underside.esm), off by default
+    public bool Tree3D { get; set; }            // 3D tree LOD models in object LOD (off by default)
+    public bool Tree3DLod8 { get; set; }        // use the 3D models at LOD8 as well
+    public bool Tree3DByName { get; set; }      // accept a model stored under the plain tree name when the CRC32 doesn't match
     public bool GrassLod { get; set; } = true;
     public int TreeBrightness { get; set; } = 100;   // percent, 10-110
     public int ObjectBrightness { get; set; } = 100; // percent, 10-110

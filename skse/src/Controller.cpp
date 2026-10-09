@@ -89,7 +89,7 @@ namespace AnvilLOD
 			}
 			CollectControllers(a_object, a_out);
 			if (auto* geom = a_object->AsGeometry()) {
-#if ANVILLOD_RUNTIME_LINE == 17
+#if ANVILLOD_RUNTIME_LINE == 17 || ANVILLOD_RUNTIME_LINE == 14
 				CollectControllers(geom->GetGeometryRuntimeData().shaderProperty.get(), a_out);
 #else
 				CollectControllers(geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get(), a_out);

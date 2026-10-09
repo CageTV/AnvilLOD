@@ -12,7 +12,9 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Hidden-face removal (needs terrain) | LAND heights read from plugins; conservative buried-triangle test | ✅ v1 |
 | Texture atlas (TexGen + DynDOLOD) | GPU atlas, BC7, PBR-aware pages | planned |
 | Tree LOD: billboards (`.lst`/`.btt` + atlas) | TexGen billboards packed into a BC7 atlas (managed encoder), engine format verified against vanilla and DynDOLOD | ✅ v1 |
-| Tree LOD: hybrid 3D / own billboard renderer | GPU billboard renderer (TexGen not needed) | planned |
+| Tree LOD: 3D tree LOD models in object LOD (`passthru_lod.nif`) | Models matched by CRC32 (or, opt-in, plain name), 3D at LOD4 (optionally LOD8), billboard cards beyond, passthru shaders kept, size estimate in the log | ✅ v1 (opt-in) |
+| Tree LOD: 3D models for trees that have none | Simplify the full tree model into a hybrid crown + trunk model, cached as a DynDOLOD-compatible file | planned |
+| Tree LOD: own billboard / trunk renderer | GPU renderer (TexGen not needed, also for the flat trunk textures 3D models use) | planned |
 | Grass LOD (NGIO / FasterNGIO `.cgid`) | Cache read directly, sampled into alpha-tested billboard quads in LOD4, per-cell segments | ✅ v1 |
 | Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Tree/terrain LOD not seasonal yet | 🧪 experimental |
 | Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
@@ -24,6 +26,8 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Walled cities in the parent's LOD (Dragonsreach etc.) | Child world references copied into Tamriel's LOD, driven by DynDOLOD's `Configs\DynDOLOD_SSE_childworld_*.ini` + ChildworldMatches | ✅ |
 | Child worldspaces with their own LOD | Generate for parent/child links | planned |
 | Occlusion.esp | Build from our own terrain data (xLODGen meanwhile) | planned |
+| PBR full models → matching object LOD textures | TexGen `pbr_lod` twins used as found; other textures with a `textures\pbr` version get a converted, shrunk copy (`textures\anvillod\pbr`). Tree LOD not yet | 🧪 experimental (conversion curve is an approximation) |
+| Terrain underside (volumetric lighting) | `<ws>_Underside.nif` from LAND (never above the terrain) + ESL ESM/ESP that place it, as DynDOLOD does | 🧪 experimental (in-game check pending) |
 | Terrain LOD | xLODGen for now; own GPU terrain step later | later |
 
 ## Milestone 1a — Scan ✅
@@ -32,7 +36,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 - [x] Winning REFR scan for STAT bases with MNAM LOD meshes; missing meshes reported
 - [x] `.lod` settings parsing and LOD grid alignment (matches DynDOLOD's block names)
 - [x] Quad bucketing, per-quad fingerprints, manifest and incremental plan
-- [x] Real load order: Tabula Rasa, 1,532 plugins, 1.88M refs, 61k LOD refs, 2,562 blocks in ~6s
+- [x] Real load order: 1,532 plugins, 1.88M refs, 61k LOD refs, 2,562 blocks in ~6s
 
 ## Mod managers
 - [x] MO2: instance read directly (modlist, plugins, loadorder, local INIs). Running *inside* MO2 isn't supported (its VFS breaks .NET 10 startup) and isn't needed.

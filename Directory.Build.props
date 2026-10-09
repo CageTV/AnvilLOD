@@ -13,5 +13,8 @@
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
     <Authors>CageTV</Authors>
     <Product>AnvilLOD</Product>
+    <!-- Normalizes the source paths baked into the .pdb files and the .dll debug directory to "/_/..." instead of the
+         absolute path of whatever machine built the release (which included the builder's folder names). -->
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 </Project>

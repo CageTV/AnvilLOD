@@ -11,5 +11,8 @@ skse/build/
 skse/vcpkg_installed/
 skse/build-17/
 skse/vcpkg_installed-17/
+skse/build-vr/
+skse/vcpkg_installed-vr/
 skse/dist/
 release/
+CLAUDE.md

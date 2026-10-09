@@ -61,7 +61,7 @@
                             <TextBlock Text="Instance folder" Style="{StaticResource FieldLabel}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseMo2_Click" />
-                                <TextBox x:Name="Mo2Box" ToolTip="Folder containing ModOrganizer.ini (e.g. E:\Tabula Rasa)" LostFocus="Mo2Box_LostFocus" />
+                                <TextBox x:Name="Mo2Box" ToolTip="Folder containing ModOrganizer.ini (e.g. D:\Modlists\MyList)" LostFocus="Mo2Box_LostFocus" />
                             </DockPanel>
                             <TextBlock Text="Profile" Style="{StaticResource FieldLabel}" />
                             <ComboBox x:Name="ProfileBox" />
@@ -139,6 +139,34 @@
                             <ComboBoxItem Content="100% (default)" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
+                        <CheckBox x:Name="Tree3DCheck" Content="3D tree LOD (use 3D models where found)"
+                                  ToolTip="Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders." />
+                        <CheckBox x:Name="Tree3DLod8Check" Content="Also use the 3D models at LOD8" Margin="20,2,0,0"
+                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
+                                  ToolTip="Nicer mid-distance trees, but much bigger LOD files. Off: 3D at LOD4 only, cards from LOD8." />
+                        <CheckBox x:Name="Tree3DNameCheck" Content="Accept models by tree name when the CRC32 differs" Margin="20,2,0,6"
+                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
+                                  ToolTip="A model stored under the plain tree name may have been made for another version of the mesh (for example before a mod or PGPatcher changed it), so it can look wrong. Off: only exact CRC32 matches are used." />
+                        <CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
+                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block." />
+                        <TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />
+                        <ComboBox x:Name="PbrLodBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
+                                  IsEnabled="{Binding IsChecked, ElementName=PbrLodCheck}"
+                                  ToolTip="Brightness of the converted PBR copies, as a share of DynDOLOD's default PBR scale. Lower it if the LOD looks brighter than the real objects.">
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
+                        </ComboBox>
+                        <CheckBox x:Name="UndersideCheck" Content="Terrain underside (for volumetric lighting mods)" Margin="0,2,0,6"
+                                  ToolTip="Builds a low-resolution, downward-facing copy of the terrain (meshes\Terrain\&lt;worldspace&gt;\&lt;worldspace&gt;_Underside.nif) and AnvilLOD Underside.esm, flagged ESL, that places it 500 units below the world. DVLaSS, EVLaS and Community Shaders' sky sync use it to stop sun rays and shadows leaking through the landscape. Enable the ESM in your mod manager and load it after plugins that edit worldspaces. Do not use it together with DynDOLOD's own underside." />
                         <TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
                         <ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
                                   ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">
@@ -175,6 +203,7 @@
                             <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />
                             <ComboBoxItem Content="Newer than 1.6.1170 (1.7.x)" />
                             <ComboBoxItem Content="Installed separately (FOMOD)" />
+                            <ComboBoxItem Content="Skyrim VR 1.4.15" />
                         </ComboBox>
                         <CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
                         <CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />

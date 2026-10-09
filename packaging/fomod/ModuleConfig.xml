@@ -30,6 +30,16 @@
                                 <type name="Optional" />
                             </typeDescriptor>
                         </plugin>
+                        <plugin name="Skyrim VR 1.4.15">
+                            <description>Skyrim VR (SkyrimVR.exe 1.4.15). Built on CommonLibSSE-NG 7.2.0 (GPL-3.0), VR only.&#13;&#10;&#13;&#10;Needs SKSE VR and Address Library for SKSEVR. SKSE Menu Framework is optional: without it the plugin simply has no in-game menu and uses AnvilLOD.ini.</description>
+                            <image path="fomod\images\anvillod.jpg" />
+                            <files>
+                                <folder source="1.4.15-VR" destination="" priority="0" />
+                            </files>
+                            <typeDescriptor>
+                                <type name="Optional" />
+                            </typeDescriptor>
+                        </plugin>
                     </plugins>
                 </group>
             </optionalFileGroups>

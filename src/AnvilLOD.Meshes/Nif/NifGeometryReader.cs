@@ -27,7 +27,9 @@ public static class NifGeometryReader
     private const uint KeepF1 = 0x0000_1000 /* Model_Space_Normals */ | 0x0000_0008 /* Vertex_Alpha */;
     private const uint KeepF2 = 0x0000_0010 /* Double_Sided */ | 0x0000_0040 /* Glow_Map */;
 
-    public static LodMesh Read(string path, byte[] data)
+    /// <param name="passthru">Keep every shape's own shader settings (LODGen's "passthru" LOD models) instead of
+    /// reducing them to the standard LOD shader.</param>
+    public static LodMesh Read(string path, byte[] data, bool passthru = false)
     {
         var nif = NifFile.Read(data);
         var parts = new List<LodMeshPart>();
@@ -35,7 +37,7 @@ public static class NifGeometryReader
         var visited = new HashSet<int>();
 
         foreach (var root in nif.Roots)
-            Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited);
+            Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited, passthru);
 
         return new LodMesh { Path = path, Parts = parts, Warnings = warnings };
     }
@@ -68,7 +70,7 @@ public static class NifGeometryReader
         return o;
     }
 
-    private static void Walk(NifFile nif, int index, Matrix4x4 parent, List<LodMeshPart> parts, List<string> warnings, HashSet<int> visited)
+    private static void Walk(NifFile nif, int index, Matrix4x4 parent, List<LodMeshPart> parts, List<string> warnings, HashSet<int> visited, bool passthru)
     {
         if (index < 0 || index >= nif.Blocks.Count || !visited.Add(index)) return;
         var block = nif.Blocks[index];
@@ -82,13 +84,13 @@ public static class NifGeometryReader
             uint numChildren = r.U32();
             var children = new int[numChildren];
             for (int i = 0; i < numChildren; i++) children[i] = r.I32();
-            foreach (var c in children) Walk(nif, c, world, parts, warnings, visited);
+            foreach (var c in children) Walk(nif, c, world, parts, warnings, visited, passthru);
         }
         else if (ShapeTypes.Contains(block.Type))
         {
             try
             {
-                var part = ReadShape(nif, block, parent, warnings);
+                var part = ReadShape(nif, block, parent, warnings, passthru);
                 if (part is not null) parts.Add(part);
             }
             catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException or InvalidDataException)
@@ -104,7 +106,7 @@ public static class NifGeometryReader
 
     // ---------- shapes ----------
 
-    private static LodMeshPart? ReadShape(NifFile nif, NifBlock block, Matrix4x4 parent, List<string> warnings)
+    private static LodMeshPart? ReadShape(NifFile nif, NifBlock block, Matrix4x4 parent, List<string> warnings, bool passthru)
     {
         var r = nif.ReaderFor(block);
         var av = ReadAvObject(nif, ref r);
@@ -122,7 +124,7 @@ public static class NifGeometryReader
         if (skin >= 0) { warnings.Add($"Skinned shape '{av.Name}' skipped."); return null; }
         if (dataSize == 0 || numVerts == 0 || numTris == 0) return null;
 
-        var material = ReadMaterial(nif, shaderRef, alphaRef);
+        var material = ReadMaterial(nif, shaderRef, alphaRef, passthru);
         if (material is null) { warnings.Add($"Shape '{av.Name}' has no lighting shader; skipped."); return null; }
 
         uint attrs = (uint)(desc >> 44);
@@ -173,30 +175,40 @@ public static class NifGeometryReader
 
         return new LodMeshPart
         {
+            Name = av.Name,
             Material = material,
             Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit,
             Colors = col, Triangles = tris,
         };
     }
 
-    private static LodMaterial? ReadMaterial(NifFile nif, int shaderRef, int alphaRef)
+    private static LodMaterial? ReadMaterial(NifFile nif, int shaderRef, int alphaRef, bool passthru)
     {
         if (shaderRef < 0 || shaderRef >= nif.Blocks.Count) return null;
         var sb = nif.Blocks[shaderRef];
         if (sb.Type != "BSLightingShaderProperty") return null;
 
         var r = nif.ReaderFor(sb);
-        r.U32();            // shader type
+        uint shaderType = r.U32();
         r.I32();            // name
         uint ne = r.U32(); r.Skip((int)ne * 4);
         r.I32();            // controller
         uint f1 = r.U32();
         uint f2 = r.U32();
-        r.Skip(16);         // uv offset + scale
+        float uvOx = r.F32(), uvOy = r.F32(), uvSx = r.F32(), uvSy = r.F32();
         int texSetRef = r.I32();
         var emissive = new Vector3(r.F32(), r.F32(), r.F32());
         float emissiveMult = r.F32();
         uint clamp = r.U32();
+
+        LodShaderPassthru? keep = null;
+        if (passthru)
+        {
+            float alpha = r.F32(), refraction = r.F32(), gloss = r.F32();
+            var spec = new Vector3(r.F32(), r.F32(), r.F32());
+            float specStrength = r.F32(), le1 = r.F32(), le2 = r.F32();
+            keep = new LodShaderPassthru(shaderType, uvOx, uvOy, uvSx, uvSy, alpha, refraction, gloss, spec, specStrength, le1, le2);
+        }
 
         var textures = new List<string>();
         if (texSetRef >= 0 && texSetRef < nif.Blocks.Count && nif.Blocks[texSetRef].Type == "BSShaderTextureSet")
@@ -217,6 +229,9 @@ public static class NifGeometryReader
             threshold = ar.U8();
             hasAlpha = true;
         }
+
+        if (keep is not null)
+            return new LodMaterial(textures, f1, f2, clamp, hasAlpha, alphaFlags, threshold, emissive, emissiveMult, keep);
 
         bool glow = (f2 & 0x40) != 0;
         return new LodMaterial(

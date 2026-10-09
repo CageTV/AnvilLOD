@@ -8,24 +8,41 @@ namespace AnvilLOD.Meshes;
 /// </summary>
 public sealed record LodMaterial(
     IReadOnlyList<string> Textures,   // texture set slots, as written in the source mesh
-    uint ShaderFlags1,                // already reduced to the bits LOD keeps
+    uint ShaderFlags1,                // already reduced to the bits LOD keeps (all of them for a passthru material)
     uint ShaderFlags2,
     uint ClampMode,
     bool HasAlpha,
     ushort AlphaFlags,
     byte AlphaThreshold,
     Vector3 EmissiveColor,
-    float EmissiveMultiple)
+    float EmissiveMultiple,
+    LodShaderPassthru? Passthru = null)   // the source shader's own settings, for models that say "passthru"
 {
     private string? _key;
 
     /// <summary>Stable string key used for grouping and hashing.</summary>
     public string Key => _key ??= string.Join('|', Textures.Select(t => t.ToLowerInvariant()))
         + $"|{ShaderFlags1:X}|{ShaderFlags2:X}|{ClampMode}|{(HasAlpha ? $"{AlphaFlags:X}/{AlphaThreshold}" : "-")}"
-        + $"|{EmissiveColor.X:F3},{EmissiveColor.Y:F3},{EmissiveColor.Z:F3}x{EmissiveMultiple:F3}";
+        + $"|{EmissiveColor.X:F3},{EmissiveColor.Y:F3},{EmissiveColor.Z:F3}x{EmissiveMultiple:F3}"
+        + (Passthru is null ? "" : "|pt" + Passthru.Key);
 
     public bool Equals(LodMaterial? other) => other is not null && Key == other.Key;
     public override int GetHashCode() => Key.GetHashCode(StringComparison.Ordinal);
+}
+
+/// <summary>
+/// A BSLightingShaderProperty's own values, kept as they are in the source mesh. LODGen does this for LOD models whose
+/// file name ends in <c>passthru_lod</c> ("do not modify the shader"); every other LOD mesh gets LODGen's standard LOD shader.
+/// </summary>
+public sealed record LodShaderPassthru(
+    uint ShaderType,
+    float UvOffsetX, float UvOffsetY, float UvScaleX, float UvScaleY,
+    float Alpha, float Refraction, float Glossiness,
+    Vector3 SpecularColor, float SpecularStrength,
+    float LightingEffect1, float LightingEffect2)
+{
+    public string Key => FormattableString.Invariant(
+        $"{ShaderType}:{UvOffsetX:G6},{UvOffsetY:G6},{UvScaleX:G6},{UvScaleY:G6}:{Alpha:G6},{Refraction:G6},{Glossiness:G6}:{SpecularColor.X:G6},{SpecularColor.Y:G6},{SpecularColor.Z:G6}:{SpecularStrength:G6}:{LightingEffect1:G6},{LightingEffect2:G6}");
 }
 
 /// <summary>
@@ -34,6 +51,8 @@ public sealed record LodMaterial(
 /// </summary>
 public sealed class LodMeshPart
 {
+    /// <summary>The shape's name in the source mesh. LODGen reads instructions from it (crown, trunk, flattrunk, spherenormals…).</summary>
+    public string? Name { get; init; }
     public required LodMaterial Material { get; init; }
     public required Vector3[] Positions { get; init; }
     public required Vector2[] UVs { get; init; }

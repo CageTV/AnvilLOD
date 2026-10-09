@@ -39,7 +39,8 @@ public static class TreeLodGenerator
         BuildManifest manifest,
         IProgress<string>? progress = null,
         CancellationToken ct = default,
-        float brightness = 1f)
+        float brightness = 1f,
+        IReadOnlySet<string>? objectLodWorlds = null)   // worldspaces whose trees are (partly) in object LOD: vanilla tree LOD must be emptied there even if no billboard tree is left
     {
         var sw = Stopwatch.StartNew();
         var warnings = new List<string>();
@@ -57,6 +58,38 @@ public static class TreeLodGenerator
             var treeFolder = Path.Combine(outputFolder, "meshes", "terrain", ws, "trees");
             if (list.Count == 0)
             {
+                // Every tree here is in object LOD (3D tree LOD, light-plugin trees): no .lst or atlas of ours, but the
+                // vanilla .btt files would still draw the vanilla trees next to ours, so each gets an empty one.
+                if (objectLodWorlds is not null && objectLodWorlds.Contains(ws))
+                {
+                    var vanillaBlocks = assets.EnumeratePaths(GamePath.Join("meshes", "terrain", ws, "trees") + "\\")
+                        .Where(p => p.EndsWith(".btt", StringComparison.Ordinal))
+                        .Select(p => Path.GetFileName(p))
+                        .ToList();
+                    var emptyHash = "empty v" + Version + "|" + string.Join("|", vanillaBlocks.Order(StringComparer.OrdinalIgnoreCase));
+                    if (!manifest.Trees.TryGetValue(ws, out var prev) || prev != emptyHash
+                        || vanillaBlocks.Any(n => !File.Exists(Path.Combine(treeFolder, n))))
+                    {
+                        var keepEmpty = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var name in vanillaBlocks)
+                        {
+                            Write(Path.Combine(treeFolder, name), TreeLodFiles.EmptyBlock());
+                            keepEmpty.Add(name);
+                        }
+                        empty += vanillaBlocks.Count;
+                        deleted += DeleteOurFiles(outputFolder, ws, keepEmpty);
+                        foreach (var rel in new[] { TreeLodFiles.ListPath(ws), TreeLodFiles.AtlasPath(ws) })
+                        {
+                            var f = BuildManifest.FullPath(outputFolder, rel);
+                            try { if (File.Exists(f)) { File.Delete(f); deleted++; } } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                        }
+                        manifest.Trees[ws] = emptyHash;
+                        written++;
+                        progress?.Report($"Tree LOD {ws}: all trees are in object LOD; {vanillaBlocks.Count:N0} vanilla tree LOD blocks emptied");
+                    }
+                    else unchanged++;
+                    continue;
+                }
                 // Nothing to do; clean up what an earlier build wrote for this worldspace.
                 if (manifest.Trees.Remove(ws))
                     deleted += DeleteOurFiles(outputFolder, ws, keep: null);

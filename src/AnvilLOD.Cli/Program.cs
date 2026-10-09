@@ -45,11 +45,56 @@ public static class Program
           --tree-brightness <pct> Tree LOD billboard brightness, 10-110 (default 100)
           --object-brightness <pct> Object LOD brightness, 10-110 (default 100)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
+          --tree-3d              Use 3D tree LOD models (DynDOLOD passthru_lod.nif, matched by the CRC32 of the
+                                 tree's mesh) in object LOD: 3D at LOD4, billboard cards from LOD8 on.
+                                 Trees without a model keep billboard tree LOD.
+          --tree-3d-lod8         With --tree-3d: use the 3D model at LOD8 too (bigger files)
+          --tree-3d-by-name      With --tree-3d: when no model matches the CRC32, accept the one stored under the
+                                 plain tree name (it may be for another version of the mesh)
+          --pbr-lod              Make object LOD textures match PBR full models: use TexGen's pbr_lod twins and
+                                 convert PBR albedo copies (textures\anvillod\pbr) for LOD meshes that use a texture
+                                 the full model replaces with textures\pbr\...
+          --pbr-lod-brightness <pct> Brightness of the converted copies, 10-150 (default 100 = DynDOLOD's PBR scale 0.65)
+          --pbr-lod-size <px>    Largest side of a converted copy: 256, 512 (default), 1024 or 2048
+          --underside            Build the terrain underside for volumetric lighting mods (DVLaSS, EVLaS, Community
+                                 Shaders sky sync): meshes\Terrain\<ws>\<ws>_Underside.nif plus AnvilLOD Underside.esm
+                                 (flagged ESL, no plugin slot). Enable the ESM; load it after plugins that edit worldspaces
+          --underside-detail <n> LAND vertices per underside quad: 4, 8, 16 (default), 32, 64 or 128. Smaller is finer and heavier
           --no-enable-parented   Exclude every reference with an enable parent (by default only
                                  parented refs that start disabled are left out)
 
-        Example: AnvilLOD scan --mo2 "E:\Tabula Rasa" --worldspace Tamriel
+        Example: AnvilLOD scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel
         """;
+
+    private static int PbrLodSizeFromArgs(CliArgs a)
+    {
+        if (a.Get("pbr-lod-size") is not { } v) return 512;
+        if (!a.Has("pbr-lod") && a.Get("pbr-lod-brightness") is null) throw new CliArgException("--pbr-lod-size only applies together with --pbr-lod.");
+        if (!int.TryParse(v, out var px) || px is not (256 or 512 or 1024 or 2048))
+            throw new CliArgException($"--pbr-lod-size must be 256, 512, 1024 or 2048 (got '{v}').");
+        return px;
+    }
+
+    private static int UndersideStepFromArgs(CliArgs a)
+    {
+        if (a.Get("underside-detail") is not { } v) return AnvilLOD.Core.World.UndersideMesher.DefaultStep;
+        if (!a.Has("underside"))
+            throw new CliArgException("--underside-detail only applies together with --underside.");
+        if (!int.TryParse(v, out var step) || !AnvilLOD.Core.World.UndersideMesher.IsValidStep(step))
+            throw new CliArgException($"--underside-detail must be 4, 8, 16, 32, 64 or 128 (got '{v}').");
+        return step;
+    }
+
+    private static Tree3DSettings? Tree3DFromArgs(CliArgs a)
+    {
+        if (!a.Has("tree-3d"))
+        {
+            if (a.Has("tree-3d-lod8") || a.Has("tree-3d-by-name"))
+                throw new CliArgException("--tree-3d-lod8 and --tree-3d-by-name only apply together with --tree-3d.");
+            return null;
+        }
+        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: a.Has("tree-3d-by-name"));
+    }
 
     public static int Main(string[] args)
     {
@@ -91,7 +136,8 @@ public static class Program
                 IncludeEnableParented: !a.Has("no-enable-parented"),
                 TreeLod: !a.Has("no-trees"),
                 DynamicLod: !a.Has("no-dynamic"),
-                GridObjects: !a.Has("no-grid-objects")),
+                GridObjects: !a.Has("no-grid-objects"),
+                Tree3D: Tree3DFromArgs(a)),
             OutputFolder: a.Get("output"),
             Generate: generate,
             DynDolodFolder: a.Get("dyndolod"),
@@ -100,13 +146,19 @@ public static class Program
             GrassLod: !a.Has("no-grass"),
             ChildWorlds: !a.Has("no-child-worlds"),
             Seasons: a.Has("seasons"),
+            Underside: a.Has("underside"),
+            PbrLod: a.Has("pbr-lod"),
+            PbrLodBrightness: (a.Get("pbr-lod-brightness") is { } pb && float.TryParse(pb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pbp) ? Math.Clamp(pbp, 10f, 150f) : 100f) / 100f,
+            PbrLodSize: PbrLodSizeFromArgs(a),
+            UndersideStep: UndersideStepFromArgs(a),
             SkseDll: (a.Get("skse-dll") ?? "auto").ToLowerInvariant() switch
             {
                 "auto" => SkseDllChoice.Auto,
                 "1170" or "old" or "se" or "ae" => SkseDllChoice.UpTo1170,
                 "17" or "new" or "1.7" => SkseDllChoice.Newer,
+                "vr" or "1.4.15" => SkseDllChoice.Vr,
                 "none" or "separate" => SkseDllChoice.None,
-                var v => throw new CliArgException($"--skse-dll must be auto, 1170, 17 or none (got '{v}')."),
+                var v => throw new CliArgException($"--skse-dll must be auto, 1170, 17, vr or none (got '{v}')."),
             },
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,

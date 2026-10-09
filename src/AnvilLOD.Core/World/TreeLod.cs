@@ -43,9 +43,27 @@ public sealed record TreeReference(
     float Scale,
     uint RuntimeFormId,       // load-order-resolved FormID (the engine matches LOD to the loaded tree by it)
     TreeBillboard Billboard,
-    bool ObjectLod = false)   // copied from a child worldspace: never loads here, so it goes into object LOD as cards
+    bool ObjectLod = false,   // copied from a child worldspace: never loads here, so it goes into object LOD as cards
+    string? Model3D = null,   // data-relative path of its 3D tree LOD model (…passthru_lod.nif), when the 3D option found one
+    bool Model3DByName = false) // that model was found by plain name, not by the CRC32 of the tree's mesh
 {
     public CellCoord Cell => CellCoord.FromWorld(Position.X, Position.Y);
+}
+
+/// <summary>
+/// 3D tree LOD: trees with a 3D tree LOD model go into object LOD (the 3D model at LOD4, optionally LOD8, billboard
+/// cards further out) instead of the billboard tree LOD files. Off by default.
+/// </summary>
+/// <param name="Enabled">Look for 3D tree LOD models.</param>
+/// <param name="Lod8">Use the 3D model at LOD8 as well (otherwise LOD4 only, billboard cards from LOD8).</param>
+/// <param name="PlainNameFallback">When no model matches the tree mesh's CRC32, accept the one stored under the plain tree name.
+/// It may have been made for another version of the mesh, so it's opt-in.</param>
+public sealed record Tree3DSettings(bool Enabled = false, bool Lod8 = false, bool PlainNameFallback = false)
+{
+    public static readonly Tree3DSettings Off = new();
+
+    /// <summary>Part of the settings fingerprint, so a changed option rebuilds the blocks it affects.</summary>
+    public string Fingerprint => Enabled ? $"tree3d:{(Lod8 ? "l48" : "l4")}{(PlainNameFallback ? "+name" : "")}" : "";
 }
 
 /// <summary>

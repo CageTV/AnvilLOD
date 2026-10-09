@@ -1,7 +1,7 @@
 # Builds AnvilLOD (Release) and copies the app + CLI into one folder you can run from.
 #
 #   .\build.ps1                                   -> builds into .\dist
-#   .\build.ps1 -Dest "E:\Tabula Rasa\tools\AnvilLOD"
+#   .\build.ps1 -Dest "D:\Modlists\MyList\tools\AnvilLOD"
 #
 # Build the SKSE plugin first (skse\build.ps1); its DLLs in skse\dist are bundled into the tool's SKSE folder.
 #
@@ -30,8 +30,8 @@ Copy-Item "$app\*" $Dest -Recurse -Force
 Copy-Item "$cli\*" $Dest -Recurse -Force
 
 # Bundle the SKSE plugin builds, so Generate can put the right AnvilLOD.dll into the LOD output
-# (build them first with skse\build.ps1; line 1 = SE 1.5.97 - AE 1.6.1170, line 17 = newer).
-foreach ($line in @("1.5.97-1.6.1170", "1.7.x")) {
+# (build them first with skse\build.ps1 -Line all; line 1 = SE 1.5.97 - AE 1.6.1170, line 17 = newer, vr = Skyrim VR 1.4.15).
+foreach ($line in @("1.5.97-1.6.1170", "1.7.x", "1.4.15-VR")) {
     $dll = Join-Path $PSScriptRoot "skse\dist\$line\SKSE\Plugins\AnvilLOD.dll"
     $to = Join-Path $Dest "SKSE\$line"
     if (Test-Path $dll) {
@@ -39,7 +39,8 @@ foreach ($line in @("1.5.97-1.6.1170", "1.7.x")) {
         Copy-Item $dll $to -Force
         Write-Host "Bundled SKSE plugin ($line), built $((Get-Item $dll).LastWriteTime)"
     } else {
-        Write-Host "No SKSE plugin build for $line yet (skse\build.ps1 -Line $(if ($line -eq '1.7.x') {'17'} else {'1'})) - Generate can't install that one." -ForegroundColor Yellow
+        $which = switch ($line) { "1.7.x" { "17" } "1.4.15-VR" { "vr" } default { "1" } }
+        Write-Host "No SKSE plugin build for $line yet (skse\build.ps1 -Line $which) - Generate can't install that one." -ForegroundColor Yellow
     }
 }
 

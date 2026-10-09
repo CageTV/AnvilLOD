@@ -34,6 +34,24 @@
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/ports-17",
         "ANVILLOD_RUNTIME_LINE": "17"
       }
+    },
+    {
+      "name": "release-vr",
+      "displayName": "Release, Skyrim VR 1.4.15 (CommonLibSSE-NG 7.2.0, VR only)",
+      "binaryDir": "${sourceDir}/build-vr",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed-vr",
+        "VCPKG_MANIFEST_DIR": "${sourceDir}/cmake/manifest-vr",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/ports-vr",
+        "ANVILLOD_RUNTIME_LINE": "14"
+      }
     }
   ],
   "buildPresets": [
@@ -45,6 +63,11 @@
     {
       "name": "release-17",
       "configurePreset": "release-17",
+      "configuration": "Release"
+    },
+    {
+      "name": "release-vr",
+      "configurePreset": "release-vr",
       "configuration": "Release"
     }
   ]

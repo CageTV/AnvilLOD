@@ -1,0 +1,10 @@
+{
+  "name": "anvillod-skse-vr",
+  "version-string": "0.2.0",
+  "description": "AnvilLOD runtime, Skyrim VR build line: same sources as the root manifest, CommonLibSSE-NG 7.2.0 (VR only) from cmake/ports-vr.",
+  "dependencies": [
+    "commonlibsse-ng",
+    "spdlog"
+  ],
+  "builtin-baseline": "127402f1c75bb3d5ff6bce04b285faa4930a5aca"
+}

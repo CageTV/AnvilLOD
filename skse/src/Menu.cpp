@@ -223,6 +223,8 @@ namespace AnvilLOD::Menu
 			Smf::Text("AnvilLOD %s", ANVILLOD_VERSION_STRING);
 #if ANVILLOD_RUNTIME_LINE == 17
 			Smf::Text("Build: game versions newer than 1.6.1170 (Skyrim 1.7.x)");
+#elif ANVILLOD_RUNTIME_LINE == 14
+			Smf::Text("Build: Skyrim VR 1.4.15");
 #else
 			Smf::Text("Build: game versions SE 1.5.97 to AE 1.6.1170");
 #endif

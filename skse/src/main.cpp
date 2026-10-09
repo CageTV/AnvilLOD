@@ -56,12 +56,16 @@ SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 	const auto game = a_skse->RuntimeVersion();
 	// Line 1: SE 1.5.97 up to AE 1.6.1170. Line 17: everything newer (1.7.99, 1.7.104, ...).
 	constexpr REL::Version kLastOld{ 1, 6, 1170, 0 };
+	constexpr REL::Version kFirstSE{ 1, 5, 0, 0 };   // Skyrim VR is 1.4.15; every SE/AE runtime is 1.5 or newer
 #if ANVILLOD_RUNTIME_LINE == 17
 	constexpr auto kLine = "newer than 1.6.1170 (Skyrim 1.7.x)";
 	if (game <= kLastOld) return false;
+#elif ANVILLOD_RUNTIME_LINE == 14
+	constexpr auto kLine = "Skyrim VR 1.4.15";
+	if (game >= kFirstSE) return false;
 #else
 	constexpr auto kLine = "SE 1.5.97 to AE 1.6.1170";
-	if (game > kLastOld) return false;
+	if (game > kLastOld || game < kFirstSE) return false;
 #endif
 
 	SKSE::Init(a_skse);

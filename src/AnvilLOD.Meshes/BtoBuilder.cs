@@ -150,27 +150,31 @@ public static class BtoBuilder
 
     internal static void WriteShader(BinaryWriter b, LodMaterial m, int texSet, bool colors)
     {
+        var pt = m.Passthru;
+        // Shader types with extra per-type data (environment maps, skin, hair...) can't be carried over, so a
+        // passthru shape of such a type is written as the default type; tree LOD models are all default-type.
         b.Write(0u);                          // shader type: default
         NifWriter.WriteObjectNet(b, -1);
         b.Write(m.ShaderFlags1);
         b.Write(m.ShaderFlags2 | (colors ? 0x20u : 0u));
-        b.Write(0f); b.Write(0f);             // uv offset
-        b.Write(1f); b.Write(1f);             // uv scale
+        b.Write(pt?.UvOffsetX ?? 0f); b.Write(pt?.UvOffsetY ?? 0f);   // uv offset
+        b.Write(pt?.UvScaleX ?? 1f); b.Write(pt?.UvScaleY ?? 1f);     // uv scale
         b.Write(texSet);
         b.Write(m.EmissiveColor.X); b.Write(m.EmissiveColor.Y); b.Write(m.EmissiveColor.Z);
         b.Write(m.EmissiveMultiple);
         b.Write(m.ClampMode);
-        b.Write(1f);                          // alpha
-        b.Write(0f);                          // refraction
-        b.Write(1f);                          // glossiness (LODGen value)
-        b.Write(1f); b.Write(1f); b.Write(1f);// specular color
-        b.Write(1f);                          // specular strength
-        b.Write(0f); b.Write(0f);             // lighting effects
+        b.Write(pt?.Alpha ?? 1f);             // alpha
+        b.Write(pt?.Refraction ?? 0f);        // refraction
+        b.Write(pt?.Glossiness ?? 1f);        // glossiness (LODGen value)
+        var spec = pt?.SpecularColor ?? Vector3.One;
+        b.Write(spec.X); b.Write(spec.Y); b.Write(spec.Z);   // specular color
+        b.Write(pt?.SpecularStrength ?? 1f);  // specular strength
+        b.Write(pt?.LightingEffect1 ?? 0f); b.Write(pt?.LightingEffect2 ?? 0f); // lighting effects
     }
 
     /// <summary>Merged geometry for one material, in block-local, level-scaled coordinates.</summary>
     /// <summary>Scales the RGB bytes of an RGBA vertex colour (alpha kept).</summary>
-    internal static uint Scale(uint rgba, float f)
+    public static uint Scale(uint rgba, float f)
     {
         if (f >= 0.999f && f <= 1.001f) return rgba;
         uint r = (uint)Math.Clamp(MathF.Round((rgba & 0xFF) * f), 0, 255);

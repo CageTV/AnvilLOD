@@ -15,6 +15,13 @@ public sealed class TerrainHeights
 
     public int CellCount => _cells.Count;
 
+    /// <summary>The cells of one worldspace that have terrain.</summary>
+    public IEnumerable<CellCoord> CellsOf(string worldspace)
+    {
+        var ws = worldspace.ToLowerInvariant();
+        return _cells.Keys.Where(k => k.Ws == ws).Select(k => new CellCoord(k.X, k.Y));
+    }
+
     /// <summary>
     /// Decodes VHGT: a float offset followed by 33×33 signed deltas. The first value of each row is relative
     /// to the first value of the previous row; the others are relative to their left neighbour. Units of 8.
@@ -39,6 +46,17 @@ public sealed class TerrainHeights
 
     public void Set(string worldspace, int cellX, int cellY, float[] heights) =>
         _cells[(worldspace.ToLowerInvariant(), cellX, cellY)] = heights;
+
+    /// <summary>
+    /// Height of one LAND vertex by global vertex index (cell * 32 + local; one step = 128 units), or null where the
+    /// cell has no terrain. A cell's last row/column is the next cell's first, so only 32 of the 33 are read.
+    /// </summary>
+    public float? VertexAt(string worldspace, int gx, int gy)
+    {
+        int cx = LodGrid.FloorDiv(gx, Grid - 1), cy = LodGrid.FloorDiv(gy, Grid - 1);
+        if (!_cells.TryGetValue((worldspace.ToLowerInvariant(), cx, cy), out var h)) return null;
+        return h[(gy - cy * (Grid - 1)) * Grid + (gx - cx * (Grid - 1))];
+    }
 
     /// <summary>Terrain height at a world position (bilinear between the 4 surrounding vertices), or null if unknown.</summary>
     public float? HeightAt(string worldspace, float x, float y)

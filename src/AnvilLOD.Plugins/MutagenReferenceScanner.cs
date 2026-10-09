@@ -44,9 +44,16 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
     /// <summary>References copied from child worldspaces into their parent's LOD by the last scan.</summary>
     public int ChildCopies { get; private set; }
 
+    /// <summary>
+    /// 3D tree LOD, last scan: tree types whose only 3D model is stored under the plain tree name (it doesn't match the
+    /// mesh's CRC32) while the accept-by-name option is off. Zero when the option is on.
+    /// </summary>
+    public int Tree3DNameOnlyAvailable { get; private set; }
+
     public ScanResult Scan(ScanOptions options, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         ChildCopies = 0;
+        Tree3DNameOnlyAvailable = 0;
         var sw = Stopwatch.StartNew();
         var priority = _game.LoadOrder.PriorityOrder;
 
@@ -136,6 +143,31 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         }
         bool IsTree(FormKey fk) => linkCache.TryResolve<ITreeGetter>(fk, out _);
         var isTreeCache = new ConcurrentDictionary<FormKey, bool>();
+
+        // 3D tree LOD: the model DynDOLOD would use for this tree, found by the CRC32 of the tree's mesh file
+        // (or, when asked, by the plain tree name).
+        var tree3d = options.Tree3D is { Enabled: true } t3o ? t3o : null;
+        var tree3dCache = new ConcurrentDictionary<FormKey, Tree3DModels.Match?>();
+        int nameOnlyTypes = 0;
+        Tree3DModels.Match? Find3D(FormKey fk)
+        {
+            if (tree3d is null || !linkCache.TryResolve<ITreeGetter>(fk, out var tree)) return null;
+            var model = tree.Model?.File;
+            if (model is null || model.IsNull) return null;
+            var modelPath = model.DataRelativePath.Path;
+            if (!_assets.TryOpen(modelPath, out var ms0)) return null;
+            byte[] bytes;
+            using (ms0)
+            {
+                using var buf = new MemoryStream();
+                ms0.CopyTo(buf);
+                bytes = buf.ToArray();
+            }
+            var match = Tree3DModels.Resolve(modelPath, Tree3DModels.Crc32(bytes), tree3d.PlainNameFallback, Exists);
+            if (match is null && !tree3d.PlainNameFallback && Exists(Tree3DModels.PlainPath(modelPath)))
+                Interlocked.Increment(ref nameOnlyTypes);
+            return match;
+        }
 
         // 3) Walk winning REFRs. Enable state is decided after the walk, because an enable parent can be any
         //    reference anywhere in the load order. Only disabled refs and refs with a parent are remembered.
@@ -248,9 +280,11 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                         missingBillboards.AddOrUpdate(key, 1, (_, n) => n + 1);
                         return;
                     }
+                    var m3 = tree3d is null ? null : tree3dCache.GetOrAdd(baseKey.Value, Find3D);
                     var tr = new TreeReference(r.FormKey.ToString(), wsId,
                         new Vector3(tp.Position.X, tp.Position.Y, tp.Position.Z), tp.Rotation.Z, r.Scale ?? 1f,
-                        runtimeIds.Resolve(r.FormKey), bb, ObjectLod: copy is not null);
+                        runtimeIds.Resolve(r.FormKey), bb, ObjectLod: copy is not null,
+                        Model3D: m3?.Path, Model3DByName: m3?.Kind == Tree3DModels.MatchKind.PlainName);
                     if (copy is not null)
                     {
                         copiedTrees.Add(tr);
@@ -458,6 +492,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             trees.RemoveAll(t => treeParentOf.TryGetValue(t, out var fk) && !states.StartsEnabled(fk));
             skippedDisabled += before - trees.Count;
         }
+        Tree3DNameOnlyAvailable = nameOnlyTypes;
         if (options.TreeLod)
             progress?.Report($"Trees: {trees.Count:N0} with billboards, {missingBillboards.Values.Sum():N0} without ({missingBillboards.Count:N0} tree types have no billboard)");
 

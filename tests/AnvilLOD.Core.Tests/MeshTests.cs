@@ -68,6 +68,54 @@ public class MeshTests
     }
 
     [Fact]
+    public void Passthru_keeps_the_source_shader_settings_and_the_shape_name()
+    {
+        // Soft lighting, tree-style flags and non-default shader values must survive a passthru read, which the normal
+        // LOD read deliberately reduces to LODGen's standard LOD shader.
+        var pt = new LodShaderPassthru(0, 0.25f, 0.5f, 2f, 3f, 0.75f, 0.1f, 40f, new Vector3(0.2f, 0.3f, 0.4f), 0.6f, 0.3f, 1.5f);
+        var mat = new LodMaterial(["textures\\t\\crown.dds", "textures\\t\\crown_n.dds", "", "", "", "textures\\t\\crown_sk.dds", "", "", ""],
+            0x8000_0F29u, 0x0020_4045u, 3, true, (ushort)0x12EC, 128, Vector3.Zero, 1f, pt);
+        var src = Triangle(mat, colors: null);
+        var mesh = new LodMesh
+        {
+            Path = "m",
+            Parts = [new LodMeshPart
+            {
+                Name = "SphereNormals abies Crown", Material = mat, Positions = src.Positions, UVs = src.UVs, Normals = src.Normals,
+                Tangents = src.Tangents, Bitangents = src.Bitangents, Colors = null, Triangles = src.Triangles,
+            }],
+        };
+        var r = new LodReference("1:A.esp", "2:A.esp", null, "T", "A.esp", new Vector3(100, 100, 0), Vector3.Zero, 1f,
+            new LodMeshSet("m", null, null, null), LodReferenceFlags.None);
+        var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod4, 0, 0), [r], _ => mesh);
+
+        // Normal read: reduced to the LOD shader (0x80000300 plus the kept Vertex_Alpha bit; Double_Sided|Glow kept in flags 2).
+        var plain = NifGeometryReader.Read("out", res.Bytes);
+        Assert.Equal(0x8000_0308u, plain.Parts[0].Material.ShaderFlags1);
+        Assert.Equal(0x0000_0045u, plain.Parts[0].Material.ShaderFlags2);
+        Assert.Null(plain.Parts[0].Material.Passthru);
+
+        // Passthru read: everything as written.
+        var back = NifGeometryReader.Read("out", res.Bytes, passthru: true);
+        var m = back.Parts[0].Material;
+        Assert.Equal(0x8000_0F29u, m.ShaderFlags1);
+        Assert.Equal(0x0020_4045u, m.ShaderFlags2);
+        Assert.NotNull(m.Passthru);
+        Assert.Equal(pt.Glossiness, m.Passthru!.Glossiness);
+        Assert.Equal(pt.SpecularStrength, m.Passthru.SpecularStrength);
+        Assert.Equal(pt.LightingEffect1, m.Passthru.LightingEffect1);
+        Assert.Equal(pt.LightingEffect2, m.Passthru.LightingEffect2);
+        Assert.Equal(pt.UvOffsetX, m.Passthru.UvOffsetX);
+        Assert.Equal(pt.UvScaleY, m.Passthru.UvScaleY);
+        Assert.Equal(pt.SpecularColor, m.Passthru.SpecularColor);
+        Assert.Equal("textures\\t\\crown_sk.dds", m.Textures[5]);
+        Assert.True(m.HasAlpha);
+        Assert.Equal((ushort)0x12EC, m.AlphaFlags);
+        Assert.Equal(128, m.AlphaThreshold);
+        Assert.False(string.IsNullOrEmpty(back.Parts[0].Name)); // the writer names shapes "obj"; the reader keeps whatever it finds
+    }
+
+    [Fact]
     public void Empty_block_is_a_valid_nif()
     {
         var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod32, 0, 0), [], _ => null);

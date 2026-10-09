@@ -2,7 +2,7 @@
 #
 #   AnvilLOD-<version>.zip                 the tool (app + command line), unzip anywhere and run AnvilLOD.App.exe
 #   AnvilLOD SKSE Plugin-<version>.zip     FOMOD for MO2/Vortex: asks for the game version and installs the
-#                                          matching AnvilLOD.dll (SE 1.5.97 - AE 1.6.1170, or newer than 1.6.1170)
+#                                          matching AnvilLOD.dll (SE 1.5.97 - AE 1.6.1170, newer than 1.6.1170, or Skyrim VR 1.4.15)
 #
 #   .\package.ps1                  build everything, then package
 #   .\package.ps1 -SkipBuild       package what's already in dist\ and skse\dist\
@@ -18,8 +18,8 @@ Write-Host "AnvilLOD $version" -ForegroundColor Cyan
 
 $toolDist = Join-Path $PSScriptRoot "dist\tool"
 if (-not $SkipBuild) {
-    # SKSE first: the tool build bundles both DLLs (tool\SKSE\<line>) so Generate can install the right one.
-    & "$PSScriptRoot\skse\build.ps1" -Line both
+    # SKSE first: the tool build bundles all three DLLs (tool\SKSE\<line>) so Generate can install the right one.
+    & "$PSScriptRoot\skse\build.ps1" -Line all
     & "$PSScriptRoot\build.ps1" -Dest $toolDist
     if ($LASTEXITCODE -ne 0) { throw "Tool build failed." }
 }
@@ -58,9 +58,9 @@ Copy-Item "$PSScriptRoot\packaging\fomod\ModuleConfig.xml" "$stage\fomod\"
 Copy-Item "$PSScriptRoot\assets\fomod.jpg" "$stage\fomod\images\anvillod.jpg"
 Copy-Item "$PSScriptRoot\packaging\AnvilLOD.ini" "$stage\common\SKSE\Plugins\AnvilLOD.ini"
 Copy-Item "$PSScriptRoot\LICENSE.txt" "$stage\LICENSE.txt"
-foreach ($line in "1.5.97-1.6.1170", "1.7.x") {
+foreach ($line in "1.5.97-1.6.1170", "1.7.x", "1.4.15-VR") {
     $src = Join-Path $PSScriptRoot "skse\dist\$line\SKSE\Plugins\AnvilLOD.dll"
-    if (-not (Test-Path $src)) { throw "Missing $src - build it with skse\build.ps1 -Line both" }
+    if (-not (Test-Path $src)) { throw "Missing $src - build it with skse\build.ps1 -Line all" }
     New-Item -ItemType Directory -Force -Path "$stage\$line\SKSE\Plugins" | Out-Null
     Copy-Item $src "$stage\$line\SKSE\Plugins\"
     $pdb = [IO.Path]::ChangeExtension($src, ".pdb")
