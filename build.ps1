@@ -44,6 +44,39 @@ foreach ($line in @("1.5.97-1.6.1170", "1.7.x", "1.4.15-VR")) {
     }
 }
 
+# MO2's usvfs crashes a launcher exe that is marked CET shadow stack compatible (the .NET 10 SDK's default), so Directory.Build.props
+# turns that off. Make sure it stayed off in both exes: a build that sets it again would not start from MO2's executables list.
+function Get-CetCompat([string]$exe) {
+    $b = [System.IO.File]::ReadAllBytes($exe)
+    $pe = [BitConverter]::ToInt32($b, 0x3c)
+    $nsec = [BitConverter]::ToUInt16($b, $pe + 6); $opt = $pe + 24
+    $dbgRva = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8); $dbgSize = [BitConverter]::ToUInt32($b, $opt + 112 + 6 * 8 + 4)
+    $sec = $opt + [BitConverter]::ToUInt16($b, $pe + 20)
+    $toOffset = {
+        param($rva)
+        for ($i = 0; $i -lt $nsec; $i++) {
+            $va = [BitConverter]::ToUInt32($b, $sec + $i * 40 + 12); $vs = [BitConverter]::ToUInt32($b, $sec + $i * 40 + 8); $ro = [BitConverter]::ToUInt32($b, $sec + $i * 40 + 20)
+            if ($rva -ge $va -and $rva -lt $va + $vs) { return [int]($rva - $va + $ro) }
+        }
+        -1
+    }
+    $o = & $toOffset $dbgRva
+    if ($dbgRva -eq 0 -or $o -lt 0) { return $false }
+    for ($i = 0; $i -lt [int]($dbgSize / 28); $i++) {
+        if ([BitConverter]::ToUInt32($b, $o + $i * 28 + 12) -eq 20) {   # IMAGE_DEBUG_TYPE_EX_DLLCHARACTERISTICS
+            $ptr = [BitConverter]::ToUInt32($b, $o + $i * 28 + 24)
+            return (([BitConverter]::ToUInt32($b, $ptr)) -band 1) -ne 0
+        }
+    }
+    $false
+}
+foreach ($exe in @("AnvilLOD.App.exe", "AnvilLOD.exe")) {
+    if (Get-CetCompat (Join-Path $Dest $exe)) {
+        Write-Host "$exe is marked CET compatible: it will crash when started from MO2. Check <CETCompat>false</CETCompat> in Directory.Build.props." -ForegroundColor Red
+        exit 1
+    }
+}
+
 $stamp = (Get-Item (Join-Path $Dest "AnvilLOD.Plugins.dll")).LastWriteTime
 Write-Host "Done. AnvilLOD copied to $Dest (Plugins.dll built $stamp)" -ForegroundColor Green
-Write-Host "Run AnvilLOD.App.exe from there (no need to launch it through MO2)."
+Write-Host "Run AnvilLOD.App.exe from there, or add it to MO2's executables list."

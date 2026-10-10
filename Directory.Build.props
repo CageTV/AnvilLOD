@@ -9,6 +9,9 @@
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <TieredPGO>true</TieredPGO>
+    <!-- The .NET 10 SDK marks the launcher exe as CET shadow stack compatible. MO2's usvfs hooks break that: the exe crashes at
+         start (0xC0000005 in an unknown module) when started from MO2's executables list. Off, it starts in MO2 like any other tool. -->
+    <CETCompat>false</CETCompat>
     <!-- One version for the tool and the SKSE plugin: the VERSION file at the repo root (bump.ps1 raises the last number). -->
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
     <Authors>CageTV</Authors>
