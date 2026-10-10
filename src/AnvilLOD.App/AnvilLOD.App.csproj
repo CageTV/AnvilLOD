@@ -13,6 +13,7 @@
   <ItemGroup>
     <Resource Include="..\..\assets\anvillod.ico" Link="anvillod.ico" />
     <Resource Include="..\..\assets\anvillod-256.png" Link="anvillod-256.png" />
+    <Resource Include="..\..\assets\anvillod-watermark.png" Link="watermark.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />

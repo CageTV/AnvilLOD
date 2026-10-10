@@ -56,7 +56,7 @@ public static class Program
           --no-child-worlds      Don't copy walled cities (Whiterun, Solitude, ...) into Tamriel's LOD
           --no-dynamic           Keep switchable references (quest-toggled) in static LOD instead of
                                  handing them to the AnvilLOD SKSE plugin
-          --seasons              EXPERIMENTAL: seasonal object LOD for Seasons of Skyrim (Data\Seasons\*_WIN.ini ...)
+          --seasons              Seasonal object and grass LOD for Seasons of Skyrim (Data\Seasons\*_WIN.ini ...)
           --skse-dll <which>     SKSE plugin put in the output: auto (default, reads SkyrimSE.exe),
                                  1170 (SE 1.5.97 - AE 1.6.1170), 17 (newer, 1.7.x), none (installed separately)
           --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD

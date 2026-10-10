@@ -25,7 +25,7 @@ public sealed record ScanRequest(
     float GrassBottom = GrassPatchBuilder.DefaultBottom, // ... and at the roots (GrassBrightnessBottom)
     float TreeBrightness = 1f,                     // tree LOD billboard colour multiplier (DynDOLOD-style brightness)
     float ObjectBrightness = 1f,                   // object LOD colour multiplier (vertex colours; textures untouched)
-    bool Seasons = false,                          // EXPERIMENTAL: Seasons of Skyrim seasonal object LOD (<block>.WIN.bto, …)
+    bool Seasons = false,                          // Seasons of Skyrim seasonal object and grass LOD (<block>.WIN.bto, …)
     bool ChildWorlds = true,                       // copy walled-city child worldspaces into the parent's LOD (DynDOLOD Configs)
     SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
     bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD.esp (ESL)
@@ -369,7 +369,7 @@ public static class ScanPipeline
             // Seasons of Skyrim: seasonal copies of the object LOD blocks, after the normal ones are up to date.
             if (req.Seasons)
             {
-                progress?.Report("Seasons (experimental): building seasonal object LOD from Data\\Seasons\\*_WIN/_SPR/_SUM/_AUT.ini...");
+                progress?.Report("Seasons: building seasonal object LOD from Data\\Seasons\\*_WIN/_SPR/_SUM/_AUT.ini...");
                 var seasonal = SeasonalLod.Build(game, assets, assets.EnumeratePaths, resolver, quads, generator, output, progress, ct, grass);
                 if (seasonal.Seasons == 0 && seasonal.Messages.Count == 0)
                     progress?.Report("Seasons: no season INI files found in Data\\Seasons; nothing written.");

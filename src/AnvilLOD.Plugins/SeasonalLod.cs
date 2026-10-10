@@ -9,7 +9,7 @@ using Mutagen.Bethesda.Skyrim;
 namespace AnvilLOD.Plugins;
 
 /// <summary>
-/// EXPERIMENTAL Seasons of Skyrim support: for every season that has form-swap INIs (<c>Data\Seasons\*_WIN.ini</c>, …),
+/// Seasons of Skyrim support: for every season that has form-swap INIs (<c>Data\Seasons\*_WIN.ini</c>, …),
 /// writes a full seasonal object LOD set (<c>&lt;World&gt;.&lt;L&gt;.&lt;X&gt;.&lt;Y&gt;.WIN.bto</c>). Blocks with a swapped object are
 /// rebuilt with the swap's LOD meshes (or without it, if the swap has none); every other block is a hard link (or
 /// copy) of the normal one. Seasons without INIs get no files, so Seasons of Skyrim falls back to the normal LOD.

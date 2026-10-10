@@ -16,7 +16,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Tree LOD: 3D models for trees that have none | Simplify the full tree model into a hybrid crown + trunk model, cached as a DynDOLOD-compatible file | planned |
 | Tree LOD: own billboard / trunk renderer | GPU renderer (TexGen not needed, also for the flat trunk textures 3D models use) | planned |
 | Grass LOD (NGIO / FasterNGIO `.cgid`) | Cache read directly; one tuft per occupied ground bin (even coverage), one atlas texture for every grass type, density 1-100%, top/bottom brightness, seasonal caches, LOD4/8/16 | ✅ v2 |
-| Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Tree/terrain LOD not seasonal yet | 🧪 experimental |
+| Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Seasonal grass from the seasonal grass caches. Tree/terrain LOD not seasonal yet | ✅ |
 | Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
 | In-game settings (DynDOLOD MCM equivalent) | SKSE Menu Framework pages: LOD/fade/grass distances, dynamic LOD, water & animated objects | ✅ |
 | Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | 🧪 experimental |

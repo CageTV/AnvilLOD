@@ -320,7 +320,7 @@
                                   ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
                         <CheckBox x:Name="WaterStandInsCheck" Content="Stream, creek and pond water stand-ins"
                                   ToolTip="Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed." />
-                        <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD (EXPERIMENTAL)"
+                        <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD"
                                   ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
                         <TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
                                    ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
@@ -353,7 +353,11 @@
             </Border>
 
             <!-- Results -->
-            <TabControl Grid.Column="1" Margin="18,10,18,12">
+            <!-- The emblem, barely visible behind everything in the results area (the tab control is transparent so it shows through). -->
+            <Image Grid.Column="1" Source="pack://application:,,,/watermark.png" Margin="18,10,18,12" Stretch="Uniform"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.14" IsHitTestVisible="False"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
+            <TabControl Grid.Column="1" Margin="18,10,18,12" Background="Transparent">
 
                 <TabItem Header="Overview">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
