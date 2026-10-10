@@ -31,7 +31,10 @@ public sealed record ScanRequest(
     float PbrLodBrightness = 1f,                   // multiplier on DynDOLOD's default PBR scale (0.65) for the converted copies
     int PbrLodSize = 512,                          // largest side of a converted copy
     bool LargeReferences = false,                  // list missing large references in AnvilLOD.esm, for the engine's large reference grid
-    bool LargeRefsEsl = true);                     // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
+    bool LargeRefsEsl = true,                      // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
+    bool Candles = false,                          // also load DynDOLOD's Candles rules (candle/lantern/sconce lights get Far LOD)
+    bool FxGlow = false,                           // also load DynDOLOD's FXGlow rules (fire and light glow cards get Far LOD)
+    string? CustomRulesFile = null);               // the user's own rule file: its rules come first (null = DynDOLOD's own files only)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -134,13 +137,18 @@ public static class ScanPipeline
             progress?.Report($"Rule files found in the Data root instead of Data\\DynDOLOD (used anyway): {string.Join(", ", misplaced)}");
         var rulesFolder = ResolveRulesFolder(req.DynDolodFolder);
         var plugins = game.LoadOrder.ListedOrder.Where(l => l.Mod is not null).Select(l => l.ModKey.ToString()).ToList();
-        var rules = LodRules.Load(rulesFolder, dataRuleFiles, plugins, req.Preset);
+        var ruleOptions = new LodRuleOptions(req.Candles, req.FxGlow, string.IsNullOrWhiteSpace(req.CustomRulesFile) ? null : req.CustomRulesFile);
+        if (ruleOptions.CustomFile is not null && !File.Exists(ruleOptions.CustomFile))
+            throw new FileNotFoundException($"The custom LOD rules file was not found: {ruleOptions.CustomFile}. Untick \"Use custom rules\" or pick the file again.", ruleOptions.CustomFile);
+        if ((req.Candles || req.FxGlow) && rulesFolder is null)
+            progress?.Report("Candles / FXGlow need the DynDOLOD folder (their rule files are part of DynDOLOD); nothing was added.");
+        var rules = LodRules.Load(rulesFolder, dataRuleFiles, plugins, req.Preset, "SSE", ruleOptions);
         if (rulesFolder is not null)
         {
             var worldIgnore = Path.Combine(Path.GetDirectoryName(rulesFolder)!, "Configs", "DynDOLOD_SSE_mod_world_ignore.txt");
             if (File.Exists(worldIgnore)) rules.AddModWorldIgnore(File.ReadAllText(worldIgnore));
         }
-        progress?.Report($"LOD meshes by name: {lodIndex.Count:N0} objects; rules: {rules.Count:N0} from {rules.Files.Count} files ({req.Preset} preset"
+        progress?.Report($"LOD meshes by name: {lodIndex.Count:N0} objects; rules: {rules.Count:N0} from {rules.Files.Count} files ({req.Preset} preset{(ruleOptions.Candles ? " + Candles" : "")}{(ruleOptions.FxGlow ? " + FXGlow" : "")}{(ruleOptions.CustomFile is null ? "" : " + custom rules")}"
                          + (rulesFolder is null ? ", no DynDOLOD install set: mod rule files and defaults only)" : ")"));
         Dictionary<string, string>? meshLookup = null;
         if (rulesFolder is not null)
@@ -278,7 +286,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (cullTerrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
         sw.Stop();
 
@@ -490,19 +498,7 @@ public static class ScanPipeline
             return set;
         }
 
-        static string? ResolveRulesFolder(string? dyndolod)
-        {
-            if (string.IsNullOrWhiteSpace(dyndolod)) return null;
-            foreach (var candidate in new[]
-            {
-                Path.Combine(dyndolod, "Edit Scripts", "DynDOLOD", "Rules"),
-                Path.Combine(dyndolod, "DynDOLOD", "Rules"),
-                Path.Combine(dyndolod, "Rules"),
-                dyndolod,
-            })
-                if (Directory.Exists(candidate) && Directory.EnumerateFiles(candidate, "DynDOLOD_*.ini").Any()) return candidate;
-            return null;
-        }
+        static string? ResolveRulesFolder(string? dyndolod) => LodRules.FindInstallRulesFolder(dyndolod);
 
         void Warn(string w)
         {

@@ -198,11 +198,29 @@
                             <TextBox x:Name="DynDolodBox" ToolTip="Folder with DynDOLODx64.exe. Its rule files plus the ones mods ship in Data\DynDOLOD decide which LOD mesh each object uses." />
                         </DockPanel>
                         <TextBlock Text="DynDOLOD rule preset" Style="{StaticResource FieldLabel}" />
-                        <ComboBox x:Name="PresetBox" SelectedIndex="2">
-                            <ComboBoxItem Content="Low" />
-                            <ComboBoxItem Content="Medium" />
-                            <ComboBoxItem Content="High" />
-                        </ComboBox>
+                        <DockPanel>
+                            <Button x:Name="EditRulesButton" DockPanel.Dock="Right" Content="Edit rules…" Padding="12,4" Margin="6,0,0,0" Click="EditRules_Click"
+                                    ToolTip="Look at and change the LOD rules of this preset: which LOD model or billboard each kind of object uses at each LOD level. Your changes are saved as your own rule file." />
+                            <ComboBox x:Name="PresetBox" SelectedIndex="2">
+                                <ComboBoxItem Content="Low" />
+                                <ComboBoxItem Content="Medium" />
+                                <ComboBoxItem Content="High" />
+                            </ComboBox>
+                        </DockPanel>
+                        <WrapPanel Margin="0,6,0,0">
+                            <CheckBox x:Name="CandlesCheck" Content="Candles" Margin="0,2,18,2"
+                                      ToolTip="Also load DynDOLOD's Candles rules for this preset: candles, lanterns and sconces get Far LOD, so their light shows in the distance. Needs the DynDOLOD folder." />
+                            <CheckBox x:Name="FxGlowCheck" Content="FXGlow" Margin="0,2,0,2"
+                                      ToolTip="Also load DynDOLOD's FXGlow rules for this preset: the glow cards of fires and lights get Far LOD. Needs the DynDOLOD folder." />
+                        </WrapPanel>
+                        <TextBlock Text="Custom rules file (optional)" Style="{StaticResource FieldLabel}" />
+                        <DockPanel>
+                            <CheckBox x:Name="CustomRulesCheck" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      ToolTip="Use this rule file. Its rules come before DynDOLOD's own and win. Unticked: only DynDOLOD's own rule files are used." />
+                            <Button x:Name="BrowseCustomRulesButton" DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseCustomRules_Click" />
+                            <TextBox x:Name="CustomRulesBox" IsEnabled="{Binding IsChecked, ElementName=CustomRulesCheck}"
+                                     ToolTip="A rule file in DynDOLOD's format: one saved from Edit rules, or a DynDOLOD preset or rule file you have. Tick the box to use it." />
+                        </DockPanel>
 
                         <TextBlock Text="OPTIONS" Style="{StaticResource SectionHeader}" />
                         <CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"

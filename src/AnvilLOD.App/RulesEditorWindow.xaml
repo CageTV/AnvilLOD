@@ -1,0 +1,67 @@
+<Window x:Class="AnvilLOD.App.RulesEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LOD rules" Width="1060" Height="660" MinWidth="820" MinHeight="420"
+        Background="{StaticResource Bg}" Foreground="{StaticResource Text}" FontFamily="Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Closing="Window_Closing">
+    <DockPanel Margin="16,14,16,14">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold" />
+            <TextBlock x:Name="InfoText" Margin="0,4,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" />
+            <DockPanel Margin="0,4,0,10">
+                <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Width="240" Margin="12,0,0,0" TextChanged="FilterBox_TextChanged"
+                         ToolTip="Show only rules whose mesh mask, FormID or file name contains this text" />
+                <TextBlock DockPanel.Dock="Right" Text="Find" VerticalAlignment="Center" Foreground="{StaticResource Muted}" />
+                <TextBlock x:Name="FileText" VerticalAlignment="Center" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+        </StackPanel>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="Load file…" Margin="0,0,8,0" Padding="12,5" Click="Load_Click"
+                        ToolTip="Replace your custom rules with the rules of a DynDOLOD-format rule file." />
+                <Button Content="Save as…" Margin="0,0,8,0" Padding="12,5" Click="SaveAs_Click" />
+                <Button Content="Save" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Padding="16,5" Click="Save_Click"
+                        ToolTip="Write your custom rules to the custom rules file and switch it on." />
+                <Button Content="Close" Padding="14,5" Click="Close_Click" />
+            </StackPanel>
+            <TextBlock x:Name="CountText" VerticalAlignment="Center" Foreground="{StaticResource Muted}" />
+        </DockPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="Add rule…" Margin="0,0,8,0" Padding="12,5" Click="Add_Click" />
+            <Button x:Name="EditButton" Content="Edit…" Margin="0,0,8,0" Padding="12,5" Click="Edit_Click"
+                    ToolTip="Double-click a row to edit it too. Editing one of DynDOLOD's rules makes your own copy that wins over it." />
+            <Button x:Name="RemoveButton" Content="Remove my rule" Margin="0,0,8,0" Padding="12,5" Click="Remove_Click"
+                    ToolTip="Removes one of your rules; if it replaced one of DynDOLOD's, that one applies again." />
+            <Button x:Name="UpButton" Content="▲" Width="34" Margin="0,0,4,0" Click="Up_Click" ToolTip="Move one of your rules up (the first matching rule wins)" />
+            <Button x:Name="DownButton" Content="▼" Width="34" Margin="0,0,16,0" Click="Down_Click" ToolTip="Move one of your rules down" />
+            <Button Content="Reset all my rules" Padding="12,5" Click="Reset_Click" />
+        </StackPanel>
+
+        <DataGrid x:Name="RuleGrid" IsReadOnly="True" AutoGenerateColumns="False" SelectionMode="Single" SelectionUnit="FullRow"
+                  CanUserAddRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  SelectionChanged="RuleGrid_SelectionChanged" MouseDoubleClick="RuleGrid_DoubleClick">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCustom}" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Mesh mask / reference" Binding="{Binding Mask}" Width="2*" />
+                <DataGridTextColumn Header="LOD 4" Binding="{Binding Lod4}" Width="88" />
+                <DataGridTextColumn Header="LOD 8" Binding="{Binding Lod8}" Width="88" />
+                <DataGridTextColumn Header="LOD 16" Binding="{Binding Lod16}" Width="88" />
+                <DataGridTextColumn Header="LOD 32" Binding="{Binding Lod32}" Width="88" />
+                <DataGridTextColumn Header="Flags" Binding="{Binding FlagsText}" Width="120" />
+                <DataGridTextColumn Header="Grid" Binding="{Binding Grid}" Width="84" />
+                <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="92" />
+                <DataGridTextColumn Header="From" Binding="{Binding Source}" Width="1.4*" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

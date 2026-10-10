@@ -8,7 +8,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 |---|---|---|
 | Object LOD (`.bto`) | Managed NIF reader/writer, parallel per block | ✅ v1 |
 | LOD mesh discovery (MNAM + `name_lod_N.nif` by file name) | MNAM first, named files fill gaps, DynDOLOD folder order | ✅ |
-| DynDOLOD rules (preset + mod-shipped `DynDOLOD_SSE_*.ini`) | Read as-is from the DynDOLOD install and Data\DynDOLOD | ✅ |
+| DynDOLOD rules (preset + mod-shipped `DynDOLOD_SSE_*.ini`) | Read as-is from the DynDOLOD install and Data\DynDOLOD; Candles / FXGlow rule sets; rule editor and a custom rules file that wins over them | ✅ (NoGlow flag + Reference column stored, not applied) |
 | Hidden-face removal (needs terrain) | LAND heights read from plugins; conservative buried-triangle test | ✅ v1 |
 | Texture atlas (TexGen + DynDOLOD) | GPU atlas, BC7, PBR-aware pages | planned |
 | Tree LOD: billboards (`.lst`/`.btt` + atlas) | TexGen billboards packed into a BC7 atlas (managed encoder), engine format verified against vanilla and DynDOLOD | ✅ v1 |

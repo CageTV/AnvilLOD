@@ -46,6 +46,10 @@ public partial class MainWindow : Window
     {
         DynDolodBox.Text = _settings.DynDolodFolder ?? "";
         PresetBox.SelectedIndex = _settings.Preset switch { "Low" => 0, "Medium" => 1, _ => 2 };
+        CandlesCheck.IsChecked = _settings.Candles;
+        FxGlowCheck.IsChecked = _settings.FxGlow;
+        CustomRulesBox.Text = _settings.CustomRulesFile ?? "";
+        CustomRulesCheck.IsChecked = _settings.CustomRulesEnabled;
         Mo2Box.Text = _settings.Mo2Instance ?? "";
         Mo2GameBox.Text = _settings.Mo2GamePath ?? "";
         Mo2ModsBox.Text = _settings.Mo2ModsFolder ?? "";
@@ -113,6 +117,10 @@ public partial class MainWindow : Window
         _settings.Lod32 = Lod32Check.IsChecked == true;
         _settings.DynDolodFolder = Blank(DynDolodBox.Text);
         _settings.Preset = PresetBox.SelectedIndex switch { 0 => "Low", 1 => "Medium", _ => "High" };
+        _settings.Candles = CandlesCheck.IsChecked == true;
+        _settings.FxGlow = FxGlowCheck.IsChecked == true;
+        _settings.CustomRulesFile = Blank(CustomRulesBox.Text);
+        _settings.CustomRulesEnabled = CustomRulesCheck.IsChecked == true;
         _settings.RemoveBuried = RemoveBuriedCheck.IsChecked == true;
         _settings.TreeLod = TreeLodCheck.IsChecked == true;
         _settings.LargeReferences = LargeRefsCheck.IsChecked == true;
@@ -266,6 +274,34 @@ public partial class MainWindow : Window
         if (d.ShowDialog(this) == true) OutputBox.Text = d.FolderName;
     }
 
+    private AnvilLOD.Core.Lod.LodPreset RulePreset() => PresetBox.SelectedIndex switch
+    {
+        0 => AnvilLOD.Core.Lod.LodPreset.Low,
+        1 => AnvilLOD.Core.Lod.LodPreset.Medium,
+        _ => AnvilLOD.Core.Lod.LodPreset.High,
+    };
+
+    private void EditRules_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = new RulesEditorWindow(Blank(DynDolodBox.Text), RulePreset(), CandlesCheck.IsChecked == true, FxGlowCheck.IsChecked == true,
+            Blank(CustomRulesBox.Text), _settings.ActivePreset) { Owner = this };
+        editor.ShowDialog();
+        if (editor.ChosenFile is { } file && File.Exists(file))
+        {
+            CustomRulesBox.Text = file;
+            CustomRulesCheck.IsChecked = true;
+        }
+    }
+
+    private void BrowseCustomRules_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFileDialog { Title = "Select your LOD rules file", Filter = "Rule files (*.ini)|*.ini|All files (*.*)|*.*", CheckFileExists = true };
+        if (File.Exists(CustomRulesBox.Text) && Path.GetDirectoryName(CustomRulesBox.Text) is { } dir) d.InitialDirectory = dir;
+        if (d.ShowDialog(this) != true) return;
+        CustomRulesBox.Text = d.FileName;
+        CustomRulesCheck.IsChecked = true;
+    }
+
     private void BrowseDynDolod_Click(object sender, RoutedEventArgs e)
     {
         var d = new OpenFolderDialog { Title = "Select your DynDOLOD folder (the one with DynDOLODx64.exe)" };
@@ -351,6 +387,9 @@ public partial class MainWindow : Window
             PbrLod: _settings.PbrLod,
             LargeReferences: _settings.LargeReferences,
             LargeRefsEsl: _settings.LargeRefsEsl,
+            Candles: _settings.Candles,
+            FxGlow: _settings.FxGlow,
+            CustomRulesFile: _settings.CustomRulesEnabled ? _settings.CustomRulesFile : null,
             PbrLodBrightness: _settings.PbrLodBrightness / 100f,
             GrassDensity: _settings.GrassDensity / 100f,
             SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 3),

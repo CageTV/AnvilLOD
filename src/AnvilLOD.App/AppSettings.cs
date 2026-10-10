@@ -33,6 +33,10 @@ public sealed class AppSettings
     public bool Lod32 { get; set; } = true;
     public string? DynDolodFolder { get; set; }
     public string Preset { get; set; } = "High";
+    public bool Candles { get; set; }                // also load DynDOLOD's Candles rules
+    public bool FxGlow { get; set; }                 // also load DynDOLOD's FXGlow rules
+    public bool CustomRulesEnabled { get; set; }     // use the custom rule file below (off: DynDOLOD's own rule files only)
+    public string? CustomRulesFile { get; set; }     // a DynDOLOD-format rule file; written by the rule editor or picked by the user
     public bool RemoveBuried { get; set; } = true;
     public bool TreeLod { get; set; } = true;
     public string? MakerInputs { get; set; }        // LOD Mesh Maker: the models (one path per line)

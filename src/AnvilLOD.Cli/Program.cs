@@ -44,6 +44,10 @@ public static class Program
           --report <file.json>   Write a JSON report (default: AnvilLOD.scan.json next to the exe)
           --dyndolod <path>      DynDOLOD install folder: reuse its LOD rule files (optional)
           --preset <name>        low | medium | high (default high): which rule preset to use
+          --candles              Also load DynDOLOD's Candles rules (candles, lanterns and sconces get Far LOD); needs --dyndolod
+          --fxglow               Also load DynDOLOD's FXGlow rules (fire and light glow cards get Far LOD); needs --dyndolod
+          --rules <file>         Your own LOD rule file (DynDOLOD rule format, e.g. saved by the app's rule editor). Its rules come
+                                 before all others; without it only DynDOLOD's own rule files are used
           --keep-buried          Don't remove LOD triangles buried under the terrain
           --include-disabled     Include initially-disabled references
           --no-child-worlds      Don't copy walled cities (Whiterun, Solitude, ...) into Tamriel's LOD
@@ -188,6 +192,9 @@ public static class Program
             Generate: generate,
             DynDolodFolder: a.Get("dyndolod"),
             Preset: ParsePreset(a.Get("preset")),
+            Candles: a.Has("candles"),
+            FxGlow: a.Has("fxglow"),
+            CustomRulesFile: a.Get("rules"),
             RemoveBuried: !a.Has("keep-buried"),
             GrassLod: !a.Has("no-grass"),
             ChildWorlds: !a.Has("no-child-worlds"),
