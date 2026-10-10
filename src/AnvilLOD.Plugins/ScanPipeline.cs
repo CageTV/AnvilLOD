@@ -34,7 +34,8 @@ public sealed record ScanRequest(
     bool LargeRefsEsl = true,                      // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
     bool Candles = false,                          // also load DynDOLOD's Candles rules (candle/lantern/sconce lights get Far LOD)
     bool FxGlow = false,                           // also load DynDOLOD's FXGlow rules (fire and light glow cards get Far LOD)
-    string? CustomRulesFile = null);               // the user's own rule file: its rules come first (null = DynDOLOD's own files only)
+    string? CustomRulesFile = null,                // the user's own rule file: its rules come first (null = DynDOLOD's own files only)
+    bool CleanOutput = true);                      // Generate empties the output folder first (only if it is AnvilLOD's own, see OutputFolder), so old files never mix with new ones
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -73,9 +74,18 @@ public static class ScanPipeline
         if (req.Generate && string.IsNullOrWhiteSpace(req.OutputFolder))
             throw new ArgumentException("Choose an output folder before generating LOD.");
 
+        // The output folder is made and, unless told not to, emptied before the log is opened in it.
+        var prepared = req.Generate ? OutputFolder.Prepare(req.OutputFolder!, req.CleanOutput) : null;
+
         // Every run is also logged to <output>\AnvilLOD.log (Generate only, so a Scan never touches the output folder).
         using var log = new FileLogProgress(req.Generate ? Path.Combine(req.OutputFolder!, "AnvilLOD.log") : null, progress,
             $"AnvilLOD {typeof(ScanPipeline).Assembly.GetName().Version?.ToString(3)} generate");
+        if (prepared is not null)
+        {
+            if (prepared.Created) log.Report($"Output folder created: {req.OutputFolder}");
+            if (prepared.Cleared && prepared.Deleted > 0) log.Report($"Output folder cleared ({prepared.Deleted:N0} old files removed), so nothing stale is left: {req.OutputFolder}");
+            if (prepared.Warning is not null) log.Report("WARNING: " + prepared.Warning);
+        }
         try
         {
             return RunLogged(req, log, ct);
@@ -290,7 +300,8 @@ public static class ScanPipeline
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
         sw.Stop();
 
-        var manifest = req.OutputFolder is null ? new BuildManifest() : BuildManifest.LoadOrEmpty(req.OutputFolder);
+        // A cleared output has no earlier build to compare with: every block is written again.
+        var manifest = req.OutputFolder is null || req.CleanOutput ? new BuildManifest() : BuildManifest.LoadOrEmpty(req.OutputFolder);
         var scopeWorldspaces = scan.Grids.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool InScope(string relPath) =>
             BuildManifest.TryParseBlockPath(relPath, out var ws, out var lv)

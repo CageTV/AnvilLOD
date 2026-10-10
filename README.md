@@ -198,6 +198,12 @@ Pick "Vortex" as the game source: Vortex deploys mods into the game's Data folde
 
 `VERSION` holds the one version number the tool and the SKSE plugin share. `.\bump.ps1` raises the last number (0.2.0 → 0.2.1) after each change; `.\bump.ps1 -Minor` starts the next minor version. `.\package.ps1` builds everything and writes `release\AnvilLOD-<version>.zip` and `release\AnvilLOD SKSE Plugin-<version>.zip`.
 
+## Output folder
+
+Generate writes into the output folder you pick. Leave it empty and AnvilLOD uses **AnvilLOD Output**: a new mod folder in your MO2 mods folder (it appears after a refresh, ready to enable), Vortex's staging folder, or Documents. A folder that doesn't exist is created.
+
+**Empty the output folder before generating** (on by default, `--keep-output` to turn it off) deletes what the last run left there, so old files (a plugin you no longer tick, blocks of a worldspace you left out, an old underside) never mix with the new ones. It is careful about what it deletes: it only empties a folder that is empty or that AnvilLOD wrote (it has `AnvilLOD.manifest.json` or `AnvilLOD.log`), never a folder that looks like a game, MO2 or mods folder (it holds `ModOrganizer.ini`, `SkyrimSE.exe`, `mods`, `Data` and so on) or a drive root. Any other folder is left alone and the log says why. MO2's `meta.ini` in a mod folder is kept. Files the game has open (a running game's `AnvilLOD.dll`) can't be deleted; the log lists them. Because the output starts empty, every block is written again on each run; untick the option to update in place, which only rewrites changed blocks.
+
 ## Desktop app
 
 `src\AnvilLOD.App` is a WPF front end for the same pipeline. Choose **MO2 instance** (instance folder + profile) or **Data folder**, set the output folder, pick worldspaces, LOD levels and options, then press **Scan**. Results appear in four tabs: Overview (stats and timing), Blocks (filterable list of every `.bto` and whether it needs a rebuild), Missing meshes, and Log. Settings are saved to `%AppData%\AnvilLOD\settings.json`. **From MO2:** the app and the command line start from MO2's executables list like any other tool (add `AnvilLOD.App.exe` under Edit executables); the window title then says "running under MO2". It doesn't need MO2 to run, because it reads the instance's mods itself, but starting it from MO2 works too. If it ever fails to start from MO2, `%LocalAppData%\AnvilLOD\logspp.log` says how far it got. **Generate LOD** runs the scan and then writes the changed blocks into the output folder.

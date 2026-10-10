@@ -44,6 +44,7 @@ public sealed class AppSettings
     public string? MakerModName { get; set; }
     public string? MakerOutput { get; set; }
     public bool LargeReferences { get; set; }   // list missing large references in AnvilLOD.esm (off by default)
+    public bool CleanOutput { get; set; } = true;   // empty the output folder before generating (only if it is AnvilLOD's own)
     public bool LargeRefsEsl { get; set; } = true; // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
     public bool PbrLod { get; set; }            // object LOD textures that match PBR full models (off by default)
     public int PbrLodBrightness { get; set; } = 100; // percent of DynDOLOD's PBR scale for the converted copies, 10-110

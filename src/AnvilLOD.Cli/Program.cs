@@ -40,7 +40,10 @@ public static class Program
           --data <path>          Skyrim Data folder (default: auto-detect / MO2 VFS)
           --plugins <path>       plugins.txt to use (requires --data)
           --worldspace <edid>    Limit to a worldspace; repeatable (default: all with a .lod file)
-          --output <path>        Output folder; used to diff against the previous build's manifest
+          --output <path>        Output folder (default for generate: "AnvilLOD Output" in the MO2 mods folder, Vortex's staging
+                                 folder or Documents). It is created if missing and, if it is AnvilLOD's own (empty, or holds its
+                                 manifest or log), emptied before every generate so old files never mix with new ones
+          --keep-output          Don't empty the output folder first: update it in place (only changed blocks are rewritten)
           --report <file.json>   Write a JSON report (default: AnvilLOD.scan.json next to the exe)
           --dyndolod <path>      DynDOLOD install folder: reuse its LOD rule files (optional)
           --preset <name>        low | medium | high (default high): which rule preset to use
@@ -172,14 +175,15 @@ public static class Program
 
     private static int RunScan(CliArgs a, bool generate)
     {
-        if (generate && a.Get("output") is null)
-            throw new CliArgException("generate needs --output <folder> (e.g. a new, enabled MO2 mod folder).");
         var total = Stopwatch.StartNew();
+        var gameOptions = a.Get("mo2") is { } mo2Folder
+            ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2Folder, Mo2Profile: a.Get("profile"), Mo2Locations: Mo2LocationsFromArgs(a))
+            : new GameContextOptions(a.Get("data"), a.Get("plugins"));
+        var outputFolder = a.Get("output") ?? (generate ? OutputFolder.DefaultFolder(gameOptions) : null);
+        if (generate && a.Get("output") is null) Console.WriteLine($"No --output given: using {outputFolder}");
 
         var req = new ScanRequest(
-            a.Get("mo2") is { } mo2
-                ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2, Mo2Profile: a.Get("profile"), Mo2Locations: Mo2LocationsFromArgs(a))
-                : new GameContextOptions(a.Get("data"), a.Get("plugins")),
+            gameOptions,
             new ScanOptions(
                 Worldspaces: a.GetAll("worldspace"),
                 IncludeInitiallyDisabled: a.Has("include-disabled"),
@@ -188,7 +192,8 @@ public static class Program
                 DynamicLod: !a.Has("no-dynamic"),
                 GridObjects: !a.Has("no-grid-objects"),
                 Tree3D: Tree3DFromArgs(a)),
-            OutputFolder: a.Get("output"),
+            OutputFolder: outputFolder,
+            CleanOutput: !a.Has("keep-output"),
             Generate: generate,
             DynDolodFolder: a.Get("dyndolod"),
             Preset: ParsePreset(a.Get("preset")),

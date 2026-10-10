@@ -5,7 +5,7 @@ public sealed class CliArgException(string message) : Exception(message);
 /// <summary>Minimal "--key value" / "--flag" parser. Keys may repeat.</summary>
 public sealed class CliArgs
 {
-    private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic", "no-child-worlds", "no-grid-objects", "seasons", "tree-3d", "tree-3d-lod8", "tree-3d-by-name", "underside", "pbr-lod", "no-meshes", "no-billboards", "no-rules", "overwrite", "large-refs", "large-refs-no-esl", "candles", "fxglow"];
+    private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "no-dynamic", "no-child-worlds", "no-grid-objects", "seasons", "tree-3d", "tree-3d-lod8", "tree-3d-by-name", "underside", "pbr-lod", "no-meshes", "no-billboards", "no-rules", "overwrite", "large-refs", "large-refs-no-esl", "candles", "fxglow", "keep-output"];
     private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "tree-brightness", "object-brightness", "skse-dll", "underside-detail", "pbr-lod-brightness", "pbr-lod-size", "mo2-game", "mo2-mods", "mo2-profiles", "mo2-overwrite", "plugin", "author-out", "min-size", "min-tree-height", "input", "group", "levels", "detail", "new-mod", "budget", "rules"];
 
     private readonly Dictionary<string, List<string>> _values = new(StringComparer.OrdinalIgnoreCase);

@@ -176,8 +176,10 @@
                         <TextBlock Text="Output folder" Style="{StaticResource FieldLabel}" />
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOutput_Click" />
-                            <TextBox x:Name="OutputBox" ToolTip="Where LOD files go. Also used to compare against the previous build." />
+                            <TextBox x:Name="OutputBox" ToolTip="Where LOD files go. Leave it empty to use 'AnvilLOD Output' (a new mod folder in the MO2 mods folder, Vortex's staging folder, or Documents). The folder is created if it doesn't exist." />
                         </DockPanel>
+                        <CheckBox x:Name="CleanOutputCheck" Content="Empty the output folder before generating" IsChecked="True" Margin="0,6,0,0"
+                                  ToolTip="Deletes what the last run left in the output folder first, so old files never mix with the new ones. Only done in an empty folder or one AnvilLOD wrote (it has AnvilLOD.manifest.json or AnvilLOD.log); any other folder is left alone and the log says so. MO2's meta.ini is kept. Every block is written again each run; untick to update the folder in place and only rewrite what changed." />
 
                         <TextBlock Text="WORLDSPACES" Style="{StaticResource SectionHeader}" />
                         <CheckBox x:Name="AllWorldspacesCheck" Content="All worldspaces with a .lod file" Checked="AllWorldspaces_Changed" Unchecked="AllWorldspaces_Changed" />

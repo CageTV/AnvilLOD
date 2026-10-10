@@ -67,6 +67,7 @@ public partial class MainWindow : Window
         DataBox.Text = _settings.DataFolder ?? "";
         PluginsBox.Text = _settings.PluginsTxt ?? "";
         OutputBox.Text = _settings.OutputFolder ?? "";
+        CleanOutputCheck.IsChecked = _settings.CleanOutput;
         WorldspaceBox.Text = _settings.Worldspaces;
         AllWorldspacesCheck.IsChecked = _settings.AllWorldspaces;
         WorldspaceBox.IsEnabled = !_settings.AllWorldspaces;
@@ -109,6 +110,7 @@ public partial class MainWindow : Window
         _settings.DataFolder = Blank(DataBox.Text);
         _settings.PluginsTxt = Blank(PluginsBox.Text);
         _settings.OutputFolder = Blank(OutputBox.Text);
+        _settings.CleanOutput = CleanOutputCheck.IsChecked == true;
         _settings.Worldspaces = WorldspaceBox.Text.Trim();
         _settings.AllWorldspaces = AllWorldspacesCheck.IsChecked == true;
         _settings.Lod4 = Lod4Check.IsChecked == true;
@@ -323,12 +325,17 @@ public partial class MainWindow : Window
         CaptureSettings();
         if (_settings.OutputFolder is null)
         {
-            MessageBox.Show(this, "Choose an output folder first. For MO2, use an empty mod folder (e.g. mods\\AnvilLOD Output) and enable it in MO2 after generating.",
-                "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            // No folder chosen: AnvilLOD Output, as its own mod folder next to the others (created when the run starts).
+            var folder = OutputFolder.DefaultFolder(BuildGameOptions());
+            OutputBox.Text = folder;
+            CaptureSettings();
         }
         _ = RunAsync(generate: true);
     }
+
+    private GameContextOptions BuildGameOptions() => _settings.UseMo2
+        ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile, Mo2Locations: TypedLocations())
+        : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt, Mode: _settings.UseVortex ? GameSourceMode.Vortex : GameSourceMode.DataFolder);
 
     private async Task RunAsync(bool generate)
     {
@@ -387,6 +394,7 @@ public partial class MainWindow : Window
             PbrLod: _settings.PbrLod,
             LargeReferences: _settings.LargeReferences,
             LargeRefsEsl: _settings.LargeRefsEsl,
+            CleanOutput: _settings.CleanOutput,
             Candles: _settings.Candles,
             FxGlow: _settings.FxGlow,
             CustomRulesFile: _settings.CustomRulesEnabled ? _settings.CustomRulesFile : null,
