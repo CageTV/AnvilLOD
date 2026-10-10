@@ -44,6 +44,8 @@ New-Item -ItemType Directory -Force -Path $release | Out-Null
 
 # 1) The tool
 $toolZip = Join-Path $release "AnvilLOD-$version.zip"
+# Run logs of the app (it writes AnvilLOD.App.log next to itself, with this machine's paths) never go into a download.
+Get-ChildItem $toolDist -Filter "*.log" -File | Remove-Item -Force
 Copy-Item "$PSScriptRoot\README.md" $toolDist -Force
 Copy-Item "$PSScriptRoot\LICENSE.txt" $toolDist -Force
 New-Zip $toolDist $toolZip
