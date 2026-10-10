@@ -57,7 +57,7 @@ public sealed class AppSettings
     public bool DynamicLod { get; set; } = true;
     public bool GridObjects { get; set; } = true;
     public bool Seasons { get; set; }   // experimental
-    public int SkseDll { get; set; } = 0;   // 0 auto, 1 up to 1.6.1170, 2 newer, 3 installed separately
+    public int SkseDll { get; set; } = 0;   // 0 auto, 1 up to 1.6.1170, 2 newer, 3 installed separately, 4 Skyrim VR 1.4.15 (the numbers are SkseDllChoice's)
     public int GrassDensity { get; set; } = 8;   // percent of cached grass kept
     public bool IncludeDisabled { get; set; }
     public bool IncludeEnableParented { get; set; } = true;

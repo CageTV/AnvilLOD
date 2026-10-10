@@ -307,7 +307,7 @@
                         <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD (EXPERIMENTAL)"
                                   ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
                         <TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
-                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads SkyrimSE.exe's version. Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
+                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
                         <ComboBox x:Name="SkseDllBox" SelectedIndex="0" Margin="0,0,0,6">
                             <ComboBoxItem Content="Auto-detect game version" />
                             <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />

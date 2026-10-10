@@ -392,7 +392,7 @@ public partial class MainWindow : Window
             CustomRulesFile: _settings.CustomRulesEnabled ? _settings.CustomRulesFile : null,
             PbrLodBrightness: _settings.PbrLodBrightness / 100f,
             GrassDensity: _settings.GrassDensity / 100f,
-            SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 3),
+            SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 4),
             Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });
 
         SetBusy(true);
