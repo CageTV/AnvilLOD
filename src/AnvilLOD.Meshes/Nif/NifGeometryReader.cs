@@ -27,9 +27,31 @@ public static class NifGeometryReader
     private const uint KeepF1 = 0x0000_1000 /* Model_Space_Normals */ | 0x0000_0008 /* Vertex_Alpha */;
     private const uint KeepF2 = 0x0000_0010 /* Double_Sided */ | 0x0000_0040 /* Glow_Map */;
 
+    /// <summary>Prefix of the warning added to a mesh for every water-shader shape read as lit fake water.</summary>
+    public const string WaterPlaneWarning = "WaterPlane:";
+
+    /// <summary>Colour (RGBA, little-endian) of fake water: the dark teal and ~69% opacity of the CS Water Mod stream twins.</summary>
+    public const uint FakeWaterColor = 0xAF33342Au;
+
+    /// <summary>
+    /// A BSWaterShaderProperty plane drawn outside the engine's water system comes out black, so LOD stand-ins draw it with
+    /// a lit shader instead, the way CS Water Mod's stream twins do ("FakeWater": FXwaterTile01 with vertex alpha, alpha
+    /// blended). Same flags, alpha property and shader values as that shape.
+    /// </summary>
+    public static readonly LodMaterial FakeWaterMaterial = new(
+        ["textures\\effects\\FXwaterTile01.dds", "textures\\effects\\FXwaterTile01_n.dds", "", "", "", "", "", "", ""],
+        0x8E40_0309u, 0x0000_8020u, 3,
+        true, 0x10ED, 128,
+        Vector3.Zero, 1f,
+        new LodShaderPassthru(0, 0f, 0f, 1f, 1f, 1f, 0f, 202f, Vector3.One, 2f, 0.3f, 2f));
+
+    /// <summary>The fake-water plane's UVs are tiled this many times over the source plane's 0-1 range.</summary>
+    public const float FakeWaterUvTiling = 4f;
+
     /// <param name="passthru">Keep every shape's own shader settings (LODGen's "passthru" LOD models) instead of
     /// reducing them to the standard LOD shader.</param>
-    public static LodMesh Read(string path, byte[] data, bool passthru = false)
+    /// <param name="waterAsLit">Read BSWaterShaderProperty shapes as lit fake water (<see cref="FakeWaterMaterial"/>) instead of skipping them.</param>
+    public static LodMesh Read(string path, byte[] data, bool passthru = false, bool waterAsLit = false)
     {
         var nif = NifFile.Read(data);
         var parts = new List<LodMeshPart>();
@@ -37,7 +59,7 @@ public static class NifGeometryReader
         var visited = new HashSet<int>();
 
         foreach (var root in nif.Roots)
-            Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited, passthru);
+            Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited, passthru, waterAsLit);
 
         return new LodMesh { Path = path, Parts = parts, Warnings = warnings };
     }
@@ -70,7 +92,7 @@ public static class NifGeometryReader
         return o;
     }
 
-    private static void Walk(NifFile nif, int index, Matrix4x4 parent, List<LodMeshPart> parts, List<string> warnings, HashSet<int> visited, bool passthru)
+    private static void Walk(NifFile nif, int index, Matrix4x4 parent, List<LodMeshPart> parts, List<string> warnings, HashSet<int> visited, bool passthru, bool waterAsLit)
     {
         if (index < 0 || index >= nif.Blocks.Count || !visited.Add(index)) return;
         var block = nif.Blocks[index];
@@ -84,13 +106,13 @@ public static class NifGeometryReader
             uint numChildren = r.U32();
             var children = new int[numChildren];
             for (int i = 0; i < numChildren; i++) children[i] = r.I32();
-            foreach (var c in children) Walk(nif, c, world, parts, warnings, visited, passthru);
+            foreach (var c in children) Walk(nif, c, world, parts, warnings, visited, passthru, waterAsLit);
         }
         else if (ShapeTypes.Contains(block.Type))
         {
             try
             {
-                var part = ReadShape(nif, block, parent, warnings, passthru);
+                var part = ReadShape(nif, block, parent, warnings, passthru, waterAsLit);
                 if (part is not null) parts.Add(part);
             }
             catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException or InvalidDataException)
@@ -106,7 +128,7 @@ public static class NifGeometryReader
 
     // ---------- shapes ----------
 
-    private static LodMeshPart? ReadShape(NifFile nif, NifBlock block, Matrix4x4 parent, List<string> warnings, bool passthru)
+    private static LodMeshPart? ReadShape(NifFile nif, NifBlock block, Matrix4x4 parent, List<string> warnings, bool passthru, bool waterAsLit)
     {
         var r = nif.ReaderFor(block);
         var av = ReadAvObject(nif, ref r);
@@ -124,8 +146,10 @@ public static class NifGeometryReader
         if (skin >= 0) { warnings.Add($"Skinned shape '{av.Name}' skipped."); return null; }
         if (dataSize == 0 || numVerts == 0 || numTris == 0) return null;
 
-        var material = ReadMaterial(nif, shaderRef, alphaRef, passthru);
+        var material = ReadMaterial(nif, shaderRef, alphaRef, passthru, waterAsLit);
         if (material is null) { warnings.Add($"Shape '{av.Name}' has no lighting shader; skipped."); return null; }
+        bool water = waterAsLit && ReferenceEquals(material, FakeWaterMaterial);
+        if (water) warnings.Add(WaterPlaneWarning + av.Name);
 
         uint attrs = (uint)(desc >> 44);
         int vertexSize = (int)(desc & 0xF) * 4;
@@ -173,6 +197,18 @@ public static class NifGeometryReader
         foreach (var idx in tris)
             if (idx >= numVerts) throw new InvalidDataException("Triangle index out of range.");
 
+        if (water)
+        {
+            // A flat water surface: face up, one body colour with the fake water's alpha, tiled texture.
+            col = new uint[numVerts];
+            for (int i = 0; i < numVerts; i++)
+            {
+                col[i] = FakeWaterColor;
+                nrm[i] = Vector3.UnitZ; tan[i] = Vector3.UnitX; bit[i] = Vector3.UnitY;
+                uv[i] *= FakeWaterUvTiling;
+            }
+        }
+
         return new LodMeshPart
         {
             Name = av.Name,
@@ -182,10 +218,11 @@ public static class NifGeometryReader
         };
     }
 
-    private static LodMaterial? ReadMaterial(NifFile nif, int shaderRef, int alphaRef, bool passthru)
+    private static LodMaterial? ReadMaterial(NifFile nif, int shaderRef, int alphaRef, bool passthru, bool waterAsLit)
     {
         if (shaderRef < 0 || shaderRef >= nif.Blocks.Count) return null;
         var sb = nif.Blocks[shaderRef];
+        if (waterAsLit && sb.Type == "BSWaterShaderProperty") return FakeWaterMaterial;
         if (sb.Type != "BSLightingShaderProperty") return null;
 
         var r = nif.ReaderFor(sb);

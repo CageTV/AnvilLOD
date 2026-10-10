@@ -30,7 +30,7 @@ AnvilLOD scans the load order and writes object LOD blocks (`.bto`), billboard t
 - Skyrim SE/AE (Mod Organizer 2 instance or a plain Data folder)
 - **Recommended:** DynDOLOD Resources SE and any LOD packs / LOD patches you like (FOLIP, mod-specific LOD). AnvilLOD uses their `_lod` meshes and the `DynDOLOD_SSE_*.ini` rule files they ship.
 - **For tree LOD:** tree billboards, e.g. TexGen output installed as a mod (`textures\terrain\LODGen\…`). TexGen is only a billboard renderer; DynDOLOD itself is never run.
-- **For grass LOD:** a grass cache (`grass\*.cgid` from NGIO or FasterNGIO) and TexGen grass billboards.
+- **For grass LOD:** a grass cache (`grass\*.cgid` from NGIO or FasterNGIO) and TexGen grass billboards. For seasonal grass LOD also the seasonal caches (`...WIN.cgid`, `.SPR`, `.SUM`, `.AUT`, from Grass Cache Helper NG). Set `DynDOLOD-Grass-Mode = 1` in NGIO's `GrassControl.ini` so the real grass ends exactly where the grass LOD starts; with it off there is a bare band between them.
 - **Optional:** a DynDOLOD install (set "DynDOLOD folder" in the app or `--dyndolod`). AnvilLOD reuses its Low/Medium/High rule presets. DynDOLOD itself is never run.
 - **Recommended in game:** [LOD Refresh Bug Fix](https://www.nexusmods.com/skyrimspecialedition/mods/187070) (`SkyrimLODFixes.dll`). It fixes engine bugs where LOD doesn't reset after fast travel or worldspace changes, and a tree LOD / grass culling lock bug. DynDOLOD DLL NG fixes the first of those too, so keep this one if you remove DynDOLOD DLL NG. AnvilLOD's SKSE plugin deliberately doesn't patch the same engine code, so the two don't conflict.
 
@@ -99,9 +99,19 @@ The console prints timings for each stage plus block counts per LOD level. The J
 
 References that quests switch on and off (Helgen Reborn's destroyed and rebuilt town, for example) can't live in the static LOD blocks. AnvilLOD writes them to `SKSE\Plugins\AnvilLOD\AnvilLOD.dyn` instead, and the AnvilLOD SKSE plugin draws their LOD only while they're enabled.
 
+### Grass LOD
+
+Grass LOD is built from the grass cache into the LOD4 blocks (sparser and larger at LOD8 and LOD16). The ground is cut into bins and every bin that has grass keeps one tuft, placed where that bin's grass is, as wide as the grass there covers, so coverage is even, follows the real grass and never leaves the blocky patches random sampling does. All grass types share one atlas texture (`textures\anvillod\grass\atlas.dds` and `atlas_n.dds`), so a block needs one grass material instead of one per grass type.
+
+- **Density** (`--grass-density <pct>`, 1-100): the share of the cached grass kept. Measured on a 120-plugin Tamriel, objects LOD only, one season: 4% = 15M triangles / 0.7 GB, 8% = 20M / 1.1 GB, 15% = 29M / 1.7 GB, 25% = 43M / 2.7 GB, 40% = 60M / 3.9 GB, 60% = 92M / 6.1 GB, 100% (every blade) = 162M / 11 GB. The default is 8%.
+- **Brightness** (`--grass-top`, `--grass-bottom`): how bright the top of a tuft and its roots are, like DynDOLOD's `GrassBrightnessTop` and `GrassBrightnessBottom` (default 85% and 50%). The object LOD brightness is applied on top.
+- **Seasons:** with Seasons of Skyrim LOD ticked, each season's LOD4 blocks are built from that season's grass cache. Seasonal caches differ a lot (summer's can be several times denser than winter's), so the seasonal output is a multiple of the single-season sizes above.
+
 ### Water and animated distant objects
 
 DynDOLOD's rules mark some objects with a Grid ("Near LOD", "Far LOD", "Far Full", "Never Fade LOD") and no LOD meshes: water planes, mineral pools, streams, waterfalls, creeks and rapids, fires, windmills, water wheels, ships. They get no static LOD; AnvilLOD hands them to the SKSE plugin, which draws them beyond the loaded cells ("Near LOD" ones up to `fNearGridDistance`, the others up to `fFarGridDistance`) as static models. Keeping them animated is an **experimental** opt-in (`bAnimateExperimental=1`, or the menu) because it can crash. When a mod ships DynDOLOD dynamic LOD meshes (`meshes\dyndolod\lod\<model path>_dyndolod_lod.nif`, as CS Water Mod and DynDOLOD Resources do) those are used; otherwise the full model. Rule files from mods (BIRDS, animated ships, natural waterfalls…) add their own grid objects the same way. Lake and sea water that's part of the landscape comes from terrain LOD (xLODGen), not from here. Turn it off with "Water and animated distant objects" in the app or `--no-grid-objects`.
+
+**Stream, creek and pond water stand-ins** (`--water-standins`, a checkbox in the app, off by default). The water planes of streams, creeks and ponds (the `Water1024`, `Water2048` family and the tundra stream pieces) use a real water shader. Drawn by the SKSE plugin beyond the loaded cells, that shader is outside the engine's water system and comes out black. With the option on, Generate writes a copy of each such mesh into the output (`meshes\anvillod\water`) whose water uses a lit, semi-transparent "fake water" material (the technique CS Water Mod's own stream twins use) and points `AnvilLOD.dyn` at the copy. The original meshes and the mods that ship them are not touched. Sea and big lakes are terrain LOD (xLODGen) and are not affected. Needs "Water and animated distant objects" ticked.
 
 Build it with Visual Studio 2026 (bundled vcpkg):
 
@@ -138,6 +148,8 @@ DynDOLOD's Advanced window lets you pick Low, Medium or High, tick **Candles** a
 - Each of the three preset tabs remembers its own Candles / FXGlow / custom rules choices.
 
 ## Seasons of Skyrim (experimental)
+
+Grass LOD follows the season too when the grass cache has seasonal files (see Grass LOD above).
 
 With "Seasons of Skyrim LOD" ticked (`--seasons`), Generate reads the form-swap INIs in `Data\Seasons` (`*_WIN.ini`, `_SPR`, `_SUM`, `_AUT`; sections Statics, MovableStatics, Activators, Furniture) and writes seasonal object LOD next to the normal blocks: `<World>.<L>.<X>.<Y>.WIN.bto` and so on, the names [Seasons of Skyrim](https://github.com/powerof3/SeasonsOfSkyrim) loads for that season. Blocks containing a swapped object are rebuilt with the swap's LOD; every other block is a hard link to the normal one, so it costs almost no disk space. Seasons without INIs get no files, and Seasons of Skyrim falls back to the normal LOD. Tree and terrain LOD are the same in every season for now.
 

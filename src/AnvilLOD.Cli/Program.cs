@@ -62,7 +62,11 @@ public static class Program
           --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD
                                  "grid" objects) to the AnvilLOD SKSE plugin
           --no-grass             Don't build grass LOD from the grass cache
-          --grass-density <pct>  Share of cached grass kept as LOD (default 8)
+          --water-standins       Stream/creek/pond water planes (grid objects) that use a real water shader, which
+                                 draws black beyond the loaded cells, get a lit fake-water stand-in mesh in the output
+          --grass-density <pct>  Share of cached grass kept as LOD, 1-100 (default 8; 15 is high, 100 keeps every blade)
+          --grass-top <pct>      Grass LOD brightness at the top of a tuft, 20-120 (default 85), like DynDOLOD's GrassBrightnessTop
+          --grass-bottom <pct>   Grass LOD brightness at the roots, 10-120 (default 50), like GrassBrightnessBottom
           --tree-brightness <pct> Tree LOD billboard brightness, 10-110 (default 100)
           --object-brightness <pct> Object LOD brightness, 10-110 (default 100)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
@@ -222,7 +226,10 @@ public static class Program
             },
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,
-            GrassDensity: (a.Get("grass-density") is { } gd && float.TryParse(gd, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pct) ? pct : 8f) / 100f);
+            GrassDensity: (a.Get("grass-density") is { } gd && float.TryParse(gd, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pct) ? pct : 8f) / 100f,
+            WaterStandIns: a.Has("water-standins"),
+            GrassTop: (a.Get("grass-top") is { } gt && float.TryParse(gt, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gtp) ? Math.Clamp(gtp, 20f, 120f) : 85f) / 100f,
+            GrassBottom: (a.Get("grass-bottom") is { } gb && float.TryParse(gb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var gbp) ? Math.Clamp(gbp, 10f, 120f) : 50f) / 100f);
 
         // Progress<T> posts asynchronously; a synchronous reporter keeps console output ordered.
         var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));

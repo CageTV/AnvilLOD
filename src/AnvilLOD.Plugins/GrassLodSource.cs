@@ -2,8 +2,12 @@ using System.Collections.Concurrent;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
 using AnvilLOD.Meshes;
+using AnvilLOD.Textures;
+using AnvilLOD.Textures.Bc;
+using AnvilLOD.Textures.Dds;
 using Mutagen.Bethesda.Plugins;
 using Mutagen.Bethesda.Skyrim;
 
@@ -19,7 +23,7 @@ namespace AnvilLOD.Plugins;
 public sealed class GrassLodSource : ISyntheticMeshSource
 {
     public const string Prefix = "~anvillod-grass|";
-    private const int Version = 3; // 2: crossed quads, coverage-compensated size, vertex colours; 3: rendered billboards
+    private const int Version = 5; // 2: crossed quads, coverage-compensated size, vertex colours; 3: rendered billboards; 4: binned sampling (one tuft per bin); 5: atlas, brightness top/bottom
 
     private readonly AssetIndex _assets;
     private readonly float _density;
@@ -33,12 +37,18 @@ public sealed class GrassLodSource : ISyntheticMeshSource
 
     private readonly string? _outputFolder;
     private readonly object _renderLock = new();
+    private readonly float _top, _bottom;
 
     /// <param name="outputFolder">Where rendered grass billboards go (grass types TexGen made no billboard for). Null: use the model's own texture.</param>
-    public GrassLodSource(GameContext game, AssetIndex assets, float density, float sizeScale, string? outputFolder = null)
+    /// <param name="top">Vertex-colour brightness at the top of a tuft (share of white), like DynDOLOD's GrassBrightnessTop.</param>
+    /// <param name="bottom">Vertex-colour brightness at the roots, like DynDOLOD's GrassBrightnessBottom.</param>
+    public GrassLodSource(GameContext game, AssetIndex assets, float density, float sizeScale, string? outputFolder = null,
+        float top = GrassPatchBuilder.DefaultTop, float bottom = GrassPatchBuilder.DefaultBottom)
     {
         _assets = assets;
         _outputFolder = outputFolder;
+        _top = top;
+        _bottom = bottom;
         _density = Math.Clamp(density, 0.001f, 1f);
         _sizeScale = sizeScale;
         _runtime = RuntimeFormIds.FromLoadOrder(game.LoadOrder);
@@ -57,6 +67,25 @@ public sealed class GrassLodSource : ISyntheticMeshSource
 
     public int CellsFound { get; private set; }
 
+    private readonly Dictionary<(string Ws, int X, int Y, string Season), string> _seasonal = [];
+
+    /// <summary>True if the grass cache has files for this season ("WIN", "SPR", "SUM", "AUT").</summary>
+    public bool HasSeason(string suffix) => _seasonal.Keys.Any(k => k.Season == suffix);
+
+    /// <summary>
+    /// The same grass reference, but built from the season's cache file (Seasons of Skyrim's seasonal LOD). Null if the
+    /// reference isn't a grass cell or that season has no cache file for the cell (the normal grass stays).
+    /// </summary>
+    public LodReference? SeasonalVariant(LodReference r, string suffix)
+    {
+        if (!r.FormKey.StartsWith("~grass:", StringComparison.Ordinal)) return null;
+        var parts = r.FormKey.Split(':');
+        if (parts.Length != 4 || !int.TryParse(parts[2], out var x) || !int.TryParse(parts[3], out var y)) return null;
+        if (!_seasonal.TryGetValue((parts[1].ToLowerInvariant(), x, y, suffix), out var cache)) return null;
+        string Mesh(int level) => $"{Prefix}{level}|{cache}";
+        return r with { Meshes = new LodMeshSet(Mesh(4), Mesh(8), Mesh(16), null) };
+    }
+
     /// <summary>One LOD reference per cached cell inside the worldspaces' LOD grids (non-seasonal caches only).</summary>
     public List<LodReference> Discover(IReadOnlyDictionary<string, LodGrid> grids)
     {
@@ -64,8 +93,13 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         foreach (var path in _assets.EnumeratePaths("grass\\"))
         {
             var name = path["grass\\".Length..];
-            if (name.Contains('\\') || !GrassCache.TryParseFileName(name, out var ws, out var x, out var y, out var season) || season is not null)
+            if (name.Contains('\\') || !GrassCache.TryParseFileName(name, out var ws, out var x, out var y, out var season))
                 continue;
+            if (season is not null)
+            {
+                _seasonal[(ws.ToLowerInvariant(), x, y, season)] = path; // ...x0005y-005.WIN.cgid: the grass of that season
+                continue;
+            }
             if (!grids.TryGetValue(ws, out var grid)) continue;
             var cell = new CellCoord(x, y);
             if (!grid.IsInsideGrid(cell) || !grid.Settings.Supports(LodLevel.Lod4)) continue;
@@ -96,10 +130,10 @@ public sealed class GrassLodSource : ISyntheticMeshSource
     {
         if (!Owns(path)) return null;
         var (level, cache) = Split(path);
-        return $"g{Version}|L{level}|{_assets.Fingerprint(cache)}|{BillboardFingerprint()}|{_density:R}|{_sizeScale:R}";
+        return $"g{Version}|L{level}|{_assets.Fingerprint(cache)}|{BillboardFingerprint()}|{_density:R}|{_sizeScale:R}|{_top:R}|{_bottom:R}|{_atlasHash}";
     }
 
-    /// <summary>Fewer tufts further out; the builder widens them to keep the covered area.</summary>
+    /// <summary>Fewer tufts further out; the builder picks larger bins (and so bigger tufts) to keep the covered area.</summary>
     private static (float Density, float Size) LevelFactors(int level) => level switch
     {
         8 => (0.6f, 1f),
@@ -135,12 +169,11 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         foreach (var t in types)
         {
             if (t.Instances.Count == 0) continue;
-            var bb = _billboards.GetOrAdd((NormalizeModel(t.Model), t.RuntimeFormId), k => FindBillboard(k.Model, k.Id));
+            var bb = _billboards.GetOrAdd((NormalizeModel(t.Model), t.RuntimeFormId), k => Atlased(FindBillboard(k.Model, k.Id)));
             if (bb is null) continue;
             withBillboards.Add((bb, t.Instances));
         }
-        return GrassPatchBuilder.Build(path, origin, withBillboards, Math.Min(1f, _density * densityMul), _sizeScale * sizeMul,
-            seed: unchecked(x * 73856093 ^ y * 19349663 ^ level * 83492791));
+        return GrassPatchBuilder.Build(path, origin, withBillboards, Math.Min(1f, _density * densityMul), _sizeScale * sizeMul, _top, _bottom);
     }
 
     private GrassBillboard? FindBillboard(string model, uint runtimeId)
@@ -150,7 +183,12 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         FormKey? fk = _runtime.ToFormKey(runtimeId);
         if (fk is null || !_grassModel.TryGetValue(fk.Value, out var m) || m != model)
             fk = _firstByModel.TryGetValue(model, out var byModel) ? byModel : null;
+        return Resolve(model, fk, record: true);
+    }
 
+    /// <param name="record">Count a type with no billboard as missing (false while the atlas looks at every GRAS, placed or not).</param>
+    private GrassBillboard? Resolve(string model, FormKey? fk, bool record)
+    {
         var stem = Path.GetFileNameWithoutExtension(model.Replace('\\', '/'));
         if (fk is { } key)
         {
@@ -171,16 +209,13 @@ public sealed class GrassLodSource : ISyntheticMeshSource
 
         // No TexGen billboard (TexGen skips grass whose record has no bounds, e.g. Realistic Grass Field's main types):
         // use the grass model's own texture on the card, sized from the model.
-        if (FromModel(model) is { } fallback)
-        {
-            Interlocked.Increment(ref _fromModel);
-            return fallback;
-        }
-        _missing.AddOrUpdate(fk is { } k2 ? $"{k2.ModKey.FileName}\\{stem}_{k2.ID:x8}" : model, 1, (_, n) => n + 1);
+        if (_fromModelCache.GetOrAdd(model, m => FromModel(m)) is { } fallback) return fallback;
+        if (record) _missing.AddOrUpdate(fk is { } k2 ? $"{k2.ModKey.FileName}\\{stem}_{k2.ID:x8}" : model, 1, (_, n) => n + 1);
         return null;
     }
 
     private int _fromModel;
+    private readonly ConcurrentDictionary<string, GrassBillboard?> _fromModelCache = new(StringComparer.Ordinal);
 
     /// <summary>Grass types drawn with their own model texture because no billboard exists.</summary>
     public int TypesFromModelTexture => _fromModel;
@@ -198,6 +233,7 @@ public sealed class GrassLodSource : ISyntheticMeshSource
             catch (Exception) { return null; }
         }
         if (mesh.Parts.Count == 0) return null;
+        Interlocked.Increment(ref _fromModel);
         if (_outputFolder is not null && Rendered(model, mesh) is { } rendered) return rendered;
         var part = mesh.Parts.OrderByDescending(p => p.TriangleCount).FirstOrDefault();
         if (part is null) return null;
@@ -257,6 +293,112 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         catch (Exception ex) when (ex is NotSupportedException or InvalidDataException or IndexOutOfRangeException) { return null; }
     }
 
+    // ----- grass atlas: every grass billboard in one texture pair, so grass needs one material (draw call) per block -----
+
+    /// <summary>The atlas textures, as the LOD meshes name them (written into the output folder).</summary>
+    public const string AtlasDiffuse = "textures\\anvillod\\grass\\atlas.dds", AtlasNormal = "textures\\anvillod\\grass\\atlas_n.dds";
+
+    private Dictionary<string, AtlasRect>? _atlasRects;
+    private string _atlasHash = "-";
+
+    /// <summary>What the atlas holds, for the log (null until <see cref="PrepareAtlas"/> has built one).</summary>
+    public GrassAtlasSummary? Atlas { get; private set; }
+
+    /// <summary>
+    /// Packs the billboards of every grass type (TexGen's, or rendered from the model) into <see cref="AtlasDiffuse"/> and a
+    /// normal map atlas with the same layout (<see cref="AtlasNormal"/>), tiles capped at 256 px. Must run before blocks are
+    /// built: the grass meshes take their UVs from it. Without an output folder (a scan) nothing is built.
+    /// </summary>
+    public void PrepareAtlas()
+    {
+        if (_outputFolder is null || _atlasRects is not null) return;
+        var raw = new SortedDictionary<string, GrassBillboard>(StringComparer.Ordinal);
+        foreach (var (fk, model) in _grassModel)
+            if (Resolve(model, fk, record: false) is { } bb) raw.TryAdd(GamePath.Normalize(bb.Diffuse), bb);
+        var diffuse = new List<TreeAtlasBuilder.Input>();
+        var normal = new List<TreeAtlasBuilder.Input>();
+        var flat = new Dictionary<(int, int), byte[]>();
+        foreach (var (key, bb) in raw)
+        {
+            var d = ReadTexture(bb.Diffuse);
+            if (d is null) continue;
+            DdsFile.Info info;
+            try { info = DdsFile.ReadInfo(d); }
+            catch (Exception ex) when (ex is InvalidDataException or NotSupportedException) { continue; }
+            // The normal tile must have the diffuse tile's size (the two atlases share one layout); otherwise it is flat.
+            var n = bb.Normal is null ? null : ReadTexture(bb.Normal);
+            if (n is not null)
+            {
+                try { var ni = DdsFile.ReadInfo(n); if (ni.Width != info.Width || ni.Height != info.Height) n = null; }
+                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException) { n = null; }
+            }
+            if (n is null)
+            {
+                if (!flat.TryGetValue((info.Width, info.Height), out n)) flat[(info.Width, info.Height)] = n = FlatNormalDds(info.Width, info.Height);
+            }
+            diffuse.Add(new TreeAtlasBuilder.Input(key, d));
+            normal.Add(new TreeAtlasBuilder.Input(key, n));
+        }
+        if (diffuse.Count == 0) return;
+
+        var builder = new TreeAtlasBuilder { MaxSize = 4096, MaxTile = 256 };
+        var a = builder.Build(diffuse);
+        var b = builder.Build(normal);
+        if (a.Size != b.Size || b.Errors.Count > 0 || a.Rects.Count != b.Rects.Count
+            || a.Rects.Any(kv => !b.Rects.TryGetValue(kv.Key, out var r) || r != kv.Value))
+            return; // the pair doesn't line up (shouldn't happen): leave every grass type on its own textures
+
+        foreach (var (rel, bytes) in new[] { (AtlasDiffuse, a.Dds), (AtlasNormal, b.Dds) })
+        {
+            var full = Path.Combine(_outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+            File.WriteAllBytes(full, bytes);
+        }
+        _atlasRects = new Dictionary<string, AtlasRect>(a.Rects, StringComparer.OrdinalIgnoreCase);
+        _atlasHash = Convert.ToHexString(SHA256.HashData(a.Dds), 0, 6).ToLowerInvariant();
+        Atlas = new GrassAtlasSummary(a.Rects.Count, a.Size, a.SizeCap, a.Reduced, a.Errors.Count);
+    }
+
+    /// <summary>The billboard moved into the atlas (same textures for every type, UVs from its tile), if it has a tile.</summary>
+    private GrassBillboard? Atlased(GrassBillboard? bb)
+        => bb is not null && _atlasRects is not null && _atlasRects.TryGetValue(GamePath.Normalize(bb.Diffuse), out var rect)
+            ? new GrassBillboard(AtlasDiffuse, AtlasNormal, bb.Width, bb.Height, bb.ShiftZ, rect)
+            : bb;
+
+    /// <summary>A texture from the output folder (billboards rendered this run) or the load order.</summary>
+    private byte[]? ReadTexture(string texture)
+    {
+        var p = GamePath.Normalize(texture);
+        if (!p.StartsWith("textures\\", StringComparison.Ordinal)) p = "textures\\" + p;
+        if (_outputFolder is not null)
+        {
+            var local = Path.Combine(_outputFolder, p.Replace('\\', Path.DirectorySeparatorChar));
+            if (File.Exists(local)) return File.ReadAllBytes(local);
+        }
+        if (!_assets.TryOpen(p, out var st)) return null;
+        using (st)
+        {
+            using var ms = new MemoryStream();
+            st.CopyTo(ms);
+            return ms.ToArray();
+        }
+    }
+
+    /// <summary>A BC7 DDS of the given size filled with the flat tangent-space normal (128,128,255), one mip.</summary>
+    private static byte[] FlatNormalDds(int width, int height)
+    {
+        var px = new byte[64];
+        for (int i = 0; i < 64; i += 4) { px[i] = 128; px[i + 1] = 128; px[i + 2] = 255; px[i + 3] = 255; }
+        var block = new byte[16];
+        Bc7Encoder.EncodeBlock(px, block);
+        int blocks = ((width + 3) / 4) * ((height + 3) / 4);
+        var top = new byte[blocks * 16];
+        for (int i = 0; i < top.Length; i += 16) block.CopyTo(top, i);
+        using var ms = new MemoryStream();
+        DdsFile.WriteBc7(ms, width, height, [top]);
+        return ms.ToArray();
+    }
+
     /// <summary>One fingerprint over every billboard and .txt in textures\terrain\lodgen (re-run TexGen = rebuild grass).</summary>
     private string BillboardFingerprint()
     {
@@ -277,3 +419,6 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         return p.StartsWith("meshes\\", StringComparison.Ordinal) ? p["meshes\\".Length..] : p;
     }
 }
+
+/// <summary>The grass atlas for the log: tiles, side length in pixels, the tile size cap that was needed, tiles scaled down, billboards that couldn't be read.</summary>
+public sealed record GrassAtlasSummary(int Tiles, int Size, int SizeCap, int Reduced, int Skipped);

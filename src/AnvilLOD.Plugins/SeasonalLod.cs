@@ -22,7 +22,7 @@ public static class SeasonalLod
     public static Result Build(
         GameContext game, IAssetSource assets, Func<string, IEnumerable<string>> enumerate, LodMeshResolver resolver,
         IReadOnlyDictionary<QuadKey, IReadOnlyList<LodReference>> quads, LodGenerator generator, string outputFolder,
-        IProgress<string>? progress, CancellationToken ct)
+        IProgress<string>? progress, CancellationToken ct, GrassLodSource? grass = null)
     {
         var messages = new List<string>();
         var files = enumerate("seasons\\")
@@ -37,7 +37,8 @@ public static class SeasonalLod
             ct.ThrowIfCancellationRequested();
             RemoveSeasonFiles(outputFolder, scopes, suffix);
             var seasonFiles = files.Where(f => SeasonSwaps.SeasonOf(Path.GetFileName(f)) == suffix).ToList();
-            if (seasonFiles.Count == 0) continue;
+            bool seasonalGrass = grass?.HasSeason(suffix) == true; // grass\<ws>x..y...<SUF>.cgid from Grass Cache Helper
+            if (seasonFiles.Count == 0 && !seasonalGrass) continue;
 
             // Base FormKey → replacement LOD meshes (null = the swap has no object LOD: drop the reference).
             var swaps = new Dictionary<string, LodMeshSet?>(StringComparer.OrdinalIgnoreCase);
@@ -57,7 +58,7 @@ public static class SeasonalLod
                     swaps[baseKey.Value.ToString()] = MeshesFor(game, resolver, swapKey.Value);
                 }
             }
-            if (swaps.Count == 0)
+            if (swaps.Count == 0 && !seasonalGrass)
             {
                 messages.Add($"Seasons ({name}): {seasonFiles.Count} INI file(s) but no object swaps"
                     + (unresolved > 0 ? $" ({unresolved} entries name forms that aren't loaded)" : "") + "; no seasonal LOD written.");
@@ -68,14 +69,19 @@ public static class SeasonalLod
             var changed = new Dictionary<QuadKey, IReadOnlyList<LodReference>>();
             foreach (var (quad, refs) in quads)
             {
-                if (!refs.Any(r => swaps.ContainsKey(r.BaseFormKey))) continue;
+                bool any = false;
                 var seasonal = new List<LodReference>(refs.Count);
                 foreach (var r in refs)
                 {
-                    if (!swaps.TryGetValue(r.BaseFormKey, out var m)) seasonal.Add(r);
-                    else if (m is not null) seasonal.Add(r with { Meshes = m });   // swap without LOD: left out
+                    if (swaps.TryGetValue(r.BaseFormKey, out var m))
+                    {
+                        any = true;
+                        if (m is not null) seasonal.Add(r with { Meshes = m });   // swap without LOD: left out
+                    }
+                    else if (seasonalGrass && grass!.SeasonalVariant(r, suffix) is { } g) { any = true; seasonal.Add(g); }
+                    else seasonal.Add(r);
                 }
-                changed[quad] = seasonal;
+                if (any) changed[quad] = seasonal;
             }
 
             var gen = generator.Generate(changed, changed.Keys.ToList(), outputFolder, progress, ct, suffix);
@@ -91,7 +97,7 @@ public static class SeasonalLod
                 linked++;
             }
             seasons++;
-            messages.Add($"Seasons ({name}): {swaps.Count:N0} swapped object types from {seasonFiles.Count} INI file(s), {changed.Count:N0} blocks rebuilt"
+            messages.Add($"Seasons ({name}): {swaps.Count:N0} swapped object types from {seasonFiles.Count} INI file(s)" + (seasonalGrass ? ", seasonal grass cache" : "") + $", {changed.Count:N0} blocks rebuilt"
                 + (unresolved > 0 ? $", {unresolved} entries skipped (forms not loaded)" : ""));
         }
         foreach (var m in messages) progress?.Report(m);

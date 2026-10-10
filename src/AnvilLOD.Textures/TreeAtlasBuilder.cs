@@ -18,6 +18,9 @@ namespace AnvilLOD.Textures;
 public sealed class TreeAtlasBuilder
 {
     public int MaxSize { get; init; } = 4096;
+
+    /// <summary>Largest side any billboard keeps, whatever the atlas size (grass LOD: its billboards are huge, 2048x1024, and are seen small).</summary>
+    public int MaxTile { get; init; } = int.MaxValue;
     public byte AlphaThreshold { get; init; } = 128;
 
     /// <summary>Colour multiplier for every billboard (1 = unchanged), like DynDOLOD's tree LOD brightness.</summary>
@@ -60,8 +63,9 @@ public sealed class TreeAtlasBuilder
         // Smallest square atlas that fits with every billboard at full size; otherwise lower a cap on the
         // largest side until it fits, so only the biggest billboards lose resolution.
         int size = 0, cap = int.MaxValue;
-        foreach (int c in new[] { int.MaxValue, 2048, 1024, 768, 512, 384, 256, 192, 128, 96, 64 })
+        foreach (int c in new[] { MaxTile, 2048, 1024, 768, 512, 384, 256, 192, 128, 96, 64 }.Distinct())
         {
+            if (c > MaxTile) continue;
             for (int s = 256; s <= MaxSize && size == 0; s *= 2)
                 if (Pack(items, s, c, apply: false)) { size = s; cap = c; }
             if (size != 0) break;

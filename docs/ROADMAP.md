@@ -15,7 +15,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Tree LOD: 3D tree LOD models in object LOD (`passthru_lod.nif`) | Models matched by CRC32 (or, opt-in, plain name), 3D at LOD4 (optionally LOD8), billboard cards beyond, passthru shaders kept, size estimate in the log | ✅ v1 (opt-in) |
 | Tree LOD: 3D models for trees that have none | Simplify the full tree model into a hybrid crown + trunk model, cached as a DynDOLOD-compatible file | planned |
 | Tree LOD: own billboard / trunk renderer | GPU renderer (TexGen not needed, also for the flat trunk textures 3D models use) | planned |
-| Grass LOD (NGIO / FasterNGIO `.cgid`) | Cache read directly, sampled into alpha-tested billboard quads in LOD4, per-cell segments | ✅ v1 |
+| Grass LOD (NGIO / FasterNGIO `.cgid`) | Cache read directly; one tuft per occupied ground bin (even coverage), one atlas texture for every grass type, density 1-100%, top/bottom brightness, seasonal caches, LOD4/8/16 | ✅ v2 |
 | Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Tree/terrain LOD not seasonal yet | 🧪 experimental |
 | Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
 | In-game settings (DynDOLOD MCM equivalent) | SKSE Menu Framework pages: LOD/fade/grass distances, dynamic LOD, water & animated objects | ✅ |
@@ -23,7 +23,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Glow windows | SKSE plugin | planned |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |
 | Enable parents (quest-built places, e.g. Helgen Reborn) | Initial state resolved through the parent chain; start-disabled refs left out of static LOD | ✅ |
-| Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪, water look needs tuning) |
+| Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪). Stream, creek and pond water planes: lit fake-water stand-ins instead of black water (opt-in) |
 | Walled cities in the parent's LOD (Dragonsreach etc.) | Child world references copied into Tamriel's LOD, driven by DynDOLOD's `Configs\DynDOLOD_SSE_childworld_*.ini` + ChildworldMatches | ✅ |
 | Child worldspaces with their own LOD | Generate for parent/child links | planned |
 | Occlusion.esp | Build from our own terrain data (xLODGen meanwhile) | planned |
@@ -89,7 +89,8 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 
 ## Milestone 5 — Seasons
 - [ ] Read Seasons of Skyrim swap INIs; generate per-season block sets with the seasonal file names (verify against real seasonal output first)
-- [ ] Seasonal grass caches and seasonal billboards
+- [x] Seasonal grass caches (`....WIN/.SPR/.SUM/.AUT.cgid`) build each season's LOD4 grass
+- [ ] Seasonal billboards
 - [ ] Test list: small dedicated seasons profile
 
 ## Milestone 6 — Dynamic LOD (SKSE)

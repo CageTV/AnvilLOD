@@ -25,7 +25,8 @@ public static class DynamicLodWriter
     public const string RelativePath = "SKSE\\Plugins\\AnvilLOD\\AnvilLOD.dyn";
     public const uint Version = 2;
 
-    public static int Write(string outputFolder, IReadOnlyList<DynamicLodReference> refs)
+    /// <param name="meshMap">Optional replacements for mesh paths (relative to Data\meshes, case-insensitive), e.g. water stand-ins.</param>
+    public static int Write(string outputFolder, IReadOnlyList<DynamicLodReference> refs, IReadOnlyDictionary<string, string>? meshMap = null)
     {
         var strings = new List<string>();
         var index = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
@@ -48,6 +49,7 @@ public static class DynamicLodWriter
             if (string.IsNullOrEmpty(mesh)) continue;
             var rel = GamePath.Normalize(mesh);
             if (rel.StartsWith("meshes\\", StringComparison.Ordinal)) rel = rel["meshes\\".Length..];
+            if (meshMap is not null && meshMap.TryGetValue(rel, out var replacement)) rel = replacement;
             if (d.ParentPlugin is { } parentPlugin) Str(parentPlugin);
             entries.Add((Str(d.RefPlugin), d.RefLocalId, Str(d.WorldspacePlugin), d.WorldspaceLocalId, Str(rel), r, d));
         }

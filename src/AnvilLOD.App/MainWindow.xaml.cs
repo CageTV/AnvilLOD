@@ -91,8 +91,11 @@ public partial class MainWindow : Window
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
         SeasonsCheck.IsChecked = _settings.Seasons;
+        WaterStandInsCheck.IsChecked = _settings.WaterStandIns;
         SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 4);
-        GrassDensityBox.SelectedIndex = _settings.GrassDensity switch { <= 5 => 0, >= 12 => 2, _ => 1 };
+        GrassDensityBox.SelectedIndex = GrassDensityIndex(_settings.GrassDensity);
+        FillGrassBrightness(GrassTopBox, _settings.GrassTop);
+        FillGrassBrightness(GrassBottomBox, _settings.GrassBottom);
         IncludeDisabledCheck.IsChecked = _settings.IncludeDisabled;
         IncludeEnableParentCheck.IsChecked = _settings.IncludeEnableParented;
     }
@@ -139,8 +142,11 @@ public partial class MainWindow : Window
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
         _settings.Seasons = SeasonsCheck.IsChecked == true;
+        _settings.WaterStandIns = WaterStandInsCheck.IsChecked == true;
         _settings.SkseDll = Math.Max(0, SkseDllBox.SelectedIndex);
-        _settings.GrassDensity = GrassDensityBox.SelectedIndex switch { 0 => 4, 2 => 15, _ => 8 };
+        _settings.GrassDensity = GrassDensityChoices[Math.Clamp(GrassDensityBox.SelectedIndex, 0, GrassDensityChoices.Length - 1)];
+        _settings.GrassTop = GrassBrightnessValue(GrassTopBox, _settings.GrassTop);
+        _settings.GrassBottom = GrassBrightnessValue(GrassBottomBox, _settings.GrassBottom);
         _settings.IncludeDisabled = IncludeDisabledCheck.IsChecked == true;
         _settings.IncludeEnableParented = IncludeEnableParentCheck.IsChecked == true;
         _settings.StoreActivePreset();   // the active preset always mirrors the column
@@ -400,6 +406,9 @@ public partial class MainWindow : Window
             CustomRulesFile: _settings.CustomRulesEnabled ? _settings.CustomRulesFile : null,
             PbrLodBrightness: _settings.PbrLodBrightness / 100f,
             GrassDensity: _settings.GrassDensity / 100f,
+            WaterStandIns: _settings.WaterStandIns,
+            GrassTop: _settings.GrassTop / 100f,
+            GrassBottom: _settings.GrassBottom / 100f,
             SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 4),
             Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });
 
@@ -1110,6 +1119,28 @@ public partial class MainWindow : Window
     }
 
     // Brightness dropdowns: 11 entries, 10% .. 110% in 10% steps.
+    /// <summary>The grass LOD density choices in the combo box, in percent (the same order as its items).</summary>
+    private static readonly int[] GrassDensityChoices = [4, 8, 15, 25, 40, 60, 100];
+
+    private static int GrassDensityIndex(int percent)
+    {
+        int best = 0;
+        for (int i = 1; i < GrassDensityChoices.Length; i++)
+            if (Math.Abs(GrassDensityChoices[i] - percent) < Math.Abs(GrassDensityChoices[best] - percent)) best = i;
+        return best;
+    }
+
+    /// <summary>Lists 10%-120% in steps of 5 and selects the nearest to <paramref name="percent"/> (the list is only built once).</summary>
+    private static void FillGrassBrightness(ComboBox box, int percent)
+    {
+        if (box.Items.Count == 0)
+            for (int p = 10; p <= 120; p += 5) box.Items.Add(new ComboBoxItem { Content = $"{p}%", Tag = p });
+        box.SelectedIndex = Math.Clamp((int)Math.Round((percent - 10) / 5.0), 0, box.Items.Count - 1);
+    }
+
+    private static int GrassBrightnessValue(ComboBox box, int fallback)
+        => box.SelectedItem is ComboBoxItem { Tag: int p } ? p : fallback;
+
     private static int BrightnessIndex(int percent) => Math.Clamp((int)Math.Round(percent / 10.0) - 1, 0, 10);
     private static int BrightnessPercent(int index) => index < 0 ? 100 : (Math.Clamp(index, 0, 10) + 1) * 10;
 }

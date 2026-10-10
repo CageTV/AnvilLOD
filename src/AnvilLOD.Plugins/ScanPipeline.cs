@@ -20,6 +20,9 @@ public sealed record ScanRequest(
     bool GrassLod = true,                          // grass LOD in LOD4 from the grass cache (grass\*.cgid)
     float GrassDensity = 0.08f,                    // share of cached grass instances kept as LOD quads
     float GrassSize = 1f,                          // size multiplier for the kept quads (fewer, bigger tufts)
+    bool WaterStandIns = false,                    // lit fake-water stand-ins for stream/creek/pond water-shader planes (grid objects), instead of black water beyond the loaded cells
+    float GrassTop = GrassPatchBuilder.DefaultTop,       // grass LOD vertex-colour brightness at the top of a tuft (DynDOLOD GrassBrightnessTop)
+    float GrassBottom = GrassPatchBuilder.DefaultBottom, // ... and at the roots (GrassBrightnessBottom)
     float TreeBrightness = 1f,                     // tree LOD billboard colour multiplier (DynDOLOD-style brightness)
     float ObjectBrightness = 1f,                   // object LOD colour multiplier (vertex colours; textures untouched)
     bool Seasons = false,                          // EXPERIMENTAL: Seasons of Skyrim seasonal object LOD (<block>.WIN.bto, …)
@@ -199,8 +202,13 @@ public static class ScanPipeline
         IReadOnlyList<LodReference> allRefs = scan.References;
         if (req.GrassLod && scan.Grids.Count > 0 && (req.Levels is not { Count: > 0 } || req.Levels.Contains(LodLevel.Lod4)))
         {
-            grass = new GrassLodSource(game, assets, req.GrassDensity, req.GrassSize, req.Generate ? req.OutputFolder : null);
+            grass = new GrassLodSource(game, assets, req.GrassDensity, req.GrassSize, req.Generate ? req.OutputFolder : null, req.GrassTop, req.GrassBottom);
             var grassRefs = grass.Discover(scan.Grids);
+            if (req.Generate && grassRefs.Count > 0)
+            {
+                progress?.Report("Grass LOD: packing the grass billboards into one atlas...");
+                grass.PrepareAtlas();
+            }
             progress?.Report($"Grass cache: {grassRefs.Count:N0} cells with cached grass");
             if (grassRefs.Count == 0)
                 Warn("Grass LOD is on, but no grass cache (grass\\<worldspace>x…y….cgid) was found. Generate one with NGIO or FasterNGIO.");
@@ -360,7 +368,7 @@ public static class ScanPipeline
             if (req.Seasons)
             {
                 progress?.Report("Seasons (experimental): building seasonal object LOD from Data\\Seasons\\*_WIN/_SPR/_SUM/_AUT.ini...");
-                var seasonal = SeasonalLod.Build(game, assets, assets.EnumeratePaths, resolver, quads, generator, output, progress, ct);
+                var seasonal = SeasonalLod.Build(game, assets, assets.EnumeratePaths, resolver, quads, generator, output, progress, ct, grass);
                 if (seasonal.Seasons == 0 && seasonal.Messages.Count == 0)
                     progress?.Report("Seasons: no season INI files found in Data\\Seasons; nothing written.");
             }
@@ -375,7 +383,19 @@ public static class ScanPipeline
             }
             if (req.Scan.DynamicLod || req.Scan.GridObjects)
             {
-                int n = DynamicLodWriter.Write(output, scan.Dynamic ?? []);
+                IReadOnlyDictionary<string, string>? waterMap = null;
+                if (req.WaterStandIns && req.Scan.GridObjects)
+                {
+                    var gridMeshes = (scan.Dynamic ?? []).Where(d => d.IsGridObject)
+                        .Select(d => d.Ref.Meshes.Lod4 ?? d.Ref.Meshes.Lod8 ?? d.Ref.Meshes.Lod16 ?? d.Ref.Meshes.Lod32)
+                        .Where(m => !string.IsNullOrEmpty(m)).Select(m => m!);
+                    var standIns = WaterStandIns.Build(gridMeshes, assets, output);
+                    waterMap = standIns.Map;
+                    progress?.Report($"Water stand-ins: {standIns.Converted} stream/pond water meshes now draw as lit fake water"
+                                     + (standIns.Converted > 0 ? $" ({string.Join(", ", standIns.Names.Select(Path.GetFileNameWithoutExtension).Take(8))}{(standIns.Names.Count > 8 ? ", ..." : "")})" : "")
+                                     + $"; {standIns.NoWaterShader} matching meshes had no water shader, {standIns.Unreadable} could not be read.");
+                }
+                int n = DynamicLodWriter.Write(output, scan.Dynamic ?? [], waterMap);
                 int g = scan.Dynamic?.Count(d => d.IsGridObject) ?? 0;
                 progress?.Report($"Dynamic LOD: {n - g:N0} switchable references and {g:N0} grid objects written to {DynamicLodWriter.RelativePath} for the AnvilLOD SKSE plugin");
             }
@@ -452,6 +472,8 @@ public static class ScanPipeline
                     progress?.Report(grass.BillboardsRendered > 0
                         ? $"Grass LOD: {grass.TypesFromModelTexture} grass types have no TexGen billboard; {grass.BillboardsRendered} billboards were rendered from their models (textures\\anvillod\\grass)."
                         : $"Grass LOD: {grass.TypesFromModelTexture} grass types have no TexGen billboard and use their own model texture instead.");
+                if (grass.Atlas is { } atlas)
+                    progress?.Report($"Grass LOD: {atlas.Tiles} billboards in one {atlas.Size}x{atlas.Size} atlas (tiles up to {(atlas.SizeCap == int.MaxValue ? "full size" : atlas.SizeCap + " px")}, {atlas.Reduced} scaled down), so each block needs one grass material.");
                 Classify(grass.MissingBillboards, "grass", "Re-run TexGen with grass billboards enabled.");
             } 
             if (gen.MeshErrors.Count > 0) Warn($"{gen.MeshErrors.Count} LOD meshes could not be used; see the Missing meshes tab.");

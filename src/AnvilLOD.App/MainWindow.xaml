@@ -297,15 +297,29 @@
                         <CheckBox x:Name="GrassLodCheck" Content="Grass LOD (from the grass cache)" IsChecked="True"
                                   ToolTip="Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards." />
                         <TextBlock Text="Grass LOD density" Margin="20,2,0,2" />
-                        <ComboBox x:Name="GrassDensityBox" SelectedIndex="1" Margin="20,0,0,6">
-                            <ComboBoxItem Content="Low (4%, smallest files)" />
-                            <ComboBoxItem Content="Medium (8%)" />
-                            <ComboBoxItem Content="High (15%, largest files)" />
+                        <ComboBox x:Name="GrassDensityBox" SelectedIndex="1" Margin="20,0,0,6"
+                                  ToolTip="Share of the cached grass kept as LOD tufts, spread evenly over the ground. More is fuller and closer to the real grass, but makes bigger files and more triangles to draw. The sizes listed are for a large load order's Tamriel (object LOD, normal grass cache). Seasons of Skyrim adds a full set per season, and summer's grass cache is much denser than winter's, so seasonal output is several times bigger.">
+                            <ComboBoxItem Content="Low (4%): 15M triangles, 0.7 GB" />
+                            <ComboBoxItem Content="Medium (8%): 20M triangles, 1.1 GB" />
+                            <ComboBoxItem Content="High (15%): 29M triangles, 1.7 GB" />
+                            <ComboBoxItem Content="Higher (25%): 43M triangles, 2.7 GB" />
+                            <ComboBoxItem Content="Very high (40%): 60M triangles, 3.9 GB" />
+                            <ComboBoxItem Content="Ultra (60%): 92M triangles, 6.1 GB, strong GPU" />
+                            <ComboBoxItem Content="Full (100%): 162M triangles, 11 GB, every blade" />
                         </ComboBox>
+                        <TextBlock Text="Grass LOD brightness: top of the tufts / roots" Margin="20,2,0,2" />
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,6">
+                            <ComboBox x:Name="GrassTopBox" Width="90"
+                                      ToolTip="How bright the top of each grass tuft is (like DynDOLOD's GrassBrightnessTop). Lower it if distant grass looks brighter than the real grass. Changing it rebuilds the grass blocks." />
+                            <ComboBox x:Name="GrassBottomBox" Width="90" Margin="8,0,0,0"
+                                      ToolTip="How bright the roots are (like DynDOLOD's GrassBrightnessBottom). A darker root fakes the shadow inside the grass. Changing it rebuilds the grass blocks." />
+                        </StackPanel>
                         <CheckBox x:Name="DynamicLodCheck" Content="Dynamic LOD for switchable references (SKSE)" IsChecked="True"
                                   ToolTip="References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled." />
                         <CheckBox x:Name="GridObjectsCheck" Content="Water and animated distant objects (SKSE)" IsChecked="True"
                                   ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
+                        <CheckBox x:Name="WaterStandInsCheck" Content="Stream, creek and pond water stand-ins"
+                                  ToolTip="Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed." />
                         <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD (EXPERIMENTAL)"
                                   ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
                         <TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"

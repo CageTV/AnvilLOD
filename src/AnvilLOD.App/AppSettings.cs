@@ -60,6 +60,9 @@ public sealed class AppSettings
     public bool Seasons { get; set; }   // experimental
     public int SkseDll { get; set; } = 0;   // 0 auto, 1 up to 1.6.1170, 2 newer, 3 installed separately, 4 Skyrim VR 1.4.15 (the numbers are SkseDllChoice's)
     public int GrassDensity { get; set; } = 8;   // percent of cached grass kept
+    public bool WaterStandIns { get; set; }      // lit fake-water stand-ins for stream/creek/pond water planes
+    public int GrassTop { get; set; } = 85;      // grass LOD brightness at the top of a tuft, percent (DynDOLOD GrassBrightnessTop)
+    public int GrassBottom { get; set; } = 50;   // ... and at the roots (GrassBrightnessBottom)
     public bool IncludeDisabled { get; set; }
     public bool IncludeEnableParented { get; set; } = true;
 
