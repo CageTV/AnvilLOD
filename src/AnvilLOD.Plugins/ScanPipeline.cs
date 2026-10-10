@@ -117,6 +117,8 @@ public static class ScanPipeline
                  || p.StartsWith("grass\\", StringComparison.Ordinal) || p.StartsWith("seasons\\", StringComparison.Ordinal)
                  || ((req.GrassLod || req.Scan.Tree3D is { Enabled: true }) && p.StartsWith("textures\\", StringComparison.Ordinal))); // grass model textures (rendered grass billboards), and the textures 3D tree LOD models need
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
+        foreach (var skipped in assets.SkippedArchives)
+            Warn($"An archive could not be read and was skipped; its files are not used, everything else is ({skipped}).");
         if (assets.ArchiveCount == 0)
             Warn("No BSA archives were found. Vanilla LOD meshes and LOD settings live in BSAs, so check the Data folder / MO2 instance path.");
 

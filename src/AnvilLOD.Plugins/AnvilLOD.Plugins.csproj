@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mutagen.Bethesda.Skyrim" />
+    <InternalsVisibleTo Include="AnvilLOD.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />

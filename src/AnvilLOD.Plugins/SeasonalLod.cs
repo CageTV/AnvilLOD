@@ -130,10 +130,19 @@ public static class SeasonalLod
         }
     }
 
+    /// <summary>
+    /// "Plugin.esp" and a local id as a FormKey, or null when the plugin name is not a valid plugin file name (a season INI
+    /// line like <c>Skyrim|0x1234</c> without the extension would otherwise stop the whole seasonal build).
+    /// </summary>
+    internal static FormKey? PluginForm(string plugin, uint localId)
+    {
+        try { return new FormKey(ModKey.FromFileName(plugin.Trim()), localId); }
+        catch (ArgumentException) { return null; }
+    }
+
     private static FormKey? Resolve(GameContext game, string section, SeasonFormRef f)
     {
-        if (f.Plugin is not null)
-            return new FormKey(ModKey.FromFileName(f.Plugin), f.LocalId);
+        if (f.Plugin is not null) return PluginForm(f.Plugin, f.LocalId);
         var edid = f.EditorId!;
         var cache = game.LinkCache;
         return section.ToLowerInvariant() switch

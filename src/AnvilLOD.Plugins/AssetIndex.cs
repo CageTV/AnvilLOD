@@ -24,15 +24,20 @@ public sealed class AssetIndex : IAssetSource
     private readonly Dictionary<string, ArchiveEntry> _archived;
     private readonly ConcurrentDictionary<string, FileInfo?> _looseCache = new(StringComparer.Ordinal);
 
+    /// <summary>Archives that were read.</summary>
     public int ArchiveCount { get; }
     public int ArchivedFileCount => _archived.Count;
+
+    /// <summary>Archives that could not be read (a corrupt file, or names Mutagen cannot decode), each as "name: reason". They are left out.</summary>
+    public IReadOnlyList<string> SkippedArchives { get; }
     public TimeSpan IndexTime { get; }
 
     private sealed record ArchiveEntry(string ArchiveName, IArchiveFile File);
 
     private AssetIndex(Func<string, FileInfo?> looseResolver, Func<string, IEnumerable<string>> looseEnumerator,
-        Dictionary<string, ArchiveEntry> archived, int archiveCount, TimeSpan time)
+        Dictionary<string, ArchiveEntry> archived, int archiveCount, TimeSpan time, IReadOnlyList<string> skipped)
     {
+        SkippedArchives = skipped;
         _looseResolver = looseResolver;
         _looseEnumerator = looseEnumerator;
         _archived = archived;
@@ -83,20 +88,34 @@ public sealed class AssetIndex : IAssetSource
     {
         var sw = Stopwatch.StartNew();
         var map = new Dictionary<string, ArchiveEntry>(StringComparer.Ordinal);
+        var skipped = new List<string>();
 
         foreach (var archivePath in archivesLowToHigh)
         {
-            var reader = Archive.CreateReader(release, archivePath);
             var name = Path.GetFileName(archivePath);
-            foreach (var f in reader.Files)
+            // The name table is read lazily, so a bad archive (e.g. "Strings section was not able to be read: did not end all
+            // of its strings in null bytes", seen with a mod whose BSA holds non-ASCII file names) throws while the files are
+            // listed. Collect them first so a half-read archive adds nothing, and skip the archive rather than the whole run.
+            List<(string Key, IArchiveFile File)> entries = [];
+            try
             {
-                var key = GamePath.Normalize(f.Path);
-                if (pathFilter is not null && !pathFilter(key)) continue;
-                map[key] = new ArchiveEntry(name, f); // later archive wins
+                var reader = Archive.CreateReader(release, archivePath);
+                foreach (var f in reader.Files)
+                {
+                    var key = GamePath.Normalize(f.Path);
+                    if (pathFilter is not null && !pathFilter(key)) continue;
+                    entries.Add((key, f));
+                }
             }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                skipped.Add($"{name}: {ex.GetBaseException().Message}");
+                continue;
+            }
+            foreach (var (key, f) in entries) map[key] = new ArchiveEntry(name, f); // later archive wins
         }
 
-        return new AssetIndex(looseResolver, looseEnumerator, map, archivesLowToHigh.Count, sw.Elapsed);
+        return new AssetIndex(looseResolver, looseEnumerator, map, archivesLowToHigh.Count - skipped.Count, sw.Elapsed, skipped);
     }
 
     /// <summary>All data-relative paths (normalized) under a prefix such as "meshes\\", from loose files and BSAs.</summary>
