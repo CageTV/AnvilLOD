@@ -197,6 +197,10 @@ Skyrim SE has a **large reference grid**: a list, per cell, in the worldspace re
 
 Object LOD textures follow the full model, the way DynDOLOD does: a base record's alternate textures (MODS, resolved through its texture sets) replace the LOD shape's diffuse and normal by shape name, so snow and ice variants and re-skinned rocks get matching LOD. Stitched `textures\lod` textures and textures that exist nowhere are left alone. On by default; `--no-match-textures` turns it off on the command line.
 
+## Snow and ash on distant mountains
+
+The game puts its snow and ash LOD shader on object LOD shapes by the shape's name in the `.bto` (`objSnow`, `objSnowHD`, `objAsh`, `objAshHD`). Like DynDOLOD, AnvilLOD names an object's shapes that way when its base record's Material has "snow" or "Ash" in its EditorID (for example `SnowMaterialMountain1P`), and uses the HD name for shapes that use full textures instead of LOD textures. Without it, mountains in LOD have no snow until the real model loads. Run Generate again to get it (existing LOD is rewritten once). Snow intensity (vertex alpha) and the Majestic Mountains `_lod_0l`/`_lod_0h` variants are not handled yet.
+
 ## Terrain underside (opt-in)
 
 Volumetric lighting mods (DVLaSS, EVLaS, Community Shaders' sky sync) need a low-resolution copy of the terrain facing downward under the world, or sun rays and shadows leak through the landscape. DynDOLOD makes it ("Terrain underside"); tick **Terrain underside** (`--underside`) and AnvilLOD does too, for every worldspace that has LOD32 blocks, including ones added by mods.

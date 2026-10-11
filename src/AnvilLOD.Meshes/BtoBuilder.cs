@@ -23,6 +23,21 @@ public static class BtoBuilder
 {
     public const string Author = "AnvilLOD";
     private const int MaxIndex = ushort.MaxValue;
+    private const string ObjName = "obj";
+
+    /// <summary>
+    /// The shape name the engine reads the LOD material from: <c>obj</c> normally, <c>objSnow</c>/<c>objAsh</c> for objects
+    /// whose base record has a snow/ash Material, and the <c>HD</c> form when the shape uses full textures instead of LOD
+    /// textures (DynDOLOD's output does the same; the nearest mountains use the HD material).
+    /// </summary>
+    internal static string ShapeNameFor(LodShaderKind kind, LodMaterial m)
+    {
+        if (kind == LodShaderKind.None) return ObjName;
+        var tex = m.Textures.Count > 0 ? m.Textures[0] : null;
+        bool lodTexture = tex is not null && tex.Replace('/', '\\').TrimStart('\\')
+            .StartsWith("textures\\lod\\", StringComparison.OrdinalIgnoreCase);
+        return ObjName + (kind == LodShaderKind.Snow ? "Snow" : "Ash") + (lodTexture ? "" : "HD");
+    }
 
     public sealed record Result(byte[] Bytes, int Shapes, int Triangles, int Vertices, int RefsPlaced, int RefsSkipped, int TrianglesCulled = 0,
         IReadOnlyDictionary<string, (long Triangles, long Vertices)>? ByCategory = null);
@@ -84,18 +99,22 @@ public static class BtoBuilder
                 cats[category] = (seen.Triangles + part.TriangleCount, seen.Vertices + part.VertexCount);
                 if (part.VertexCount > MaxIndex || part.TriangleCount > MaxIndex) continue; // can't happen for valid SSE shapes
                 // A layer other than plain objects never shares a shape with another layer, even with the same material.
+                // The game puts its snow/ash LOD material on shapes by NAME, so those parts get their own shapes.
+                var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material) : ObjName;
                 var chunkKey = category == LodLayers.Objects ? part.Material.Key : part.Material.Key + "|layer:" + category;
+                if (shapeName != ObjName) chunkKey += "|shape:" + shapeName;
                 if (!chunks.TryGetValue(chunkKey, out var list))
-                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category }];
+                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName }];
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
-                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category });
+                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName });
                 culled += chunk.Append(part, m, rot, origin, inv, terrain, segment);
             }
         }
 
         var w = new NifWriter { Author = Author };
-        int objName = w.String("obj");
+        int objName = w.String(ObjName);
+        var shapeNames = new Dictionary<string, int>(StringComparer.Ordinal) { [ObjName] = objName };
         int root = w.Reserve("NiNode");
         var ordered = chunks.OrderBy(kv => kv.Key, StringComparer.Ordinal).SelectMany(kv => kv.Value).Where(c => c.TriangleCount > 0).ToList();
         var children = new List<int>();
@@ -124,7 +143,8 @@ public static class BtoBuilder
                 b.Write(mb);
                 b.Write(1u);          // culling mode
             });
-            w.Set(shape, b => c.WriteShape(b, objName, origin, level, shader, alpha));
+            if (!shapeNames.TryGetValue(c.ShapeName, out int shapeName)) shapeNames[c.ShapeName] = shapeName = w.String(c.ShapeName);
+            w.Set(shape, b => c.WriteShape(b, shapeName, origin, level, shader, alpha));
             w.Set(shader, b => WriteShader(b, c.Material, texSet, c.HasColors));
             w.Set(texSet, b =>
             {
@@ -198,6 +218,7 @@ public static class BtoBuilder
     {
         public LodMaterial Material { get; } = material;
         public string Layer { get; init; } = LodLayers.Objects;
+        public string ShapeName { get; init; } = ObjName;
         private readonly List<Vector3> _pos = [];
         private readonly List<Vector2> _uv = [];
         private readonly List<Vector3> _n = [];

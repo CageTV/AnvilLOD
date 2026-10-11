@@ -17,7 +17,8 @@ public sealed record LodReference(
     float Scale,
     LodMeshSet Meshes,
     LodReferenceFlags Flags,
-    string? TextureVariant = null)   // id of the base record's TextureVariant: the LOD mesh's textures follow its full model
+    string? TextureVariant = null,   // id of the base record's TextureVariant: the LOD mesh's textures follow its full model
+    LodShaderKind Shader = LodShaderKind.None)   // the snow/ash LOD shader the game applies to this object's LOD shapes (base record's Material)
 {
     public CellCoord Cell => CellCoord.FromWorld(Position.X, Position.Y);
 }
@@ -49,3 +50,12 @@ public enum LodReferenceFlags
     BaseHasDistantLodFlag = 1 << 3,
     IsFullLod = 1 << 4,
 }
+
+/// <summary>
+/// Which LOD material the game puts on an object's LOD shapes. The engine picks it by the shape's name in the .bto
+/// (<c>objSnow</c>, <c>objSnowHD</c>, <c>objAsh</c>, <c>objAshHD</c>: Skyrim.esm SnowLODMaterial / SnowLODMaterialHD,
+/// Dragonborn.esm AshLODMaterialMtns1P / AshMaterialSolstheimMtns1P), which is where the snow on distant mountains comes from.
+/// DynDOLOD names a base record's shapes that way when the base record's Material has "snow" or "ash" in its EditorID.
+/// https://dyndolod.info/Help/Snow-Ash-LOD-Shader
+/// </summary>
+public enum LodShaderKind : byte { None = 0, Snow = 1, Ash = 2 }

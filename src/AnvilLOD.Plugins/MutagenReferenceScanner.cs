@@ -29,7 +29,16 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
     private readonly LodMeshResolver? _resolver;
     private readonly ChildWorldCopies _childCopies;
 
-    private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey, TextureVariant? Variant = null);
+    /// <summary>"snow" anywhere in the Material's EditorID (any case) is snow, "Ash" (capital A, so not "Splash") is ash. Snow wins.</summary>
+    internal static LodShaderKind ShaderKindOf(string? materialEditorId)
+    {
+        if (string.IsNullOrEmpty(materialEditorId)) return LodShaderKind.None;
+        if (materialEditorId.Contains("snow", StringComparison.OrdinalIgnoreCase)) return LodShaderKind.Snow;
+        if (materialEditorId.Contains("Ash", StringComparison.Ordinal)) return LodShaderKind.Ash;
+        return LodShaderKind.None;
+    }
+
+    private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey, TextureVariant? Variant = null, LodShaderKind Shader = LodShaderKind.None);
 
     /// <param name="resolver">Rules + named-LOD index. Null = MNAM only with the default level mapping.</param>
     /// <param name="childCopies">Child worldspaces (walled cities) whose references also go into the parent's LOD.</param>
@@ -109,9 +118,14 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
 
             string?[]? mnam = null;
             bool distant = false;
+            var shaderKind = LodShaderKind.None;
             if (rec is IStaticGetter stat)
             {
                 distant = stat.MajorFlags.HasFlag(Static.MajorFlag.HasDistantLOD);
+                // The Material (MNAM) of a snowy mountain is "SnowMaterial...", of a Solstheim one "AshMaterial...": the game
+                // draws such objects' LOD with its snow/ash LOD shader when the shape is named for it (see BtoBuilder).
+                if (!stat.Material.IsNull && linkCache.TryResolve<IMaterialObjectGetter>(stat.Material.FormKey, out var mato))
+                    shaderKind = ShaderKindOf(mato.EditorID);
                 if (stat.Lod is { } lod)
                     mnam = [Mnam(lod.Level0), Mnam(lod.Level1), Mnam(lod.Level2), Mnam(lod.Level3)];
             }
@@ -132,7 +146,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 variants.TryAdd(variant.Id, variant);
             }
             return new BaseInfo(model.DataRelativePath.Path, mnam, distant, rec.EditorID,
-                LodRules.FormIdKey(fk.ModKey.ToString(), fk.ID), variant);
+                LodRules.FormIdKey(fk.ModKey.ToString(), fk.ID), variant, shaderKind);
         }
 
         // 2b) Trees: billboard per TREE base (TexGen/LODGen naming), runtime FormIDs from the load order.
@@ -389,7 +403,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                     Scale: r.Scale ?? 1f,
                     Meshes: res.Meshes,
                     Flags: flags,
-                    TextureVariant: res.Meshes.HasAny ? info.Variant?.Id : null);
+                    TextureVariant: res.Meshes.HasAny ? info.Variant?.Id : null,
+                    Shader: info.Shader);
                 refs.Add(lodRef);
                 if (copy is not null)
                 {

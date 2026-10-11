@@ -116,6 +116,27 @@ public class MeshTests
     }
 
     [Fact]
+    public void Snow_and_ash_objects_get_their_own_shapes_named_for_the_game_LOD_material()
+    {
+        // The engine applies SnowLODMaterial / SnowLODMaterialHD / Ash... by the shape name, so objects whose base record has a snow
+        // (or ash) Material must not share a shape with plain objects, and full-texture shapes get the HD name.
+        var lodTex = new LodMaterial([@"textures\lod\mtnridge01lod.dds", @"textures\lod\mtnridge01lod_n.dds"], 0x8000_0300u, 5, 0, false, 0, 0, Vector3.Zero, 1f);
+        var fullTex = new LodMaterial([@"textures\landscape\mountains\mountainslab02.dds", @"textures\landscape\mountains\mountainslab02_n.dds"], 0x8000_0300u, 5, 0, false, 0, 0, Vector3.Zero, 1f);
+        LodMesh Mesh(LodMaterial m) => new() { Path = "m", Parts = [Triangle(m, null)] };
+        var meshes = new Dictionary<string, LodMesh> { ["lod"] = Mesh(lodTex), ["full"] = Mesh(fullTex) };
+        LodReference R(string mesh, LodShaderKind kind, float x) => new("1:A.esp", "2:A.esp", null, "T", "A.esp", new Vector3(x, 100, 0), Vector3.Zero, 1f,
+            new LodMeshSet(mesh, null, null, null), LodReferenceFlags.None, Shader: kind);
+
+        var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod4, 0, 0),
+            [R("lod", LodShaderKind.None, 100), R("lod", LodShaderKind.Snow, 200), R("full", LodShaderKind.Snow, 300), R("full", LodShaderKind.Ash, 400), R("full", LodShaderKind.None, 500)],
+            p => meshes[p]);
+
+        var names = NifGeometryReader.Read("out", res.Bytes).Parts.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(["obj", "obj", "objAshHD", "objSnow", "objSnowHD"], names);
+        Assert.Equal(5, res.Shapes);
+    }
+
+    [Fact]
     public void Empty_block_is_a_valid_nif()
     {
         var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod32, 0, 0), [], _ => null);
