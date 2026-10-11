@@ -12,7 +12,7 @@ public class LodRulesTests
     {
         var r7 = LodRules.ParseRule("roadchunk,Static LOD4,Static LOD8,Static LOD16,,Unchanged,1", "a.ini")!;
         Assert.Equal(LodChoice.Lod(0), r7.Lod4);
-        Assert.Equal(LodChoice.Lod(2), r7.Lod32); // LOD32 follows LOD16 in the 7-column format
+        Assert.Equal(LodChoice.None, r7.Lod32); // the 7-column format has no LOD32 column: DynDOLOD gives such objects no LOD32
         var r9 = LodRules.ParseRule("\\road,Level0,Level1,None,Level3,FarLOD,Unchanged,1,FOLIP - High", "b.ini")!;
         Assert.Equal(LodChoice.None, r9.Lod16);
         Assert.Equal(LodChoice.Lod(3), r9.Lod32);
@@ -63,6 +63,20 @@ public class LodRulesTests
         Assert.Null(house[3]);
         Assert.Equal(@"meshes\rocks\rock_lod.nif", idx.Find(@"meshes\x\rock.nif")![2]);
         Assert.Null(idx.Find(@"meshes\x\nothing.nif"));
+    }
+
+    [Fact]
+    public void Lod_4_is_the_LOD32_file_and_an_explicit_lod_3_beats_it()
+    {
+        // FOLIP's road chunks: roadchunkl01_lod_0.nif for LOD4 and roadchunkl01_lod_4.nif for the far levels.
+        var roads = LodMeshIndex.Build([@"meshes\lod\roads\roadchunkl01_lod_0.nif", @"meshes\lod\roads\map\roadchunkl01_lod_4.nif"]);
+        var r = roads.Find(@"meshes\landscape\roads\roadchunkl01.nif")!;
+        Assert.Equal(@"meshes\lod\roads\roadchunkl01_lod_0.nif", r[0]);
+        Assert.Equal(@"meshes\lod\roads\map\roadchunkl01_lod_4.nif", r[3]);
+        Assert.Equal(@"meshes\lod\roads\map\roadchunkl01_lod_4.nif", r[1]); // missing lower levels fall back to the next higher one
+
+        var both = LodMeshIndex.Build([@"meshes\lod\a_lod_3.nif", @"meshes\lod\a_lod_4.nif"]).Find(@"meshes\x\a.nif")!;
+        Assert.Equal(@"meshes\lod\a_lod_3.nif", both[3]);
     }
 
     [Fact]

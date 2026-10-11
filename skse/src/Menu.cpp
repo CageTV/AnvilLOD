@@ -2,6 +2,7 @@
 
 #include "Controller.h"
 #include "LodDistances.h"
+#include "LodLayers.h"
 #include "Settings.h"
 
 #include <Windows.h>
@@ -218,6 +219,43 @@ namespace AnvilLOD::Menu
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
 		}
 
+		void __stdcall RenderQualityLayers()
+		{
+			auto& l = Layers::Get();
+			Smf::TextWrapped("Hide parts of the distant landscape to gain frame rate, per LOD level. These are layers AnvilLOD wrote into "
+							 "the LOD files when you generated. Hiding one saves drawing cost only: memory use and load times are set by what "
+							 "was generated, and a layer that was not generated is not listed.");
+			if (!l.AnyFound()) {
+				Smf::TextDisabled("No AnvilLOD layers found in the loaded LOD yet. Generate with grass or 3D trees on, load a save, and look at the landscape.");
+			}
+			Smf::SeparatorText("Presets");
+			if (Smf::Button("Max")) l.Preset(0);
+			Smf::SameLine();
+			if (Smf::Button("High")) l.Preset(1);
+			Smf::SameLine();
+			if (Smf::Button("Medium")) l.Preset(2);
+			Smf::SameLine();
+			if (Smf::Button("Low")) l.Preset(3);
+			Smf::TextDisabled("    Max: everything. High: 3D trees only at LOD4. Medium: also grass only at LOD4 and LOD8. Low: grass only at LOD4.");
+			Smf::SeparatorText("Layers");
+			for (int layer = 0; layer < Layers::kLayerCount; ++layer) {
+				Smf::Text("%s", Layers::LayerName(layer));
+				for (int level = 0; level < Layers::kLevelCount; ++level) {
+					const int n = Layers::LevelNumber(level);
+					Smf::SameLine();
+					const auto label = std::format("LOD{}##{}{}", n, Layers::LayerKey(layer), n);
+					if (l.Found(layer, level) == 0) {
+						Smf::TextDisabled("(no LOD%d)", n);
+						continue;
+					}
+					if (Smf::Checkbox(label.c_str(), &l.show[layer][level])) l.Changed();
+				}
+			}
+			Smf::Separator();
+			if (Smf::Button("Save to AnvilLOD.ini##layers")) g_status = l.Save() ? "Saved." : "Could not write AnvilLOD.ini (see AnvilLOD.log).";
+			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
+		}
+
 		void __stdcall RenderAbout()
 		{
 			Smf::Text("AnvilLOD %s", ANVILLOD_VERSION_STRING);
@@ -248,6 +286,7 @@ namespace AnvilLOD::Menu
 		}
 		const bool ok = Smf::AddSectionItem("AnvilLOD/Distances & Grass", RenderLodDistances)
 					 && Smf::AddSectionItem("AnvilLOD/Dynamic LOD", RenderDynamic)
+					 && Smf::AddSectionItem("AnvilLOD/Quality Layers", RenderQualityLayers)
 					 && Smf::AddSectionItem("AnvilLOD/Water & Animated Objects", RenderGridObjects)
 					 && Smf::AddSectionItem("AnvilLOD/About", RenderAbout);
 		logger::info("SKSE Menu Framework {:.1f}: {}", Smf::Version(), ok ? "AnvilLOD pages added" : "AddSectionItem not exported, menu off");

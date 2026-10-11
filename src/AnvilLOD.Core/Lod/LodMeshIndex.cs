@@ -6,7 +6,7 @@ namespace AnvilLOD.Core.Lod;
 /// Finds LOD meshes for a full model by file name, using the convention DynDOLOD and the
 /// LOD resource packs (DynDOLOD Resources, FOLIP, Lod Model Library…) are built around:
 /// <code>
-/// house.nif  →  house_lod_0.nif … house_lod_3.nif   (or house_lod.nif for levels 0-2)
+/// house.nif  →  house_lod_0.nif … house_lod_3.nif   (or house_lod.nif for levels 0-2; house_lod_4.nif is level 3 only)
 /// </code>
 /// anywhere under <c>meshes\</c>. When the same file name exists in several folders the later
 /// folder wins: <c>meshes</c> &lt; <c>meshes\dlc01\lod</c> &lt; <c>meshes\dlc02\lod</c> &lt; <c>meshes\lod</c> &lt; <c>meshes\dyndolod</c>.
@@ -16,7 +16,7 @@ namespace AnvilLOD.Core.Lod;
 public sealed class LodMeshIndex
 {
     // name_lod.nif / name_lod_2.nif  (name may itself contain "_[CRC32]")
-    private static readonly Regex LodName = new(@"^(?<base>.+?)_lod(?:_(?<lvl>[0-3]))?\.nif$",
+    private static readonly Regex LodName = new(@"^(?<base>.+?)_lod(?:_(?<lvl>[0-4]))?\.nif$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private readonly Dictionary<string, Entry> _byBase = new(StringComparer.OrdinalIgnoreCase);
@@ -47,7 +47,13 @@ public sealed class LodMeshIndex
             if (!idx._byBase.TryGetValue(key, out var e)) idx._byBase[key] = e = new Entry();
 
             if (m.Groups["lvl"].Success)
-                Put(e, int.Parse(m.Groups["lvl"].Value), path, rank + 1);
+            {
+                // name_lod_4.nif is the LOD32 file (DynDOLOD: "maps only to level 3"; FOLIP's road chunks use it). An
+                // explicit name_lod_3.nif in the same folder rank beats it.
+                int lvl = int.Parse(m.Groups["lvl"].Value);
+                if (lvl == 4) Put(e, 3, path, rank);
+                else Put(e, lvl, path, rank + 1);
+            }
             else
                 for (int l = 0; l <= 2; l++) Put(e, l, path, rank); // name_lod.nif = levels 0, 1 and 2
         }

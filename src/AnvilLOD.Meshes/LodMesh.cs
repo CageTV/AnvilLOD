@@ -72,4 +72,10 @@ public sealed class LodMesh
     public required string Path { get; init; }
     public required IReadOnlyList<LodMeshPart> Parts { get; init; }
     public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>
+    /// The file holds no shape at all (just a node). DynDOLOD Resources ships such files on purpose, e.g. the window
+    /// LOD models: "this object gets no LOD". That is not an error, so it isn't reported as one.
+    /// </summary>
+    public bool NoShapesInFile { get; init; }
 }

@@ -74,8 +74,9 @@ public static class Program
                                  tree's mesh) in object LOD: 3D at LOD4, billboard cards from LOD8 on.
                                  Trees without a model keep billboard tree LOD.
           --tree-3d-lod8         With --tree-3d: use the 3D model at LOD8 too (bigger files)
-          --tree-3d-by-name      With --tree-3d: when no model matches the CRC32, accept the one stored under the
-                                 plain tree name (it may be for another version of the mesh)
+          --tree-3d-crc-only     With --tree-3d: only use models whose file name carries the tree mesh's CRC32.
+                                 Default: when none matches, the model stored under the plain tree name is used
+                                 (how DynDOLOD Resources ships almost all of its models, and how DynDOLOD matches)
           --mo2-game <dir>       With --mo2: the game folder (SkyrimSE.exe), instead of the gamePath in ModOrganizer.ini
           --mo2-mods <dir>       With --mo2: the mods folder, instead of the ini's (for lists on another drive)
           --mo2-profiles <dir>   With --mo2: the profiles folder, instead of the ini's
@@ -145,11 +146,11 @@ public static class Program
     {
         if (!a.Has("tree-3d"))
         {
-            if (a.Has("tree-3d-lod8") || a.Has("tree-3d-by-name"))
-                throw new CliArgException("--tree-3d-lod8 and --tree-3d-by-name only apply together with --tree-3d.");
+            if (a.Has("tree-3d-lod8") || a.Has("tree-3d-by-name") || a.Has("tree-3d-crc-only"))
+                throw new CliArgException("--tree-3d-lod8, --tree-3d-by-name and --tree-3d-crc-only only apply together with --tree-3d.");
             return null;
         }
-        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: a.Has("tree-3d-by-name"));
+        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: !a.Has("tree-3d-crc-only"));   // --tree-3d-by-name is still accepted: it is the default now
     }
 
     public static int Main(string[] args)

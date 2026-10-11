@@ -36,6 +36,7 @@ public partial class MainWindow : Window
         _clock.Tick += (_, _) => StatusText.Text = $"Running… {_elapsed.Elapsed:mm\\:ss}";
         ApplySettings();
         InitPresets();
+        InitLayout();
         AuthorWarningText.Text = AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning;
         if (StartupLog.IsUnderMo2()) Title = "AnvilLOD  (running under MO2)";
     }
@@ -430,6 +431,7 @@ public partial class MainWindow : Window
             _lastTotal = _elapsed.Elapsed;
             _lastScan = summary;
             ShowResults(summary, _lastTotal);
+            if (generate) RecordSizeCalibration(summary, req.OutputFolder);
             StatusText.Text = generate
                 ? $"LOD generated in {_lastTotal.TotalSeconds:F1}s"
                 : $"Scan finished in {_lastTotal.TotalSeconds:F1}s";

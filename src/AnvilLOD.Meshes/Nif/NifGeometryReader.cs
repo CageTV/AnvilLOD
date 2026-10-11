@@ -61,7 +61,8 @@ public static class NifGeometryReader
         foreach (var root in nif.Roots)
             Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited, passthru, waterAsLit);
 
-        return new LodMesh { Path = path, Parts = parts, Warnings = warnings };
+        bool anyShape = nif.Blocks.Any(b => ShapeTypes.Contains(b.Type) || b.Type is "NiTriShape" or "NiTriStrips");
+        return new LodMesh { Path = path, Parts = parts, Warnings = warnings, NoShapesInFile = !anyShape };
     }
 
     // ---------- traversal ----------

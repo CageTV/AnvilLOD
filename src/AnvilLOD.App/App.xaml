@@ -22,6 +22,42 @@
         <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}" />
         <SolidColorBrush x:Key="AccentHover" Color="{StaticResource AccentHoverColor}" />
 
+        <!-- A category button in the left column -->
+        <Style x:Key="NavButton" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="7" Padding="0">
+                            <DockPanel LastChildFill="True">
+                                <Border x:Name="Bar" DockPanel.Dock="Left" Width="4" CornerRadius="2" Margin="4,8,0,8" Background="Transparent" />
+                                <ContentPresenter VerticalAlignment="Center" Margin="12,10,10,10"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}" />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#262A33" />
+                                <Setter Property="Foreground" Value="{StaticResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2A2E37" />
+                                <Setter TargetName="Bar" Property="Background" Value="{StaticResource Accent}" />
+                                <Setter Property="Foreground" Value="{StaticResource Text}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- A preset tab at the top of the settings column -->
         <Style x:Key="PresetTab" TargetType="RadioButton">
             <Setter Property="Foreground" Value="{StaticResource Muted}" />

@@ -1,7 +1,7 @@
 <Window x:Class="AnvilLOD.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="AnvilLOD" Icon="pack://application:,,,/anvillod.ico" Width="1180" Height="760" MinWidth="900" MinHeight="560"
+        Title="AnvilLOD" Icon="pack://application:,,,/anvillod.ico" Width="1280" Height="900" MinWidth="980" MinHeight="640"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
         FontFamily="Segoe UI" FontSize="13"
         WindowStartupLocation="CenterScreen"
@@ -119,6 +119,7 @@
                 <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
                     <ProgressBar x:Name="Progress" IsIndeterminate="False" Value="0" />
                     <TextBlock x:Name="ProgressText" Text="Idle" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="EstimateText" Text="" Foreground="{StaticResource Accent}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -126,240 +127,43 @@
         <!-- ===== Body ===== -->
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="340" />
+                <ColumnDefinition x:Name="NavColumn" Width="224" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Settings panel -->
-            <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" ClipToBounds="True">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Preset tabs -->
-                    <Border x:Name="PresetBar" Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="12,10,12,0">
-                        <Grid x:Name="PresetGrid" Height="38" SizeChanged="PresetGrid_SizeChanged">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <RadioButton x:Name="PresetTab0" Grid.Column="0" GroupName="PresetTabs" Tag="0" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 1. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
-                            <RadioButton x:Name="PresetTab1" Grid.Column="1" GroupName="PresetTabs" Tag="1" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 2. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
-                            <RadioButton x:Name="PresetTab2" Grid.Column="2" GroupName="PresetTabs" Tag="2" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 3. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
-                            <TextBox x:Name="PresetRenameBox" Grid.Column="0" Visibility="Collapsed" Margin="3,4,3,5" Padding="6,2" VerticalContentAlignment="Center" MaxLength="18"
-                                     KeyDown="PresetRename_KeyDown" LostFocus="PresetRename_LostFocus" />
-                            <Border x:Name="PresetIndicator" Grid.ColumnSpan="3" Height="3" VerticalAlignment="Bottom" HorizontalAlignment="Left" CornerRadius="2"
-                                    Background="{StaticResource Accent}" IsHitTestVisible="False">
-                                <Border.RenderTransform>
-                                    <TranslateTransform x:Name="PresetIndicatorMove" />
-                                </Border.RenderTransform>
-                                <Border.Effect>
-                                    <DropShadowEffect x:Name="PresetGlow" Color="#E0782E" BlurRadius="8" ShadowDepth="0" Opacity="0.7" />
-                                </Border.Effect>
-                            </Border>
-                        </Grid>
-                    </Border>
-
-                    <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="18,4,18,18" RenderTransformOrigin="0.5,0.5">
-                        <ScrollViewer.RenderTransform>
-                            <TranslateTransform x:Name="SettingsMove" />
-                        </ScrollViewer.RenderTransform>
-                    <StackPanel x:Name="SettingsPanel">
-
-                        <TextBlock Text="OUTPUT" Style="{StaticResource SectionHeader}" />
-                        <TextBlock Text="Output folder" Style="{StaticResource FieldLabel}" />
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOutput_Click" />
-                            <TextBox x:Name="OutputBox" ToolTip="Where LOD files go. Leave it empty to use 'AnvilLOD Output' (a new mod folder in the MO2 mods folder, Vortex's staging folder, or Documents). The folder is created if it doesn't exist." />
-                        </DockPanel>
-                        <CheckBox x:Name="CleanOutputCheck" Content="Empty the output folder before generating" IsChecked="True" Margin="0,6,0,0"
-                                  ToolTip="Deletes what the last run left in the output folder first, so old files never mix with the new ones. Only done in an empty folder or one AnvilLOD wrote (it has AnvilLOD.manifest.json or AnvilLOD.log); any other folder is left alone and the log says so. MO2's meta.ini is kept. Every block is written again each run; untick to update the folder in place and only rewrite what changed." />
-
-                        <TextBlock Text="WORLDSPACES" Style="{StaticResource SectionHeader}" />
-                        <CheckBox x:Name="AllWorldspacesCheck" Content="All worldspaces with a .lod file" Checked="AllWorldspaces_Changed" Unchecked="AllWorldspaces_Changed" />
-                        <TextBox x:Name="WorldspaceBox" Text="Tamriel" Margin="0,4,0,0" ToolTip="Comma separated EditorIDs, e.g. Tamriel, DLC2SolstheimWorld" />
-
-                        <TextBlock Text="LOD LEVELS" Style="{StaticResource SectionHeader}" />
-                        <WrapPanel>
-                            <CheckBox x:Name="Lod4Check" Content="LOD 4" IsChecked="True" Margin="0,3,16,3" />
-                            <CheckBox x:Name="Lod8Check" Content="LOD 8" IsChecked="True" Margin="0,3,16,3" />
-                            <CheckBox x:Name="Lod16Check" Content="LOD 16" IsChecked="True" Margin="0,3,16,3" />
-                            <CheckBox x:Name="Lod32Check" Content="LOD 32" IsChecked="True" Margin="0,3,16,3" />
-                        </WrapPanel>
-
-                        <TextBlock Text="LOD RULES" Style="{StaticResource SectionHeader}" />
-                        <TextBlock Text="DynDOLOD folder (optional, reuses its rules)" Style="{StaticResource FieldLabel}" />
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseDynDolod_Click" />
-                            <TextBox x:Name="DynDolodBox" ToolTip="Folder with DynDOLODx64.exe. Its rule files plus the ones mods ship in Data\DynDOLOD decide which LOD mesh each object uses." />
-                        </DockPanel>
-                        <TextBlock Text="DynDOLOD rule preset" Style="{StaticResource FieldLabel}" />
-                        <DockPanel>
-                            <Button x:Name="EditRulesButton" DockPanel.Dock="Right" Content="Edit rules…" Padding="12,4" Margin="6,0,0,0" Click="EditRules_Click"
-                                    ToolTip="Look at and change the LOD rules of this preset: which LOD model or billboard each kind of object uses at each LOD level. Your changes are saved as your own rule file." />
-                            <ComboBox x:Name="PresetBox" SelectedIndex="2">
-                                <ComboBoxItem Content="Low" />
-                                <ComboBoxItem Content="Medium" />
-                                <ComboBoxItem Content="High" />
-                            </ComboBox>
-                        </DockPanel>
-                        <WrapPanel Margin="0,6,0,0">
-                            <CheckBox x:Name="CandlesCheck" Content="Candles" Margin="0,2,18,2"
-                                      ToolTip="Also load DynDOLOD's Candles rules for this preset: candles, lanterns and sconces get Far LOD, so their light shows in the distance. Needs the DynDOLOD folder." />
-                            <CheckBox x:Name="FxGlowCheck" Content="FXGlow" Margin="0,2,0,2"
-                                      ToolTip="Also load DynDOLOD's FXGlow rules for this preset: the glow cards of fires and lights get Far LOD. Needs the DynDOLOD folder." />
-                        </WrapPanel>
-                        <TextBlock Text="Custom rules file (optional)" Style="{StaticResource FieldLabel}" />
-                        <DockPanel>
-                            <CheckBox x:Name="CustomRulesCheck" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
-                                      ToolTip="Use this rule file. Its rules come before DynDOLOD's own and win. Unticked: only DynDOLOD's own rule files are used." />
-                            <Button x:Name="BrowseCustomRulesButton" DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseCustomRules_Click" />
-                            <TextBox x:Name="CustomRulesBox" IsEnabled="{Binding IsChecked, ElementName=CustomRulesCheck}"
-                                     ToolTip="A rule file in DynDOLOD's format: one saved from Edit rules, or a DynDOLOD preset or rule file you have. Tick the box to use it." />
-                        </DockPanel>
-
-                        <TextBlock Text="OPTIONS" Style="{StaticResource SectionHeader}" />
-                        <CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"
-                                  ToolTip="Drops LOD triangles that are completely underground. Big savings on mountains and rocks." />
-                        <CheckBox x:Name="TreeLodCheck" Content="Tree LOD (billboards from TexGen output)" IsChecked="True"
-                                  ToolTip="Builds the engine's billboard tree LOD (.lst, .btt and the tree atlas) from textures\terrain\LODGen billboards, e.g. TexGen output." />
-                        <TextBlock Text="Tree LOD brightness" Margin="20,2,0,2" />
-                        <ComboBox x:Name="TreeBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
-                                  ToolTip="Darkens or brightens the distant tree billboards to match your lighting/ENB.">
-                            <ComboBoxItem Content="10%" />
-                            <ComboBoxItem Content="20%" />
-                            <ComboBoxItem Content="30%" />
-                            <ComboBoxItem Content="40%" />
-                            <ComboBoxItem Content="50%" />
-                            <ComboBoxItem Content="60%" />
-                            <ComboBoxItem Content="70%" />
-                            <ComboBoxItem Content="80%" />
-                            <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
-                            <ComboBoxItem Content="110%" />
-                        </ComboBox>
-                        <CheckBox x:Name="Tree3DCheck" Content="3D tree LOD (use 3D models where found)"
-                                  ToolTip="Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders." />
-                        <CheckBox x:Name="Tree3DLod8Check" Content="Also use the 3D models at LOD8" Margin="20,2,0,0"
-                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
-                                  ToolTip="Nicer mid-distance trees, but much bigger LOD files. Off: 3D at LOD4 only, cards from LOD8." />
-                        <CheckBox x:Name="Tree3DNameCheck" Content="Accept models by tree name when the CRC32 differs" Margin="20,2,0,6"
-                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
-                                  ToolTip="A model stored under the plain tree name may have been made for another version of the mesh (for example before a mod or PGPatcher changed it), so it can look wrong. Off: only exact CRC32 matches are used." />
-                        <CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
-                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block." />
-                        <TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />
-                        <ComboBox x:Name="PbrLodBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
-                                  IsEnabled="{Binding IsChecked, ElementName=PbrLodCheck}"
-                                  ToolTip="Brightness of the converted PBR copies, as a share of DynDOLOD's default PBR scale. Lower it if the LOD looks brighter than the real objects.">
-                            <ComboBoxItem Content="10%" />
-                            <ComboBoxItem Content="20%" />
-                            <ComboBoxItem Content="30%" />
-                            <ComboBoxItem Content="40%" />
-                            <ComboBoxItem Content="50%" />
-                            <ComboBoxItem Content="60%" />
-                            <ComboBoxItem Content="70%" />
-                            <ComboBoxItem Content="80%" />
-                            <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
-                            <ComboBoxItem Content="110%" />
-                        </ComboBox>
-                        <CheckBox x:Name="LargeRefsCheck" Content="Large references (writes AnvilLOD.esm)"
-                                  ToolTip="The engine's large reference grid (uLargeRefLODGridSize in SkyrimPrefs.ini) shows the full models of listed references beyond the loaded cells. Skyrim.esm and the DLCs list theirs; this lists the qualifying references from your other ESM-flagged plugins that nobody lists yet, in AnvilLOD.esm, flagged ESL (no plugin slot). Enable it after your other ESMs. References that a plugin outside the ESMs overrides or that start disabled are left out, because those make large references flicker. The report says what was listed and what was left out." />
-                        <CheckBox x:Name="LargeRefsEslCheck" Content="Flag AnvilLOD.esm as ESL (saves a plugin slot)" IsChecked="True" Margin="20,2,0,0"
-                                  IsEnabled="{Binding IsChecked, ElementName=LargeRefsCheck}"
-                                  ToolTip="On: the plugin is flagged ESL and takes no plugin slot. Off: it is a normal ESM that uses a slot. If large references flicker at a distance, you can untick this to rule the ESL flag out, at the cost of one slot." />
-                        <TextBlock x:Name="LargeRefsEslNote" Margin="38,2,0,6" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
-                                   Text="Flagging it ESL saves a plugin slot. If large references flicker at a distance, untick it to use a normal ESM slot instead." />
-                        <CheckBox x:Name="UndersideCheck" Content="Terrain underside (for volumetric lighting mods)" Margin="0,2,0,6"
-                                  ToolTip="Builds a low-resolution, downward-facing copy of the terrain (meshes\Terrain\&lt;worldspace&gt;\&lt;worldspace&gt;_Underside.nif) and AnvilLOD.esp, flagged ESL, that places it 500 units below the world. DVLaSS, EVLaS and Community Shaders' sky sync use it to stop sun rays and shadows leaking through the landscape. Enable the plugin in your mod manager and load it after plugins that edit worldspaces. Do not use it together with DynDOLOD's own underside." />
-                        <TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
-                        <ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
-                                  ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">
-                            <ComboBoxItem Content="10%" />
-                            <ComboBoxItem Content="20%" />
-                            <ComboBoxItem Content="30%" />
-                            <ComboBoxItem Content="40%" />
-                            <ComboBoxItem Content="50%" />
-                            <ComboBoxItem Content="60%" />
-                            <ComboBoxItem Content="70%" />
-                            <ComboBoxItem Content="80%" />
-                            <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
-                            <ComboBoxItem Content="110%" />
-                        </ComboBox>
-                        <CheckBox x:Name="GrassLodCheck" Content="Grass LOD (from the grass cache)" IsChecked="True"
-                                  ToolTip="Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards." />
-                        <TextBlock Text="Grass LOD density" Margin="20,2,0,2" />
-                        <ComboBox x:Name="GrassDensityBox" SelectedIndex="1" Margin="20,0,0,6"
-                                  ToolTip="Share of the cached grass kept as LOD tufts, spread evenly over the ground. More is fuller and closer to the real grass, but makes bigger files and more triangles to draw. The sizes listed are for a large load order's Tamriel (object LOD, normal grass cache). Seasons of Skyrim adds a full set per season, and summer's grass cache is much denser than winter's, so seasonal output is several times bigger.">
-                            <ComboBoxItem Content="Low (4%): 15M triangles, 0.7 GB" />
-                            <ComboBoxItem Content="Medium (8%): 20M triangles, 1.1 GB" />
-                            <ComboBoxItem Content="High (15%): 29M triangles, 1.7 GB" />
-                            <ComboBoxItem Content="Higher (25%): 43M triangles, 2.7 GB" />
-                            <ComboBoxItem Content="Very high (40%): 60M triangles, 3.9 GB" />
-                            <ComboBoxItem Content="Ultra (60%): 92M triangles, 6.1 GB, strong GPU" />
-                            <ComboBoxItem Content="Full (100%): 162M triangles, 11 GB, every blade" />
-                        </ComboBox>
-                        <TextBlock Text="Grass LOD brightness: top of the tufts / roots" Margin="20,2,0,2" />
-                        <StackPanel Orientation="Horizontal" Margin="20,0,0,6">
-                            <ComboBox x:Name="GrassTopBox" Width="90"
-                                      ToolTip="How bright the top of each grass tuft is (like DynDOLOD's GrassBrightnessTop). Lower it if distant grass looks brighter than the real grass. Changing it rebuilds the grass blocks." />
-                            <ComboBox x:Name="GrassBottomBox" Width="90" Margin="8,0,0,0"
-                                      ToolTip="How bright the roots are (like DynDOLOD's GrassBrightnessBottom). A darker root fakes the shadow inside the grass. Changing it rebuilds the grass blocks." />
-                        </StackPanel>
-                        <CheckBox x:Name="DynamicLodCheck" Content="Dynamic LOD for switchable references (SKSE)" IsChecked="True"
-                                  ToolTip="References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled." />
-                        <CheckBox x:Name="GridObjectsCheck" Content="Water and animated distant objects (SKSE)" IsChecked="True"
-                                  ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
-                        <CheckBox x:Name="WaterStandInsCheck" Content="Stream, creek and pond water stand-ins"
-                                  ToolTip="Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed." />
-                        <CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD"
-                                  ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
-                        <TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
-                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
-                        <ComboBox x:Name="SkseDllBox" SelectedIndex="0" Margin="0,0,0,6">
-                            <ComboBoxItem Content="Auto-detect game version" />
-                            <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />
-                            <ComboBoxItem Content="Newer than 1.6.1170 (1.7.x)" />
-                            <ComboBoxItem Content="Installed separately (FOMOD)" />
-                            <ComboBoxItem Content="Skyrim VR 1.4.15" />
-                        </ComboBox>
-                        <CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
-                        <CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
+            <!-- Categories: one button per group of settings, then the mod author tools -->
+            <Border x:Name="NavBorder" Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" ClipToBounds="True">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12,14,12,14" Width="198">
+                        <TextBlock Text="SETTINGS" Style="{StaticResource SectionHeader}" Margin="8,0,0,8" />
+                        <RadioButton x:Name="NavOutput" GroupName="Nav" Tag="Output" Style="{StaticResource NavButton}" Content="Output and worlds" IsChecked="True" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavRules" GroupName="Nav" Tag="Rules" Style="{StaticResource NavButton}" Content="LOD rules" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavObjects" GroupName="Nav" Tag="Objects" Style="{StaticResource NavButton}" Content="Objects and terrain" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavTrees" GroupName="Nav" Tag="Trees" Style="{StaticResource NavButton}" Content="Trees" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavGrass" GroupName="Nav" Tag="Grass" Style="{StaticResource NavButton}" Content="Grass and size" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavDynamic" GroupName="Nav" Tag="Dynamic" Style="{StaticResource NavButton}" Content="Seasons, water, dynamic" Checked="Nav_Checked" />
+                        <TextBlock Text="MOD AUTHOR TOOLS" Style="{StaticResource SectionHeader}" Margin="8,22,0,8" />
+                        <RadioButton x:Name="NavFinder" GroupName="Nav" Tag="Finder" Style="{StaticResource NavButton}" Content="Missing LOD finder" Checked="Nav_Checked" ToolTip="Finds the objects and trees of one plugin that are seen from afar but have no LOD, and makes what is missing." />
+                        <RadioButton x:Name="NavMaker" GroupName="Nav" Tag="Maker" Style="{StaticResource NavButton}" Content="LOD Mesh Maker" Checked="Nav_Checked" ToolTip="Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick." />
                     </StackPanel>
                 </ScrollViewer>
-
-                    <!-- A bright line that sweeps across the seam when a preset is switched -->
-                    <Border x:Name="PresetSweep" Grid.Row="1" Height="2" Width="120" VerticalAlignment="Top" HorizontalAlignment="Left" Opacity="0" IsHitTestVisible="False">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#00E0782E" Offset="0" />
-                                <GradientStop Color="#FFF08C42" Offset="0.5" />
-                                <GradientStop Color="#00E0782E" Offset="1" />
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Border.RenderTransform>
-                            <TranslateTransform x:Name="PresetSweepMove" />
-                        </Border.RenderTransform>
-                    </Border>
-                </Grid>
             </Border>
 
-            <!-- Results -->
-            <!-- The emblem, barely visible behind everything in the results area (the tab control is transparent so it shows through). -->
-            <Image Grid.Column="1" Source="pack://application:,,,/watermark.png" Margin="18,10,18,12" Stretch="Uniform"
-                   HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.14" IsHitTestVisible="False"
-                   RenderOptions.BitmapScalingMode="HighQuality" />
-            <TabControl Grid.Column="1" Margin="18,10,18,12" Background="Transparent">
+            <!-- Right side: results above, the options of the chosen category below -->
+            <Grid x:Name="RightGrid" Grid.Column="1" Margin="14,10,14,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition x:Name="OptionsRow" Height="1.35*" />
+                </Grid.RowDefinitions>
 
-                <TabItem Header="Overview">
+                <Border x:Name="ResultsBox" Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                    <Grid>
+                        <!-- The emblem, barely visible behind everything in the results area (the tab control is transparent so it shows through). -->
+                        <Image Source="pack://application:,,,/watermark.png" Margin="18,10,18,12" Stretch="Uniform"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.14" IsHitTestVisible="False"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TabControl x:Name="ResultsTabs" Margin="12,6,12,10" Background="Transparent">
+<TabItem Header="Overview">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock x:Name="OverviewHint" Text="Set your paths on the left and press Scan to analyse the load order."
@@ -400,8 +204,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-
-                <TabItem Header="Blocks">
+<TabItem Header="Blocks">
                     <DockPanel>
                         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                             <TextBlock x:Name="BlockCountText" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
@@ -419,8 +222,7 @@
                         </DataGrid>
                     </DockPanel>
                 </TabItem>
-
-                <TabItem Header="Missing meshes">
+<TabItem Header="Missing meshes">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
                                    Text="LOD meshes that are missing (named in a STAT's MNAM but not installed) or that couldn't be used when generating. Objects using them are left out of LOD at that level." />
@@ -432,13 +234,260 @@
                         </DataGrid>
                     </DockPanel>
                 </TabItem>
+<TabItem Header="Log">
+                    <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"
+                             Background="#111317" Foreground="#C9D1C9" BorderThickness="1"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             TextWrapping="NoWrap" VerticalContentAlignment="Top" />
+                </TabItem>
+                        </TabControl>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,9,14,0">
+                            <Button x:Name="PrintButton" Content="Print to file…" Padding="10,3" Margin="0,0,6,0" Click="PrintResults_Click"
+                                    ToolTip="Saves what this tab shows to a file (Overview and Log as text, Blocks and Missing meshes as CSV) so you can read it later." />
+                            <Button x:Name="ExpandButton" Content="⤢  Expand" Padding="10,3" Click="ExpandResults_Click"
+                                    ToolTip="Fills the window with this box. Press again (or Esc) to bring the options back." />
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                <TabItem Header="Mod Author" GotFocus="AuthorTab_GotFocus">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,6,10,10">
+                <Border x:Name="OptionsBox" Grid.Row="1" Margin="0,10,0,0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="OptionsTitle" Grid.Column="0" Text="Output and worlds" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="18,10,12,0" />
+                            <StackPanel Grid.Column="1" Width="372">
+<Border x:Name="PresetBar" Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="12,10,12,0">
+                        <Grid x:Name="PresetGrid" Height="38" SizeChanged="PresetGrid_SizeChanged">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <RadioButton x:Name="PresetTab0" Grid.Column="0" GroupName="PresetTabs" Tag="0" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
+                                         ToolTip="Preset 1. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
+                            <RadioButton x:Name="PresetTab1" Grid.Column="1" GroupName="PresetTabs" Tag="1" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
+                                         ToolTip="Preset 2. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
+                            <RadioButton x:Name="PresetTab2" Grid.Column="2" GroupName="PresetTabs" Tag="2" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
+                                         ToolTip="Preset 3. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
+                            <TextBox x:Name="PresetRenameBox" Grid.Column="0" Visibility="Collapsed" Margin="3,4,3,5" Padding="6,2" VerticalContentAlignment="Center" MaxLength="18"
+                                     KeyDown="PresetRename_KeyDown" LostFocus="PresetRename_LostFocus" />
+                            <Border x:Name="PresetIndicator" Grid.ColumnSpan="3" Height="3" VerticalAlignment="Bottom" HorizontalAlignment="Left" CornerRadius="2"
+                                    Background="{StaticResource Accent}" IsHitTestVisible="False">
+                                <Border.RenderTransform>
+                                    <TranslateTransform x:Name="PresetIndicatorMove" />
+                                </Border.RenderTransform>
+                                <Border.Effect>
+                                    <DropShadowEffect x:Name="PresetGlow" Color="#E0782E" BlurRadius="8" ShadowDepth="0" Opacity="0.7" />
+                                </Border.Effect>
+                            </Border>
+                        </Grid>
+                    </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="18,6,18,18" RenderTransformOrigin="0.5,0.5">
+                            <ScrollViewer.RenderTransform>
+                                <TranslateTransform x:Name="SettingsMove" />
+                            </ScrollViewer.RenderTransform>
+                            <StackPanel>
+                                <StackPanel x:Name="SettingsPanel" MaxWidth="860" HorizontalAlignment="Left">
+                        <StackPanel x:Name="CatOutput" Visibility="Visible">
+                            <TextBlock Text="Where the LOD goes, which worldspaces and which LOD levels to build." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<TextBlock Text="OUTPUT" Style="{StaticResource SectionHeader}" />
+<TextBlock Text="Output folder" Style="{StaticResource FieldLabel}" />
+<DockPanel>
+                            <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOutput_Click" />
+                            <TextBox x:Name="OutputBox" ToolTip="Where LOD files go. Leave it empty to use 'AnvilLOD Output' (a new mod folder in the MO2 mods folder, Vortex's staging folder, or Documents). The folder is created if it doesn't exist." />
+                        </DockPanel>
+<CheckBox x:Name="CleanOutputCheck" Content="Empty the output folder before generating" IsChecked="True" Margin="0,6,0,0"
+                                  ToolTip="Deletes what the last run left in the output folder first, so old files never mix with the new ones. Only done in an empty folder or one AnvilLOD wrote (it has AnvilLOD.manifest.json or AnvilLOD.log); any other folder is left alone and the log says so. MO2's meta.ini is kept. Every block is written again each run; untick to update the folder in place and only rewrite what changed." />
+<TextBlock Text="WORLDSPACES" Style="{StaticResource SectionHeader}" />
+<CheckBox x:Name="AllWorldspacesCheck" Content="All worldspaces with a .lod file" Checked="AllWorldspaces_Changed" Unchecked="AllWorldspaces_Changed" />
+<TextBox x:Name="WorldspaceBox" Text="Tamriel" Margin="0,4,0,0" ToolTip="Comma separated EditorIDs, e.g. Tamriel, DLC2SolstheimWorld" />
+<TextBlock Text="LOD LEVELS" Style="{StaticResource SectionHeader}" />
+<WrapPanel>
+                            <CheckBox x:Name="Lod4Check" Content="LOD 4" IsChecked="True" Margin="0,3,16,3" />
+                            <CheckBox x:Name="Lod8Check" Content="LOD 8" IsChecked="True" Margin="0,3,16,3" />
+                            <CheckBox x:Name="Lod16Check" Content="LOD 16" IsChecked="True" Margin="0,3,16,3" />
+                            <CheckBox x:Name="Lod32Check" Content="LOD 32" IsChecked="True" Margin="0,3,16,3" />
+                        </WrapPanel>
+                        </StackPanel>
+                        <StackPanel x:Name="CatRules" Visibility="Collapsed">
+                            <TextBlock Text="Which LOD model or billboard each kind of object uses at each LOD level. AnvilLOD reuses DynDOLOD rule files." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<TextBlock Text="LOD RULES" Style="{StaticResource SectionHeader}" />
+<TextBlock Text="DynDOLOD folder (optional, reuses its rules)" Style="{StaticResource FieldLabel}" />
+<DockPanel>
+                            <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseDynDolod_Click" />
+                            <TextBox x:Name="DynDolodBox" ToolTip="Folder with DynDOLODx64.exe. Its rule files plus the ones mods ship in Data\DynDOLOD decide which LOD mesh each object uses." />
+                        </DockPanel>
+<TextBlock Text="DynDOLOD rule preset" Style="{StaticResource FieldLabel}" />
+<DockPanel>
+                            <Button x:Name="EditRulesButton" DockPanel.Dock="Right" Content="Edit rules…" Padding="12,4" Margin="6,0,0,0" Click="EditRules_Click"
+                                    ToolTip="Look at and change the LOD rules of this preset: which LOD model or billboard each kind of object uses at each LOD level. Your changes are saved as your own rule file." />
+                            <ComboBox x:Name="PresetBox" SelectedIndex="2">
+                                <ComboBoxItem Content="Low" />
+                                <ComboBoxItem Content="Medium" />
+                                <ComboBoxItem Content="High" />
+                            </ComboBox>
+                        </DockPanel>
+<WrapPanel Margin="0,6,0,0">
+                            <CheckBox x:Name="CandlesCheck" Content="Candles" Margin="0,2,18,2"
+                                      ToolTip="Also load DynDOLOD's Candles rules for this preset: candles, lanterns and sconces get Far LOD, so their light shows in the distance. Needs the DynDOLOD folder." />
+                            <CheckBox x:Name="FxGlowCheck" Content="FXGlow" Margin="0,2,0,2"
+                                      ToolTip="Also load DynDOLOD's FXGlow rules for this preset: the glow cards of fires and lights get Far LOD. Needs the DynDOLOD folder." />
+                        </WrapPanel>
+<TextBlock Text="Custom rules file (optional)" Style="{StaticResource FieldLabel}" />
+<DockPanel>
+                            <CheckBox x:Name="CustomRulesCheck" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      ToolTip="Use this rule file. Its rules come before DynDOLOD's own and win. Unticked: only DynDOLOD's own rule files are used." />
+                            <Button x:Name="BrowseCustomRulesButton" DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseCustomRules_Click" />
+                            <TextBox x:Name="CustomRulesBox" IsEnabled="{Binding IsChecked, ElementName=CustomRulesCheck}"
+                                     ToolTip="A rule file in DynDOLOD's format: one saved from Edit rules, or a DynDOLOD preset or rule file you have. Tick the box to use it." />
+                        </DockPanel>
+                        </StackPanel>
+                        <StackPanel x:Name="CatObjects" Visibility="Collapsed">
+                            <TextBlock Text="Object LOD, PBR, brightness, terrain underside, large references and which references count." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"
+                                  ToolTip="Drops LOD triangles that are completely underground. Big savings on mountains and rocks." />
+<CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
+                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block." />
+<TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />
+<ComboBox x:Name="PbrLodBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
+                                  IsEnabled="{Binding IsChecked, ElementName=PbrLodCheck}"
+                                  ToolTip="Brightness of the converted PBR copies, as a share of DynDOLOD's default PBR scale. Lower it if the LOD looks brighter than the real objects.">
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
+                        </ComboBox>
+<CheckBox x:Name="LargeRefsCheck" Content="Large references (writes AnvilLOD.esm)"
+                                  ToolTip="The engine's large reference grid (uLargeRefLODGridSize in SkyrimPrefs.ini) shows the full models of listed references beyond the loaded cells. Skyrim.esm and the DLCs list theirs; this lists the qualifying references from your other ESM-flagged plugins that nobody lists yet, in AnvilLOD.esm, flagged ESL (no plugin slot). Enable it after your other ESMs. References that a plugin outside the ESMs overrides or that start disabled are left out, because those make large references flicker. The report says what was listed and what was left out." />
+<CheckBox x:Name="LargeRefsEslCheck" Content="Flag AnvilLOD.esm as ESL (saves a plugin slot)" IsChecked="True" Margin="20,2,0,0"
+                                  IsEnabled="{Binding IsChecked, ElementName=LargeRefsCheck}"
+                                  ToolTip="On: the plugin is flagged ESL and takes no plugin slot. Off: it is a normal ESM that uses a slot. If large references flicker at a distance, you can untick this to rule the ESL flag out, at the cost of one slot." />
+<TextBlock x:Name="LargeRefsEslNote" Margin="38,2,0,6" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
+                                   Text="Flagging it ESL saves a plugin slot. If large references flicker at a distance, untick it to use a normal ESM slot instead." />
+<CheckBox x:Name="UndersideCheck" Content="Terrain underside (for volumetric lighting mods)" Margin="0,2,0,6"
+                                  ToolTip="Builds a low-resolution, downward-facing copy of the terrain (meshes\Terrain\&lt;worldspace&gt;\&lt;worldspace&gt;_Underside.nif) and AnvilLOD.esp, flagged ESL, that places it 500 units below the world. DVLaSS, EVLaS and Community Shaders' sky sync use it to stop sun rays and shadows leaking through the landscape. Enable the plugin in your mod manager and load it after plugins that edit worldspaces. Do not use it together with DynDOLOD's own underside." />
+<TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
+<ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
+                                  ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
+                        </ComboBox>
+<CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
+<CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
+                        </StackPanel>
+                        <StackPanel x:Name="CatTrees" Visibility="Collapsed">
+                            <TextBlock Text="Billboard tree LOD and 3D tree LOD models." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="TreeLodCheck" Content="Tree LOD (billboards from TexGen output)" IsChecked="True"
+                                  ToolTip="Builds the engine's billboard tree LOD (.lst, .btt and the tree atlas) from textures\terrain\LODGen billboards, e.g. TexGen output." />
+<TextBlock Text="Tree LOD brightness" Margin="20,2,0,2" />
+<ComboBox x:Name="TreeBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
+                                  ToolTip="Darkens or brightens the distant tree billboards to match your lighting/ENB.">
+                            <ComboBoxItem Content="10%" />
+                            <ComboBoxItem Content="20%" />
+                            <ComboBoxItem Content="30%" />
+                            <ComboBoxItem Content="40%" />
+                            <ComboBoxItem Content="50%" />
+                            <ComboBoxItem Content="60%" />
+                            <ComboBoxItem Content="70%" />
+                            <ComboBoxItem Content="80%" />
+                            <ComboBoxItem Content="90%" />
+                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="110%" />
+                        </ComboBox>
+<CheckBox x:Name="Tree3DCheck" Content="3D tree LOD (use 3D models where found)"
+                                  ToolTip="Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders." />
+<CheckBox x:Name="Tree3DLod8Check" Content="Also use the 3D models at LOD8" Margin="20,2,0,0"
+                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
+                                  ToolTip="Nicer mid-distance trees, but much bigger LOD files. Off: 3D at LOD4 only, cards from LOD8." />
+<CheckBox x:Name="Tree3DNameCheck" Content="Accept models by tree name (DynDOLOD's default)" Margin="20,2,0,6"
+                                  IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
+                                  ToolTip="DynDOLOD Resources ships almost all 3D tree models under the plain tree name; a CRC32 in the name is only for name collisions, and DynDOLOD itself matches by name. On (default): a model stored under the plain tree name is used when no CRC32-named one exists. Off: only exact CRC32 matches are used, which finds none with DynDOLOD Resources. A model made for another version of a tree mesh (before a mod or PGPatcher changed it) can look slightly off." />
+                        </StackPanel>
+                        <StackPanel x:Name="CatGrass" Visibility="Collapsed">
+                            <TextBlock Text="Distant grass from your grass cache. This is the biggest choice for file size, disk space and graphics load." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="GrassLodCheck" Content="Grass LOD (from the grass cache)" IsChecked="True"
+                                  ToolTip="Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards." />
+<TextBlock Text="Grass LOD density" Margin="20,2,0,2" />
+<ComboBox x:Name="GrassDensityBox" SelectedIndex="1" Margin="20,0,0,6"
+                                  ToolTip="Share of the cached grass kept as LOD tufts, spread evenly over the ground. More is fuller and closer to the real grass, but makes bigger files and more triangles to draw. The sizes listed are for a large load order's Tamriel (object LOD, normal grass cache). Seasons of Skyrim adds a full set per season, and summer's grass cache is much denser than winter's, so seasonal output is several times bigger.">
+                            <ComboBoxItem Content="Low (4%): 15M triangles, 0.7 GB" />
+                            <ComboBoxItem Content="Medium (8%): 20M triangles, 1.1 GB" />
+                            <ComboBoxItem Content="High (15%): 29M triangles, 1.7 GB" />
+                            <ComboBoxItem Content="Higher (25%): 43M triangles, 2.7 GB" />
+                            <ComboBoxItem Content="Very high (40%): 60M triangles, 3.9 GB" />
+                            <ComboBoxItem Content="Ultra (60%): 92M triangles, 6.1 GB, strong GPU" />
+                            <ComboBoxItem Content="Full (100%): 162M triangles, 11 GB, every blade" />
+                        </ComboBox>
+<TextBlock Text="Grass LOD brightness: top of the tufts / roots" Margin="20,2,0,2" />
+<StackPanel Orientation="Horizontal" Margin="20,0,0,6">
+                            <ComboBox x:Name="GrassTopBox" Width="90"
+                                      ToolTip="How bright the top of each grass tuft is (like DynDOLOD's GrassBrightnessTop). Lower it if distant grass looks brighter than the real grass. Changing it rebuilds the grass blocks." />
+                            <ComboBox x:Name="GrassBottomBox" Width="90" Margin="8,0,0,0"
+                                      ToolTip="How bright the roots are (like DynDOLOD's GrassBrightnessBottom). A darker root fakes the shadow inside the grass. Changing it rebuilds the grass blocks." />
+                        </StackPanel>
+                        <Border x:Name="EstimateBox" Margin="0,14,0,0" Background="#2A2E37" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Padding="12,9">
+                            <StackPanel>
+                                <TextBlock Text="ESTIMATED OUTPUT SIZE" Style="{StaticResource SectionHeader}" Margin="0,0,0,4" />
+                                <TextBlock x:Name="EstimateDetail" TextWrapping="Wrap" Foreground="{StaticResource Text}"
+                                           Text="Generate once and AnvilLOD can estimate the size of your next generation from your own list." />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12"
+                                   Text="Tip: set this to the most your PC can really run, not the maximum on offer. Grass, trees and seasons multiply each other, so a higher setting than your graphics card or memory can use only costs disk space, load time and frame rate. If in doubt, generate at a lower density first: the in-game Quality Layers menu can lower the load later, but cannot make a file smaller." />
+                        </StackPanel>
+                        <StackPanel x:Name="CatDynamic" Visibility="Collapsed">
+                            <TextBlock Text="Seasons of Skyrim LOD, the SKSE plugin, quest-switched references, water and animated objects." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="DynamicLodCheck" Content="Dynamic LOD for switchable references (SKSE)" IsChecked="True"
+                                  ToolTip="References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled." />
+<CheckBox x:Name="GridObjectsCheck" Content="Water and animated distant objects (SKSE)" IsChecked="True"
+                                  ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
+<CheckBox x:Name="WaterStandInsCheck" Content="Stream, creek and pond water stand-ins"
+                                  ToolTip="Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed." />
+<CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD"
+                                  ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
+<TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
+                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
+<ComboBox x:Name="SkseDllBox" SelectedIndex="0" Margin="0,0,0,6">
+                            <ComboBoxItem Content="Auto-detect game version" />
+                            <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />
+                            <ComboBoxItem Content="Newer than 1.6.1170 (1.7.x)" />
+                            <ComboBoxItem Content="Installed separately (FOMOD)" />
+                            <ComboBoxItem Content="Skyrim VR 1.4.15" />
+                        </ComboBox>
+                        </StackPanel>
+                                </StackPanel>
+                                <StackPanel x:Name="CatFinder" Visibility="Collapsed" HorizontalAlignment="Left" MaxWidth="1000">
+<StackPanel Margin="0,6,10,10">
                             <Border Background="#2E2418" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="⚠  Mod author tools" FontWeight="Bold" Foreground="#F2C08F" />
+                                    <TextBlock Text="⚠  Missing LOD finder (mod author tool)" FontWeight="Bold" Foreground="#F2C08F" />
                                     <TextBlock x:Name="AuthorWarningText" TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,4,0,8" />
                                     <TextBlock TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,0,0,8"
                                                Text="Finds the objects and trees of one plugin that are seen from afar but have no LOD (no LOD mesh, a broken MNAM path, missing LOD textures, no tree billboard) and can generate them: simplified name_lod_0/1/2.nif, TexGen-style billboards and a DynDOLOD-format rule file. Everything goes into its own folder, never into your LOD output." />
@@ -493,12 +542,9 @@
                                 </DataGrid>
                             </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <TabItem Header="LOD Mesh Maker" GotFocus="MakerTab_GotFocus">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,6,10,10">
+                                </StackPanel>
+                                <StackPanel x:Name="CatMaker" Visibility="Collapsed" HorizontalAlignment="Left" MaxWidth="1000">
+<StackPanel Margin="0,6,10,10">
                             <Border Background="#2E2418" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
                                 <StackPanel>
                                     <TextBlock Text="⚠  LOD Mesh Maker" FontWeight="Bold" Foreground="#F2C08F" />
@@ -594,16 +640,26 @@
                                 </DataGrid>
                             </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
 
-                <TabItem Header="Log">
-                    <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"
-                             Background="#111317" Foreground="#C9D1C9" BorderThickness="1"
-                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                             TextWrapping="NoWrap" VerticalContentAlignment="Top" />
-                </TabItem>
-            </TabControl>
+                        <!-- A bright line that sweeps across the seam when a preset is switched -->
+<Border x:Name="PresetSweep" Grid.Row="1" Height="2" Width="120" VerticalAlignment="Top" HorizontalAlignment="Left" Opacity="0" IsHitTestVisible="False">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00E0782E" Offset="0" />
+                                <GradientStop Color="#FFF08C42" Offset="0.5" />
+                                <GradientStop Color="#00E0782E" Offset="1" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="PresetSweepMove" />
+                        </Border.RenderTransform>
+                    </Border>
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>

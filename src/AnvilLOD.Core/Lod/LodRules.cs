@@ -90,7 +90,7 @@ public sealed record LodRuleOptions(bool Candles = false, bool FxGlow = false, s
 /// DynDOLOD ships and that mods ship for it (FOLIP, MPXP, Bent Pines, …) are reused as-is.
 /// <para>Both line formats are supported:</para>
 /// <code>
-/// LODGen1=mask,LOD4,LOD8,LOD16,Grid,Reference,Flags                        (7 columns; LOD32 = LOD16)
+/// LODGen1=mask,LOD4,LOD8,LOD16,Grid,Reference,Flags                        (7 columns; no LOD32: none, as DynDOLOD reads it)
 /// LODGen1=mask,LOD4,LOD8,LOD16,LOD32,Grid,Reference,Flags,Description       (9 columns)
 /// </code>
 /// FormID rules ("plugin.esm;00ABCDEF") are checked before mesh masks; otherwise the first
@@ -322,7 +322,10 @@ public sealed class LodRules
         LodChoice l4 = LodChoice.Parse(c[1]), l8 = LodChoice.Parse(c[2]), l16 = LodChoice.Parse(c[3]);
         // 7 columns: mask,4,8,16,Grid,Ref,Flags. 8-9 columns: mask,4,8,16,32,Grid,Ref,Flags[,Desc].
         bool hasLod32 = c.Length >= 8;
-        LodChoice l32 = hasLod32 ? LodChoice.Parse(c[4]) : l16;
+        // A 7-column line has no LOD32 column and DynDOLOD gives it no LOD32 (checked against DynDOLOD 3.0 Alpha-215's Object_Report:
+        // only rules with an explicit LOD32 column, e.g. FOLIP's roads, are listed for LOD32). Copying LOD16 into LOD32 put
+        // about 3.0M triangles into Tamriel's LOD32 blocks where DynDOLOD has 0.15M.
+        LodChoice l32 = hasLod32 ? LodChoice.Parse(c[4]) : LodChoice.None;
         int gridCol = hasLod32 ? 5 : 4;
         var grid = c.Length > gridCol ? LodRule.ParseGrid(c[gridCol]) : DynamicGrid.None;
 

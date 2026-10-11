@@ -1,4 +1,5 @@
 using System.Numerics;
+using AnvilLOD.Core.Lod;
 using AnvilLOD.Core.World;
 using AnvilLOD.Meshes.Nif;
 
@@ -23,7 +24,8 @@ public static class BtoBuilder
     public const string Author = "AnvilLOD";
     private const int MaxIndex = ushort.MaxValue;
 
-    public sealed record Result(byte[] Bytes, int Shapes, int Triangles, int Vertices, int RefsPlaced, int RefsSkipped, int TrianglesCulled = 0);
+    public sealed record Result(byte[] Bytes, int Shapes, int Triangles, int Vertices, int RefsPlaced, int RefsSkipped, int TrianglesCulled = 0,
+        IReadOnlyDictionary<string, (long Triangles, long Vertices)>? ByCategory = null);
 
     /// <summary>
     /// Drops triangles that are completely buried: every corner, edge midpoint and the centre must be at least
@@ -44,7 +46,9 @@ public static class BtoBuilder
     /// <param name="terrain">Optional buried-triangle test (see <see cref="TerrainTest"/>).</param>
     /// <param name="brightness">Colour multiplier (1 = unchanged). Applied through vertex colours, which the shader
     /// multiplies with the diffuse texture, so LOD textures shared with other mods are left alone.</param>
-    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f)
+    /// <param name="categorize">Names the layer a mesh path belongs to (<see cref="LodLayers"/>: objects, grass, tree3d, treecard); null = everything is "objects".
+    /// Each layer other than objects gets its own shapes under a named node, so the SKSE plugin can hide it in game, and feeds the size breakdown.</param>
+    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f, Func<string, string>? categorize = null)
     {
         var origin = new Vector3(quad.X * CellCoord.CellSize, quad.Y * CellCoord.CellSize, 0);
         float level = (int)quad.Level;
@@ -55,6 +59,7 @@ public static class BtoBuilder
 
         var chunks = new Dictionary<string, List<Chunk>>(StringComparer.Ordinal);
         int placed = 0, skipped = 0, culled = 0;
+        var cats = new Dictionary<string, (long Triangles, long Vertices)>(StringComparer.Ordinal);
 
         foreach (var r in refs)
         {
@@ -71,15 +76,20 @@ public static class BtoBuilder
             var m = Transforms.Reference(r.Position, r.RotationRadians, r.Scale);
             var rot = Transforms.RotationOnly(m);
             placed++;
+            var category = categorize?.Invoke(path!) ?? LodLayers.Objects;
 
             foreach (var part in mesh.Parts)
             {
+                cats.TryGetValue(category, out var seen);
+                cats[category] = (seen.Triangles + part.TriangleCount, seen.Vertices + part.VertexCount);
                 if (part.VertexCount > MaxIndex || part.TriangleCount > MaxIndex) continue; // can't happen for valid SSE shapes
-                if (!chunks.TryGetValue(part.Material.Key, out var list))
-                    chunks[part.Material.Key] = list = [new Chunk(part.Material, segmented, brightness)];
+                // A layer other than plain objects never shares a shape with another layer, even with the same material.
+                var chunkKey = category == LodLayers.Objects ? part.Material.Key : part.Material.Key + "|layer:" + category;
+                if (!chunks.TryGetValue(chunkKey, out var list))
+                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category }];
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
-                    list.Add(chunk = new Chunk(part.Material, segmented, brightness));
+                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category });
                 culled += chunk.Append(part, m, rot, origin, inv, terrain, segment);
             }
         }
@@ -104,9 +114,10 @@ public static class BtoBuilder
             tris += c.TriangleCount;
             verts += c.Vertices;
 
+            int layerName = w.String(LodLayers.NodeName(c.Layer, (int)quad.Level));
             w.Set(mbNode, b =>
             {
-                NifWriter.WriteObjectNet(b, -1);
+                NifWriter.WriteObjectNet(b, layerName);
                 NifWriter.WriteAvObject(b, 0xE, Vector3.Zero, 1f);
                 b.Write(1u); b.Write(shape);
                 b.Write(0u);          // effects
@@ -145,7 +156,7 @@ public static class BtoBuilder
             b.Write(0u); // effects
         });
 
-        return new Result(w.ToBytes(root), ordered.Count, tris, verts, placed, skipped, culled);
+        return new Result(w.ToBytes(root), ordered.Count, tris, verts, placed, skipped, culled, cats);
     }
 
     internal static void WriteShader(BinaryWriter b, LodMaterial m, int texSet, bool colors)
@@ -186,6 +197,7 @@ public static class BtoBuilder
     private sealed class Chunk(LodMaterial material, bool segmented, float brightness = 1f)
     {
         public LodMaterial Material { get; } = material;
+        public string Layer { get; init; } = LodLayers.Objects;
         private readonly List<Vector3> _pos = [];
         private readonly List<Vector2> _uv = [];
         private readonly List<Vector3> _n = [];

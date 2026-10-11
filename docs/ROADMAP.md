@@ -19,6 +19,9 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Seasons (Seasons of Skyrim) | `Data\Seasons\*_WIN/_SPR/_SUM/_AUT.ini` swaps → `<block>.WIN.bto` etc.; unchanged blocks hard-linked. Seasonal grass from the seasonal grass caches. Tree/terrain LOD not seasonal yet | ✅ |
 | Dynamic LOD for quest-switched references | SKSE plugin (two builds: SE 1.5.97–AE 1.6.1170 and 1.7.x), `AnvilLOD.dyn`, no plugin needed | ✅ v1 |
 | In-game settings (DynDOLOD MCM equivalent) | SKSE Menu Framework pages: LOD/fade/grass distances, dynamic LOD, water & animated objects | ✅ |
+| In-game quality (no DynDOLOD equivalent) | Grass, 3D trees and tree cards are written as named layers per LOD level; the SKSE plugin hides or shows them live (Quality Layers page, presets Max / High / Medium / Low, `[Layers]` in AnvilLOD.ini). Saves draw cost, not memory | ✅ |
+| Size estimate before generating | Scaled from the last generation of the same preset (grass density, 3D trees, LOD8, seasons); size breakdown per level, layer and season in the log | ✅ |
+| Texture audit | Every texture a LOD mesh names is checked after generating; missing ones are listed (DynDOLOD's "File Not Found Textures") | ✅ |
 | Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | 🧪 experimental |
 | Glow windows | SKSE plugin | planned |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |

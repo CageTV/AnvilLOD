@@ -36,7 +36,7 @@ AnvilLOD scans the load order and writes object LOD blocks (`.bto`), billboard t
 
 ## Mod author tools
 
-The **Mod Author** tab (or `AnvilLOD author --plugin "<file>" --author-out <folder>`) checks one plugin for objects and trees that are seen from afar but have no LOD: no LOD mesh, an MNAM path to a file that isn't there, LOD textures that are missing, models that are empty, trees with no billboard. It can then generate what's missing into its own folder (never into the LOD output):
+The **Missing LOD finder** (under "Mod author tools" on the left; or `AnvilLOD author --plugin "<file>" --author-out <folder>`) checks one plugin for objects and trees that are seen from afar but have no LOD: no LOD mesh, an MNAM path to a file that isn't there, LOD textures that are missing, models that are empty, trees with no billboard. It can then generate what's missing into its own folder (never into the LOD output):
 
 - `meshes\lod\<plugin>\<model>_lod_0/1/2.nif`: the full model with small parts dropped and the rest simplified (quadric error, seams and borders kept), using the model's own textures.
 - `textures\terrain\lodgen\<plugin>\<model>_<formid>.dds/_1.dds/_1_n.dds/.txt`: TexGen-style billboards rendered from the tree model.
@@ -47,7 +47,7 @@ The tools are behind a confirmation: generated files are a starting point to che
 
 ### LOD Mesh Maker
 
-The **LOD Mesh Maker** tab (or `AnvilLOD lodmaker`) makes LOD meshes from full models you pick, with no plugin involved, for models that have no LOD mesh yet:
+The **LOD Mesh Maker** (also under "Mod author tools" on the left; or `AnvilLOD lodmaker`) makes LOD meshes from full models you pick, with no plugin involved, for models that have no LOD mesh yet:
 
 - **Models:** add `.nif` files, a mod folder, its `meshes` folder or any folder of models. It only reads the model files, so it needs no load order.
 - **Output:** a **new mod in your MO2 mods folder** (give it a name; run it again with the same name to add more models) or any folder you choose. Never your LOD output folder.
@@ -161,7 +161,7 @@ Tick **3D tree LOD** (`--tree-3d`) to put real 3D trees into object LOD, the way
 
 - Trees with a model get the 3D model at LOD4 and billboard cards at LOD8, LOD16 and LOD32 (`--tree-3d-lod8` uses the model at LOD8 too, with much bigger files). They are taken out of the billboard tree LOD (`.btt`); every other tree keeps billboard tree LOD.
 - Models are read with their shaders untouched ("passthru"). `spherenormals` shapes get normals pointing away from the model's centre, and the **tree LOD brightness** setting applies to the 3D models and the cards alike.
-- **Accept models by tree name** (`--tree-3d-by-name`, off by default): when no model matches the CRC32, a model stored under the plain tree name is used. DynDOLOD Resources ships most of its models that way. It may have been made for another version of the mesh (for example before a mod or a patcher changed it), so it's your choice. The log says how many tree types would be picked up by turning it on.
+- **Accept models by tree name** (on by default; `--tree-3d-crc-only` turns it off): when no model has the tree mesh's CRC32 in its name, the model stored under the plain tree name is used. That is how DynDOLOD Resources ships almost all of its models and how DynDOLOD itself matches (a CRC32 in the name is only for name collisions). A model made for another version of a tree mesh (before a mod or a patcher changed it) can look slightly off; with the option off you get exact matches only, which is none with DynDOLOD Resources. The log says how many tree types are matched by name.
 - A model whose textures can't be found isn't used, and the trees keep billboard tree LOD. The usual cause is the flat trunk textures (`textures\DynDOLOD\LOD\Trees\<tree>_<CRC32>_trunk_1.dds`), which TexGen renders from the model's `_trunk.nif` in `DynDOLOD\Render\Billboards`. Run TexGen with that resource installed, or use a pack that ships the textures.
 - The log estimates how many triangles and megabytes the models add to the blocks before you generate. 3D trees can make LOD4 files much larger (about 40 KB per tree in a real list).
 
@@ -178,7 +178,7 @@ LOD is drawn with vanilla shaders, which don't do PBR. A LOD mesh that uses a te
 
 ## Presets
 
-The three tabs at the top of the settings column are presets. Each one remembers every setting in the column: output folder, worldspaces, LOD levels, the DynDOLOD folder and rule preset, and all the options. Click a tab to switch (the column slides over to the new preset), double-click a tab to rename it. The preset you leave is saved first, and a preset that was never used starts as a copy of what is on screen, so switching never loses anything. Use them for, say, a fast test setup and a full release setup.
+The three tabs above the options (top right of the options box) are presets. Each one remembers every setting: output folder, worldspaces, LOD levels, the DynDOLOD folder and rule preset, and all the options. Click a tab to switch (the column slides over to the new preset), double-click a tab to rename it. The preset you leave is saved first, and a preset that was never used starts as a copy of what is on screen, so switching never loses anything. Use them for, say, a fast test setup and a full release setup.
 
 The game source (MO2 instance, Vortex or Data folder, the profile and the optional **Locations**) lives in the bar at the top of the window and is shared by all presets.
 
@@ -218,7 +218,7 @@ Generate writes into the output folder you pick. Leave it empty and AnvilLOD use
 
 ## Desktop app
 
-`src\AnvilLOD.App` is a WPF front end for the same pipeline. Choose **MO2 instance** (instance folder + profile) or **Data folder**, set the output folder, pick worldspaces, LOD levels and options, then press **Scan**. Results appear in four tabs: Overview (stats and timing), Blocks (filterable list of every `.bto` and whether it needs a rebuild), Missing meshes, and Log. Settings are saved to `%AppData%\AnvilLOD\settings.json`. **From MO2:** the app and the command line start from MO2's executables list like any other tool (add `AnvilLOD.App.exe` under Edit executables); the window title then says "running under MO2". It doesn't need MO2 to run, because it reads the instance's mods itself, but starting it from MO2 works too. If it ever fails to start from MO2, `%LocalAppData%\AnvilLOD\logspp.log` says how far it got. **Generate LOD** runs the scan and then writes the changed blocks into the output folder.
+`src\AnvilLOD.App` is a WPF front end for the same pipeline. Choose **MO2 instance** (instance folder + profile) or **Data folder**, set the output folder, pick worldspaces, LOD levels and options, then press **Scan**. The window has one button per group of settings on the left (Output and worlds, LOD rules, Objects and terrain, Trees, Grass and size, Seasons / water / dynamic) and the two mod author tools under them. The results are in the upper box and the options of the chosen group in the lower one. Each results tab can be saved with **Print to file** (Overview and Log as text, Blocks and Missing meshes as CSV), and **Expand** makes the results box fill the window (Esc or Restore brings the options back). Results appear in four tabs: Overview (stats and timing), Blocks (filterable list of every `.bto` and whether it needs a rebuild), Missing meshes, and Log. Settings are saved to `%AppData%\AnvilLOD\settings.json`. **From MO2:** the app and the command line start from MO2's executables list like any other tool (add `AnvilLOD.App.exe` under Edit executables); the window title then says "running under MO2". It doesn't need MO2 to run, because it reads the instance's mods itself, but starting it from MO2 works too. If it ever fails to start from MO2, `%LocalAppData%\AnvilLOD\logspp.log` says how far it got. **Generate LOD** runs the scan and then writes the changed blocks into the output folder.
 
 ## Layout
 
@@ -250,3 +250,10 @@ third-party libraries and why GPL applies (Mutagen, GameFinder and CommonLibSSE-
 
 AnvilLOD contains no DynDOLOD code and ships no DynDOLOD assets. Like xLODGen, it reads whatever LOD meshes are installed in the user's own setup
 (via MNAM), and the generated output must not be redistributed if it contains other mods' assets without their authors' permission.
+
+
+## Quality layers (change the LOD quality in game)
+
+Grass, 3D trees and tree cards are written into their own shapes in every LOD block, each under a node named for its layer and LOD level (`AL:grass:4`, `AL:tree3d:8`...). The AnvilLOD SKSE plugin finds them in the loaded LOD and can hide or show each one per LOD level, so you can generate at the quality your best case needs and lower it in game, like a graphics setting. Open **SKSE Menu Framework, AnvilLOD, Quality Layers**: presets Max, High, Medium and Low, or tick each layer and level yourself, and **Save to AnvilLOD.ini** to keep it (`[Layers]`, e.g. `bShow_grass_16=0`; the file is re-read while the game runs).
+
+Hiding a layer saves drawing cost (triangles, overdraw, frame rate). The hidden data stays loaded, so disk space, memory and load time are set by what you generated: set grass density, 3D trees and seasons to the most your PC can really run, not the maximum on offer. The **Grass and size** page shows an estimate of the size of the next generation, scaled from your last one.

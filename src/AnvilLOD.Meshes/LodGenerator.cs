@@ -23,7 +23,9 @@ public sealed record GenerateStats(
     int MeshesLoaded,
     IReadOnlyDictionary<string, string> MeshErrors,
     IReadOnlyDictionary<QuadKey, string> BlockErrors,
-    TimeSpan Elapsed);
+    TimeSpan Elapsed,
+    IReadOnlyDictionary<int, long>? BytesByLevel = null,                                  // actual .bto bytes written, per LOD level
+    IReadOnlyDictionary<(int Level, string Category), (long Triangles, long Vertices)>? SizeBreakdown = null); // source geometry placed, before buried-triangle removal
 
 /// <summary>
 /// Writes .bto files for a set of LOD blocks in parallel. Each LOD mesh is read once and
@@ -43,6 +45,9 @@ public sealed class LodGenerator
 
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
+
+    /// <summary>Names the kind of thing a mesh path is, for the size breakdown (null = everything is "objects").</summary>
+    public Func<string, string>? Categorize { get; init; }
 
     /// <param name="terrain">Terrain heights for buried-triangle removal, or null to keep everything.</param>
     /// <param name="synthetic">Meshes built on the fly (grass patches). They're not cached: each is used by one block.</param>
@@ -82,7 +87,7 @@ public sealed class LodGenerator
             }
             var mesh = NifGeometryReader.Read(path, bytes);
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
-            if (mesh.Parts.Count == 0)
+            if (mesh.Parts.Count == 0 && !mesh.NoShapesInFile)
                 _meshErrors[path] = mesh.Warnings.Count > 0 ? string.Join("; ", mesh.Warnings.Distinct()) : "no usable shapes";
             return mesh;
         }
@@ -118,7 +123,38 @@ public sealed class LodGenerator
                 Tangents = p.Tangents, Bitangents = p.Bitangents, Colors = p.Colors, Triangles = p.Triangles,
             });
         }
-        return new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings };
+        return new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings, NoShapesInFile = mesh.NoShapesInFile };
+    }
+
+    /// <summary>
+    /// Textures (diffuse and normal slots) that the loaded LOD meshes name but that exist nowhere: not loose, not in a
+    /// BSA, not written into the output. A texture the engine can't find draws as purple (DynDOLOD's "File Not Found
+    /// Textures"). Call after everything that writes textures into the output has run. Key = texture, value = first
+    /// mesh that uses it and how many meshes do.
+    /// </summary>
+    public IReadOnlyDictionary<string, (string FirstMesh, int Meshes)> AuditTextures(string outputFolder) =>
+        FindMissingTextures(_meshes.Values.Where(l => l.IsValueCreated && l.Value is not null).Select(l => l.Value!),
+            tex => _assets.Exists(tex) || File.Exists(Path.Combine(outputFolder, tex)));
+
+    /// <summary>The pure part of <see cref="AuditTextures"/>: slots 0 (diffuse) and 1 (normal) of every part's material.</summary>
+    public static IReadOnlyDictionary<string, (string FirstMesh, int Meshes)> FindMissingTextures(IEnumerable<LodMesh> meshes, Func<string, bool> exists)
+    {
+        var missing = new Dictionary<string, (string, int)>(StringComparer.OrdinalIgnoreCase);
+        var seenPerMesh = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var mesh in meshes)
+        {
+            seenPerMesh.Clear();
+            foreach (var part in mesh.Parts)
+                foreach (var raw in part.Material.Textures.Take(2))
+                {
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    var tex = raw.Replace('/', '\\').TrimStart('\\');
+                    if (!tex.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) tex = "textures\\" + tex;
+                    if (!seenPerMesh.Add(tex) || exists(tex)) continue;
+                    missing[tex] = missing.TryGetValue(tex, out var m) ? (m.Item1, m.Item2 + 1) : (mesh.Path, 1);
+                }
+        }
+        return missing.ToDictionary(kv => kv.Key, kv => (kv.Value.Item1, kv.Value.Item2), StringComparer.OrdinalIgnoreCase);
     }
 
     public GenerateStats Generate(
@@ -133,6 +169,8 @@ public sealed class LodGenerator
         int written = 0, empty = 0, failed = 0, done = 0;
         long tris = 0, culledTris = 0;
         var blockErrors = new ConcurrentDictionary<QuadKey, string>();
+        var bytesByLevel = new ConcurrentDictionary<int, long>();
+        var breakdown = new ConcurrentDictionary<(int, string), (long, long)>();
         int total = toBuild.Count;
         var lastReport = Stopwatch.StartNew();
 
@@ -145,7 +183,7 @@ public sealed class LodGenerator
                 {
                     var test = _terrain is null ? null
                         : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level));
-                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness);
+                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize);
                     var rel = seasonSuffix is null ? quad.RelativePath : AnvilLOD.Core.Lod.SeasonSwaps.SeasonalPath(quad.RelativePath, seasonSuffix);
                     var path = Path.Combine(outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -153,6 +191,10 @@ public sealed class LodGenerator
                     File.WriteAllBytes(tmp, result.Bytes);
                     File.Move(tmp, path, overwrite: true);
 
+                    bytesByLevel.AddOrUpdate((int)quad.Level, result.Bytes.Length, (_, v) => v + result.Bytes.Length);
+                    if (result.ByCategory is not null)
+                        foreach (var (cat, st) in result.ByCategory)
+                            breakdown.AddOrUpdate(((int)quad.Level, cat), (st.Triangles, st.Vertices), (_, v) => (v.Item1 + st.Triangles, v.Item2 + st.Vertices));
                     if (result.Shapes == 0) Interlocked.Increment(ref empty);
                     Interlocked.Increment(ref written);
                     Interlocked.Add(ref tris, result.Triangles);
@@ -181,6 +223,8 @@ public sealed class LodGenerator
         return new GenerateStats(written, empty, failed, tris, culledTris, _meshes.Count,
             _meshErrors.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             blockErrors.ToDictionary(kv => kv.Key, kv => kv.Value),
-            sw.Elapsed);
+            sw.Elapsed,
+            bytesByLevel.ToDictionary(kv => kv.Key, kv => kv.Value),
+            breakdown.ToDictionary(kv => (kv.Key.Item1, kv.Key.Item2), kv => (kv.Value.Item1, kv.Value.Item2)));
     }
 }

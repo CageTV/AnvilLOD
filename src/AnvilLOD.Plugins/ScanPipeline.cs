@@ -115,7 +115,7 @@ public static class ScanPipeline
             p => p.StartsWith("meshes\\", StringComparison.Ordinal) || p.StartsWith("lodsettings\\", StringComparison.Ordinal)
                  || p.StartsWith("dyndolod\\", StringComparison.Ordinal) || p.StartsWith("textures\\terrain\\lodgen\\", StringComparison.Ordinal)
                  || p.StartsWith("grass\\", StringComparison.Ordinal) || p.StartsWith("seasons\\", StringComparison.Ordinal)
-                 || ((req.GrassLod || req.Scan.Tree3D is { Enabled: true }) && p.StartsWith("textures\\", StringComparison.Ordinal))); // grass model textures (rendered grass billboards), and the textures 3D tree LOD models need
+                 || p.StartsWith("textures\\", StringComparison.Ordinal)); // grass model textures (rendered grass billboards), the textures 3D tree LOD models need, and so the texture audit can tell a BSA texture from a missing one
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
         foreach (var skipped in assets.SkippedArchives)
             Warn($"An archive could not be read and was skipped; its files are not used, everything else is ({skipped}).");
@@ -349,7 +349,7 @@ public static class ScanPipeline
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod };
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
 
             foreach (var stale in plan.StaleFiles)
@@ -454,6 +454,19 @@ public static class ScanPipeline
                 }
             }
             else UndersideStage.RemoveAll(output);
+            // DynDOLOD's "File Not Found Textures": a LOD mesh naming a texture that exists nowhere draws purple.
+            if (gen.MeshesLoaded > 0)
+            {
+                var texMissing = generator.AuditTextures(output);
+                if (texMissing.Count > 0)
+                {
+                    foreach (var kv in texMissing.OrderByDescending(k => k.Value.Meshes).Take(25))
+                        progress?.Report($"Missing texture: {kv.Key} (used by {kv.Value.Meshes:N0} LOD mesh{(kv.Value.Meshes == 1 ? "" : "es")}, first {kv.Value.FirstMesh})");
+                    Warn($"{texMissing.Count:N0} textures named by LOD meshes exist nowhere (loose, BSA or output) and will draw purple. Most used: "
+                         + string.Join(", ", texMissing.OrderByDescending(k => k.Value.Meshes).Take(3).Select(k => k.Key)) + ". All are listed above in the log.");
+                }
+                else progress?.Report("Texture audit: every texture named by the LOD meshes exists.");
+            }
             try
             {
                 var skse = SksePluginInstaller.Install(output, game.DataFolder, req.SkseDll);
@@ -467,6 +480,7 @@ public static class ScanPipeline
 
             progress?.Report($"Generated {gen.BlocksWritten:N0} blocks, {gen.Triangles:N0} triangles ({gen.TrianglesCulled:N0} buried ones removed), {gen.MeshesLoaded:N0} meshes in {gen.Elapsed.TotalSeconds:F1}s"
                              + (deleted > 0 ? $"; removed {deleted} stale blocks" : ""));
+            foreach (var line in SizeBreakdown.Lines(gen, output)) progress?.Report(line);
             if (gen.BlocksFailed > 0) Warn($"{gen.BlocksFailed} blocks failed to write (first: {gen.BlockErrors.First().Key}: {gen.BlockErrors.First().Value}).");
             if (grass is not null)
             {

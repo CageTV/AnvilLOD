@@ -51,7 +51,8 @@ public sealed class AppSettings
     public bool Underside { get; set; }         // terrain underside (NIFs + AnvilLOD.esp), off by default
     public bool Tree3D { get; set; }            // 3D tree LOD models in object LOD (off by default)
     public bool Tree3DLod8 { get; set; }        // use the 3D models at LOD8 as well
-    public bool Tree3DByName { get; set; }      // accept a model stored under the plain tree name when the CRC32 doesn't match
+    public string? LastRunSizes { get; set; }   // JSON of the last generation's size by LOD level and layer (SizeCalibration), per preset, for the size estimate
+    public bool Tree3DByName { get; set; } = true; // accept a model stored under the plain tree name when no CRC32-named one exists (DynDOLOD's own convention: CRC32 names are only for collisions)
     public bool GrassLod { get; set; } = true;
     public int TreeBrightness { get; set; } = 100;   // percent, 10-110
     public int ObjectBrightness { get; set; } = 100; // percent, 10-110

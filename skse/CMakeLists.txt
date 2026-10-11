@@ -34,6 +34,7 @@ add_commonlibsse_plugin(${PROJECT_NAME}
         src/LodDistances.cpp
         src/IniFile.cpp
         src/Menu.cpp
+        src/LodLayers.cpp
 )
 
 if(ANVILLOD_RUNTIME_LINE STREQUAL "14")
