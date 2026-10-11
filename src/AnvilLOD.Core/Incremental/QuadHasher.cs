@@ -16,13 +16,14 @@ namespace AnvilLOD.Core.Incremental;
 public static class QuadHasher
 {
     /// <summary>Bump when the output format/algorithm changes so every block rebuilds once.</summary>
-    public const int AlgorithmVersion = 3; // 3: per-cell LOD4 segments, enable-parent state
+    public const int AlgorithmVersion = 4; // 4: LOD textures follow the full model (texture variants); 3: per-cell LOD4 segments, enable-parent state
 
     public static string Hash(
         QuadKey quad,
         IReadOnlyList<LodReference> refsSortedByFormKey,
         Func<string, string?> assetFingerprint,
-        string settingsFingerprint)
+        string settingsFingerprint,
+        Func<string, string?>? variantStamp = null)   // texture variant id -> what its full model looks like now (file fingerprint)
     {
         using var h = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var buf = new byte[4];
@@ -50,6 +51,8 @@ public static class QuadHasher
             Str(r.FormKey);
             Str(mesh);
             Str(mesh is null ? null : assetFingerprint(mesh));
+            Str(r.TextureVariant);
+            Str(r.TextureVariant is null ? null : variantStamp?.Invoke(r.TextureVariant));
             F(r.Position.X); F(r.Position.Y); F(r.Position.Z);
             F(r.RotationRadians.X); F(r.RotationRadians.Y); F(r.RotationRadians.Z);
             F(r.Scale);

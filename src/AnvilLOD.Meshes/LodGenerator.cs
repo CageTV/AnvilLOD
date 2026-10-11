@@ -46,6 +46,25 @@ public sealed class LodGenerator
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
 
+    /// <summary>
+    /// Texture variants from the scan, by id. A reference with one gets a copy of its LOD mesh whose textures follow the full model
+    /// (including alternate textures such as snow or ice), shape by shape, the way DynDOLOD corrects LOD textures.
+    /// </summary>
+    public IReadOnlyDictionary<string, TextureVariant>? TextureVariants { get; init; }
+
+    /// <summary>What the texture matching did, for the log.</summary>
+    public TextureMatchStats Matching { get; } = new();
+
+    public sealed class TextureMatchStats
+    {
+        public int Meshes, MeshesChanged, Shapes, ShapesChanged, ShapesStitched, FullModelsRead, FullModelsMissing;
+    }
+
+    private readonly ConcurrentDictionary<string, Lazy<IReadOnlyList<FullShape>?>> _fullShapes = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The texture slots (diffuse, normal) a shape of the full model names, before any alternate texture.</summary>
+    private sealed record FullShape(string? Name, string? Diffuse, string? Normal);
+
     /// <summary>Names the kind of thing a mesh path is, for the size breakdown (null = everything is "objects").</summary>
     public Func<string, string>? Categorize { get; init; }
 
@@ -58,8 +77,14 @@ public sealed class LodGenerator
         _synthetic = synthetic;
     }
 
-    public LodMesh? GetMesh(string path)
+    /// <param name="key">A mesh path, or a path plus a texture variant (<see cref="LodMeshKey"/>).</param>
+    public LodMesh? GetMesh(string key)
     {
+        var (path, variantId) = LodMeshKey.Split(key);
+        if (variantId is not null && TextureVariants is not null && TextureVariants.TryGetValue(variantId, out var variant)
+            && !(_synthetic is not null && _synthetic.Owns(path)))
+            return _meshes.GetOrAdd(key, _ => new Lazy<LodMesh?>(() => MatchTextures(path, variant), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+
         if (_synthetic is not null && _synthetic.Owns(path))
         {
             try { return _synthetic.Build(path); }
@@ -96,6 +121,132 @@ public sealed class LodGenerator
             _meshErrors[path] = ex.Message;
             return null;
         }
+    }
+
+    /// <summary>
+    /// The LOD mesh with its textures made to follow the base record's full model. LOD models are cut from full models and keep their
+    /// shape names, so a shape whose texture differs from the full model's (a snow variant of a rock, an ice or dirt texture set)
+    /// gets the full model's texture, with the alternate textures of the base record applied. Shapes that use stitched LOD
+    /// textures (textures\lod\...) can't be compared with the full texture and are left as they are.
+    /// </summary>
+    private LodMesh? MatchTextures(string path, TextureVariant variant)
+    {
+        var lod = GetMesh(path);
+        if (lod is null || lod.Parts.Count == 0) return lod;
+        Interlocked.Increment(ref Matching.Meshes);
+
+        var full = _fullShapes.GetOrAdd(variant.FullModel, p => new Lazy<IReadOnlyList<FullShape>?>(() => ReadFullShapes(p), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+        if (full is null || full.Count == 0) return lod;
+
+        bool changed = false;
+        var parts = new List<LodMeshPart>(lod.Parts.Count);
+        foreach (var p in lod.Parts)
+        {
+            Interlocked.Increment(ref Matching.Shapes);
+            var part = p;
+            var m = p.Material;
+            var shape = FindShape(full, p.Name);
+            if (shape is not null && m.Textures.Count > 0)
+            {
+                if (IsStitchedLodTexture(m.Textures[0])) Interlocked.Increment(ref Matching.ShapesStitched);
+                else
+                {
+                    string? diffuse = shape.Diffuse, normal = shape.Normal;
+                    foreach (var alt in variant.Alternates)
+                    {
+                        if (!ShapeNameMatches(alt.ShapeName, shape.Name)) continue;
+                        if (!string.IsNullOrEmpty(alt.Diffuse)) diffuse = alt.Diffuse;
+                        if (!string.IsNullOrEmpty(alt.Normal)) normal = alt.Normal;
+                    }
+                    // A texture the full model or its texture set names but that exists nowhere (a PBR path from a patch whose textures
+                    // aren't installed) would draw purple on the LOD mesh: use its non-PBR twin, or leave the LOD mesh as it is.
+                    diffuse = ExistingTexture(diffuse);
+                    normal = ExistingTexture(normal);
+                    // Same texture mapping the LOD mesh went through (a full texture that has a PBR twin points at the converted copy).
+                    if (!string.IsNullOrWhiteSpace(diffuse) && Pbr?.MapDiffuse(diffuse) is { } mapped)
+                    {
+                        if (!string.IsNullOrWhiteSpace(normal) && Pbr.MapNormal(diffuse, normal) is { } mappedNormal) normal = mappedNormal;
+                        diffuse = mapped;
+                    }
+                    if (!string.IsNullOrWhiteSpace(diffuse) && !SamePath(diffuse, m.Textures[0]))
+                    {
+                        var tex = m.Textures.ToList();
+                        tex[0] = diffuse;
+                        if (tex.Count > 1 && !string.IsNullOrWhiteSpace(normal)) tex[1] = normal;
+                        part = new LodMeshPart
+                        {
+                            Name = p.Name, Material = m with { Textures = tex }, Positions = p.Positions, UVs = p.UVs, Normals = p.Normals,
+                            Tangents = p.Tangents, Bitangents = p.Bitangents, Colors = p.Colors, Triangles = p.Triangles,
+                        };
+                        changed = true;
+                        Interlocked.Increment(ref Matching.ShapesChanged);
+                    }
+                }
+            }
+            parts.Add(part);
+        }
+        if (!changed) return lod;
+        Interlocked.Increment(ref Matching.MeshesChanged);
+        return new LodMesh { Path = lod.Path, Parts = parts, Warnings = lod.Warnings, NoShapesInFile = lod.NoShapesInFile };
+    }
+
+    private IReadOnlyList<FullShape>? ReadFullShapes(string modelPath)
+    {
+        try
+        {
+            if (!_assets.TryOpen(modelPath, out var s)) { Interlocked.Increment(ref Matching.FullModelsMissing); return null; }
+            byte[] bytes;
+            using (s) { using var copy = new MemoryStream(); s.CopyTo(copy); bytes = copy.ToArray(); }
+            var mesh = NifGeometryReader.Read(modelPath, bytes);
+            Interlocked.Increment(ref Matching.FullModelsRead);
+            return mesh.Parts.Select(p => new FullShape(p.Name,
+                p.Material.Textures.Count > 0 ? p.Material.Textures[0] : null,
+                p.Material.Textures.Count > 1 ? p.Material.Textures[1] : null)).ToList();
+        }
+        catch (Exception) { Interlocked.Increment(ref Matching.FullModelsMissing); return null; }
+    }
+
+    /// <summary>The texture if it exists, else the same path without a leading textures\pbr\ if that exists, else null.</summary>
+    private string? ExistingTexture(string? texture)
+    {
+        if (string.IsNullOrWhiteSpace(texture)) return null;
+        var t = texture.Replace('/', '\\').Trim();
+        if (_assets.Exists(t)) return t;
+        const string pbr = "textures\\pbr\\";
+        if (t.StartsWith(pbr, StringComparison.OrdinalIgnoreCase))
+        {
+            var plain = "textures\\" + t[pbr.Length..];
+            if (_assets.Exists(plain)) return plain;
+        }
+        return null;
+    }
+
+    private static bool SamePath(string? a, string? b) =>
+        string.Equals((a ?? "").Replace('/', '\\').Trim(), (b ?? "").Replace('/', '\\').Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShapeNameMatches(string? a, string? b) =>
+        !string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b) && string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The full model's shape with the LOD shape's name; merged LOD shapes are named "a - b", so any of their parts will do.</summary>
+    private static FullShape? FindShape(IReadOnlyList<FullShape> full, string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        foreach (var f in full) if (ShapeNameMatches(f.Name, name)) return f;
+        if (name.Contains(" - ", StringComparison.Ordinal))
+            foreach (var piece in name.Split(" - ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                foreach (var f in full) if (ShapeNameMatches(f.Name, piece)) return f;
+        return null;
+    }
+
+    /// <summary>textures\lod\..., or a file named like xxx_lod / xxxlod: stitched or reduced LOD textures that have no full-texture twin to compare with.</summary>
+    private static bool IsStitchedLodTexture(string? texture)
+    {
+        if (string.IsNullOrWhiteSpace(texture)) return false;
+        var t = texture.Replace('/', '\\').ToLowerInvariant();
+        if (t.Contains("\\lod\\", StringComparison.Ordinal) || t.StartsWith("lod\\", StringComparison.Ordinal)) return true;
+        var name = Path.GetFileNameWithoutExtension(t);
+        if (name.EndsWith("_n", StringComparison.Ordinal)) name = name[..^2];
+        return name.EndsWith("lod", StringComparison.Ordinal) || name.Contains("_lod", StringComparison.Ordinal);
     }
 
     private static LodMesh ApplyPbr(LodMesh mesh, PbrLodTextures pbr)

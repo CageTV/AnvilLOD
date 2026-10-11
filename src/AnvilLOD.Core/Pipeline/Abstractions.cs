@@ -29,7 +29,8 @@ public sealed record ScanOptions(
     bool TreeLod = true,                               // also collect TREE references with billboards
     bool DynamicLod = true,                            // switchable refs (quest-toggled) go to the SKSE controller instead of static LOD
     bool GridObjects = true,                           // DynDOLOD grid objects (water, waterfalls, fires, windmills): drawn animated by the SKSE plugin
-    Tree3DSettings? Tree3D = null);                    // 3D tree LOD models in object LOD (null / Enabled = false: billboards only)
+    Tree3DSettings? Tree3D = null,                     // 3D tree LOD models in object LOD (null / Enabled = false: billboards only)
+    bool MatchTextures = true);                        // LOD mesh textures follow the full model (alternate textures, snow variants), like DynDOLOD
 
 public sealed record ScanResult(
     IReadOnlyDictionary<string, LodGrid> Grids,
@@ -37,7 +38,8 @@ public sealed record ScanResult(
     ScanStats Stats,
     IReadOnlyList<TreeReference>? Trees = null,
     IReadOnlyDictionary<string, long>? MissingBillboards = null,   // "plugin\model_formid" -> placed count
-    IReadOnlyList<DynamicLodReference>? Dynamic = null);
+    IReadOnlyList<DynamicLodReference>? Dynamic = null,
+    IReadOnlyDictionary<string, TextureVariant>? TextureVariants = null);   // by LodReference.TextureVariant
 
 public sealed record ScanStats(
     int PluginsInLoadOrder,

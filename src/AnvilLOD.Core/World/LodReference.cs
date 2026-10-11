@@ -16,7 +16,8 @@ public sealed record LodReference(
     Vector3 RotationRadians,
     float Scale,
     LodMeshSet Meshes,
-    LodReferenceFlags Flags)
+    LodReferenceFlags Flags,
+    string? TextureVariant = null)   // id of the base record's TextureVariant: the LOD mesh's textures follow its full model
 {
     public CellCoord Cell => CellCoord.FromWorld(Position.X, Position.Y);
 }

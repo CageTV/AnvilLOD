@@ -64,7 +64,7 @@ public static class BtoBuilder
         foreach (var r in refs)
         {
             var path = r.Meshes.For(quad.Level);
-            var mesh = path is null ? null : meshes(path);
+            var mesh = path is null ? null : meshes(LodMeshKey.Make(path, r.TextureVariant));
             if (mesh is null || mesh.Parts.Count == 0) { skipped++; continue; }
 
             int segment = 0;

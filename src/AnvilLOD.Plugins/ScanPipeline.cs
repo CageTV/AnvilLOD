@@ -307,7 +307,8 @@ public static class ScanPipeline
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
                 req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (cullTerrain is null ? "|keep-buried"
-                    : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none"))));
+                    : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none")),
+                id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
 
         // A cleared output has no earlier build to compare with: every block is written again.
@@ -349,8 +350,12 @@ public static class ScanPipeline
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize };
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize, TextureVariants = scan.TextureVariants };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
+            var tm = generator.Matching;
+            if (scan.TextureVariants is not null && tm.Meshes > 0)
+                progress?.Report($"Texture matching: {tm.ShapesChanged:N0} of {tm.Shapes:N0} LOD shapes (in {tm.MeshesChanged:N0} of {tm.Meshes:N0} LOD meshes) now use the texture their full model has, snow, ice and other variants included;"
+                                 + $" {tm.ShapesStitched:N0} shapes keep stitched LOD textures. {tm.FullModelsRead:N0} full models read, {tm.FullModelsMissing:N0} not found.");
 
             foreach (var stale in plan.StaleFiles)
             {

@@ -61,6 +61,8 @@ public static class Program
                                  1170 (SE 1.5.97 - AE 1.6.1170), 17 (newer, 1.7.x), none (installed separately)
           --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD
                                  "grid" objects) to the AnvilLOD SKSE plugin
+          --no-match-textures    Keep each LOD mesh's own textures. By default they follow the full model
+                                 (alternate textures, snow/ice variants), the way DynDOLOD corrects them
           --no-grass             Don't build grass LOD from the grass cache
           --water-standins       Stream/creek/pond water planes (grid objects) that use a real water shader, which
                                  draws black beyond the loaded cells, get a lit fake-water stand-in mesh in the output
@@ -196,7 +198,8 @@ public static class Program
                 TreeLod: !a.Has("no-trees"),
                 DynamicLod: !a.Has("no-dynamic"),
                 GridObjects: !a.Has("no-grid-objects"),
-                Tree3D: Tree3DFromArgs(a)),
+                Tree3D: Tree3DFromArgs(a),
+                MatchTextures: !a.Has("no-match-textures")),
             OutputFolder: outputFolder,
             CleanOutput: !a.Has("keep-output"),
             Generate: generate,

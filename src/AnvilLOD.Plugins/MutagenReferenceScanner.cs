@@ -29,7 +29,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
     private readonly LodMeshResolver? _resolver;
     private readonly ChildWorldCopies _childCopies;
 
-    private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey);
+    private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey, TextureVariant? Variant = null);
 
     /// <param name="resolver">Rules + named-LOD index. Null = MNAM only with the default level mapping.</param>
     /// <param name="childCopies">Child worldspaces (walled cities) whose references also go into the parent's LOD.</param>
@@ -83,6 +83,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         // 2) Base objects -> model + MNAM (cached), then rules + named-LOD index -> mesh per level
         var linkCache = _game.LinkCache;
         var baseCache = new ConcurrentDictionary<FormKey, BaseInfo?>();
+        var variants = new ConcurrentDictionary<string, TextureVariant>(StringComparer.Ordinal);
         var resolved = new ConcurrentDictionary<FormKey, LodMeshResolver.Resolution>();
         var missing = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         var meshExists = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
@@ -114,8 +115,24 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 if (stat.Lod is { } lod)
                     mnam = [Mnam(lod.Level0), Mnam(lod.Level1), Mnam(lod.Level2), Mnam(lod.Level3)];
             }
+            // The object looks like its full model with its alternate textures (snow, ice, dirt variants share one model);
+            // the LOD mesh's textures are made to follow that (see LodGenerator).
+            TextureVariant? variant = null;
+            if (options.MatchTextures)
+            {
+                var alts = new List<AltTexture>();
+                foreach (var alt in (rec as IModeledGetter)?.Model?.AlternateTextures ?? [])
+                {
+                    if (string.IsNullOrEmpty(alt.Name) || !linkCache.TryResolve<ITextureSetGetter>(alt.NewTexture.FormKey, out var set)) continue;
+                    var diffuse = set.Diffuse is { IsNull: false } d ? d.DataRelativePath.Path : null;
+                    var normal = set.NormalOrGloss is { IsNull: false } n ? n.DataRelativePath.Path : null;
+                    if (diffuse is not null || normal is not null) alts.Add(new AltTexture(alt.Name, diffuse, normal));
+                }
+                variant = TextureVariant.Create(model.DataRelativePath.Path, alts);
+                variants.TryAdd(variant.Id, variant);
+            }
             return new BaseInfo(model.DataRelativePath.Path, mnam, distant, rec.EditorID,
-                LodRules.FormIdKey(fk.ModKey.ToString(), fk.ID));
+                LodRules.FormIdKey(fk.ModKey.ToString(), fk.ID), variant);
         }
 
         // 2b) Trees: billboard per TREE base (TexGen/LODGen naming), runtime FormIDs from the load order.
@@ -371,7 +388,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                     RotationRadians: new Vector3(p.Rotation.X, p.Rotation.Y, p.Rotation.Z),
                     Scale: r.Scale ?? 1f,
                     Meshes: res.Meshes,
-                    Flags: flags);
+                    Flags: flags,
+                    TextureVariant: res.Meshes.HasAny ? info.Variant?.Id : null);
                 refs.Add(lodRef);
                 if (copy is not null)
                 {
@@ -506,7 +524,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             MissingMeshes: missing.ToDictionary(kv => kv.Key, kv => kv.Value),
             Elapsed: sw.Elapsed);
 
-        return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic);
+        return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic,
+            options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null);
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>
