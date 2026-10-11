@@ -26,6 +26,7 @@ namespace AnvilLOD
 		std::size_t ShownCount() const { return _shown.size(); }
 		std::size_t WorldCount() const { return _byWorld.size(); }
 		std::size_t GridCount() const { return _gridCount; }
+		std::size_t CopyCount() const { return _copyCount; }
 		std::size_t AnimatedCount() const { return _animatedShown; }
 		/// Drops every drawn object so the next update redraws with current settings.
 		void Refresh() { _refresh = true; }
@@ -49,12 +50,15 @@ namespace AnvilLOD
 			bool                           neverFade{ false };
 			bool                           water{ false };
 			bool                           underside{ false };  // a child worldspace's terrain underside: drawn whenever the player is in `world`
+			bool                           copy{ false };       // a Parent > Child copy (AnvilLOD.copies): drawn while the player is in `world`, inside the loaded cells
+			bool                           childCell{ false };  // ... and the child worldspace has a cell here
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held
 		};
 
 		void LoadDynamic();
 		void LoadUndersides();
+		void LoadCopies();
 		void Update();
 		void Animate();
 		float Seconds() const;
@@ -80,6 +84,7 @@ namespace AnvilLOD
 		std::atomic<bool>                                           _animQueued{ false };
 		std::atomic<bool>                                           _refresh{ false };
 		std::size_t                                                 _gridCount{ 0 };
+		std::size_t                                                 _copyCount{ 0 };
 		std::atomic<std::size_t>                                    _animatedShown{ 0 };
 		std::chrono::steady_clock::time_point                       _epoch{ std::chrono::steady_clock::now() };
 	};

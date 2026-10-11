@@ -175,19 +175,25 @@ public static class ScanPipeline
 
         // Walled cities: DynDOLOD's child world configs say which child worldspaces are copied into the parent's LOD.
         var childCopies = ChildWorldCopies.None;
-        if (req.ChildWorlds && rulesFolder is not null)
+        if ((req.ChildWorlds || req.Scan.ParentCopies) && rulesFolder is not null)
         {
             var configs = Path.Combine(Path.GetDirectoryName(rulesFolder)!, "Configs");
             childCopies = ChildWorldCopies.Load(configs, plugins, req.Preset);
+            if (!req.ChildWorlds) childCopies = childCopies.WithoutChildCopies();
             if (childCopies.Worlds.Count > 0)
                 progress?.Report($"Child worldspaces copied into their parent's LOD: {string.Join(", ", childCopies.Worlds.Select(w => $"{w.Child} -> {w.Parent}"))}");
         }
+        else if (req.Scan.ParentCopies && rulesFolder is null)
+            progress?.Report("Parent > Child copies need DynDOLOD's Configs folder (set the DynDOLOD install folder); none written.");
         var scanner = new MutagenReferenceScanner(game, assets, resolver, childCopies);
         var scan = scanner.Scan(req.Scan, progress, ct);
         if (scan.Grids.Count == 0)
             Warn(req.Scan.Worldspaces is { Count: > 0 } ws
                 ? $"None of the requested worldspaces ({string.Join(", ", ws)}) has a LODSettings\\<name>.lod file in loose files or BSAs."
                 : "No worldspace has a LODSettings\\<name>.lod file in loose files or BSAs.");
+        // Debugging aid: ANVILLOD_DEBUG_PARENT_COPIES=<file> dumps the Parent > Child candidates as a table (source reference, child world, base, cell).
+        if (scan.ParentCopies is { } dumpCopies && Environment.GetEnvironmentVariable("ANVILLOD_DEBUG_PARENT_COPIES") is { Length: > 0 } dumpPath)
+            File.WriteAllLines(dumpPath, dumpCopies.Select(c => string.Join('	', c.ChildWorldspace, c.SourcePlugin, c.SourceLocalId.ToString("X6"), c.BaseEditorId, c.Model, c.CellX, c.CellY, c.ChildCellExists ? 1 : 0, c.HasAlternateTextures ? 1 : 0)));
         progress?.Report($"Scan: {scan.Stats.LodReferencesFound:N0} LOD refs from {scan.Stats.PlacedObjectsVisited:N0} refs in {scan.Stats.Elapsed.TotalSeconds:F1}s");
 
         TerrainReader.Result? terrain = null;
@@ -411,6 +417,14 @@ public static class ScanPipeline
                 var dyn = BuildManifest.FullPath(output, DynamicLodWriter.RelativePath);
                 if (File.Exists(dyn)) File.Delete(dyn);
             }
+            if (req.Scan.ParentCopies && scan.ParentCopies is { Count: > 0 } pcs)
+            {
+                int written = ParentCopyWriter.Write(output, pcs);
+                int altTex = pcs.Count(c => c.HasAlternateTextures), inCells = pcs.Count(c => c.ChildCellExists);
+                progress?.Report($"Parent > Child copies: {written:N0} references written to {ParentCopyWriter.RelativePath} for the AnvilLOD SKSE plugin"
+                                 + $" ({inCells:N0} in cells the child worldspace has; {altTex:N0} use texture variants the plugin can't apply, they show the default textures)");
+            }
+            else ParentCopyWriter.Remove(output);
 
             if (pbrLod is not null)
             {

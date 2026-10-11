@@ -22,6 +22,11 @@ namespace AnvilLOD
 		// Terrain underside of child worldspaces (AnvilLOD.underside), drawn only while the player is in that worldspace
 		bool          undersides{ true };
 
+		// Parent > Child copies (AnvilLOD.copies): the objects around Whiterun, Solitude, Windhelm and Riften that their child
+		// worldspaces leave out, drawn while the player is in the city and the object is inside the loaded cells
+		bool          parentCopies{ true };
+		bool          parentCopyAllCells{ false };  // false: only in cells the child worldspace has (where the engine hides the parent's LOD)
+
 		static Settings& Get();
 		void             Load();
 		bool             Save() const;  // writes the [Dynamic] values back to AnvilLOD.ini

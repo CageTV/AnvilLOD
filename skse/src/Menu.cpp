@@ -183,6 +183,17 @@ namespace AnvilLOD::Menu
 			if (Smf::SliderInt("Update interval (ms)", &interval, 100, 5000)) s.updateIntervalMs = static_cast<std::uint32_t>(interval);
 			Smf::Checkbox("Verbose log", &s.verboseLog);
 			Smf::Separator();
+			Smf::TextWrapped("Parent > Child copies: the objects around Whiterun, Solitude, Windhelm and Riften that those cities' worldspaces "
+							 "leave out (DynDOLOD copies them into the city with a plugin). They are drawn while you are in the city, inside the loaded "
+							 "cells. Generate with \"Parent > Child copies\" ticked.");
+			if (c.CopyCount() == 0) {
+				Smf::TextDisabled("No AnvilLOD.copies found.");
+			} else {
+				Smf::Text("Copies: %zu references", c.CopyCount());
+			}
+			Smf::Checkbox("Draw Parent > Child copies", &s.parentCopies);
+			Smf::Checkbox("Also where the city worldspace has no cell (experimental)", &s.parentCopyAllCells);
+			Smf::Separator();
 			if (Smf::Button("Save to AnvilLOD.ini##dyn")) g_status = s.Save() ? "Saved." : "Could not write AnvilLOD.ini.";
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
 		}

@@ -38,6 +38,10 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         return LodShaderKind.None;
     }
 
+    private const float FlatModelHeight = 24f, FlatModelMinSpan = 128f;   // game units: a ground piece is at most this tall and at least this wide
+
+    private sealed record ParentCopyTarget(ParentCopyWorld Config, FormKey WorldKey, HashSet<(int X, int Y)> Cells, HashSet<(int X, int Y)> NavmeshCells);
+
     private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey, TextureVariant? Variant = null, LodShaderKind Shader = LodShaderKind.None);
 
     /// <param name="resolver">Rules + named-LOD index. Null = MNAM only with the default level mapping.</param>
@@ -258,6 +262,130 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var states = new EnableStates(linkCache);
         long visited = 0, skippedDisabled = 0, skippedMissing = 0;
 
+        // 3a) Parent > Child copies (DynDOLOD's ScanParent): which parent references around a walled city get copied into the child.
+        var parentCopyTargets = new Dictionary<string, List<ParentCopyTarget>>(StringComparer.OrdinalIgnoreCase);
+        var parentCopies = new List<ParentCopy>();
+        var parentCopiesByChild = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        long pcInRegion = 0, pcNoLod = 0, pcSwitchable = 0, pcIgnored = 0, pcNavmesh = 0, pcStandIn = 0, pcFlat = 0;
+        var flatModels = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        // Road chunks, mud patches and other flat ground pieces lie within a few units of the terrain. As a drawn copy (not a real
+        // reference) they z-fight with it and with the parent's LOD, which shows as blurry patches on the ground, so they stay out.
+        bool IsFlatModel(string modelPath) => flatModels.GetOrAdd(modelPath, mp =>
+        {
+            try
+            {
+                if (!_assets.TryOpen(mp, out var s)) return false;
+                byte[] bytes;
+                using (s) { using var ms = new MemoryStream(); s.CopyTo(ms); bytes = ms.ToArray(); }
+                var mesh = AnvilLOD.Meshes.Nif.NifGeometryReader.Read(mp, bytes);
+                float minZ = float.MaxValue, maxZ = float.MinValue, minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+                foreach (var part in mesh.Parts)
+                    foreach (var v in part.Positions)
+                    {
+                        minZ = MathF.Min(minZ, v.Z); maxZ = MathF.Max(maxZ, v.Z);
+                        minX = MathF.Min(minX, v.X); maxX = MathF.Max(maxX, v.X);
+                        minY = MathF.Min(minY, v.Y); maxY = MathF.Max(maxY, v.Y);
+                    }
+                if (minZ > maxZ) return false;
+                return maxZ - minZ <= FlatModelHeight && MathF.Max(maxX - minX, maxY - minY) >= FlatModelMinSpan;
+            }
+            catch { return false; }
+        });
+        if (options.ParentCopies && _childCopies.ParentCopyWorlds.Count > 0)
+        {
+            var configs = _childCopies.ParentCopyWorlds.ToDictionary(c => c.Child, StringComparer.OrdinalIgnoreCase);
+            var worldKeys = new Dictionary<string, FormKey>(StringComparer.OrdinalIgnoreCase);
+            foreach (var ws in priority.Worldspace().WinningOverrides())
+                if (ws.EditorID is { } id && configs.ContainsKey(id)) worldKeys[id] = ws.FormKey;
+            var targetsByChild = new Dictionary<string, ParentCopyTarget>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (child, cfg) in configs)
+            {
+                if (!worldKeys.TryGetValue(child, out var key)) continue;
+                var target = new ParentCopyTarget(cfg, key, [], []);
+                targetsByChild[child] = target;
+                if (!parentCopyTargets.TryGetValue(cfg.Parent, out var list)) parentCopyTargets[cfg.Parent] = list = [];
+                list.Add(target);
+            }
+            foreach (var cctx in priority.Cell().WinningContextOverrides(linkCache))
+                if (cctx.Record.Grid is { } grid
+                    && cctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var cws)
+                    && cws.Record.EditorID is { } cid && targetsByChild.TryGetValue(cid, out var tgt))
+                    tgt.Cells.Add((grid.Point.X, grid.Point.Y));
+            if (configs.Values.Any(c => c.NoCellsWithNavmesh))
+                foreach (var nctx in priority.NavigationMesh().WinningContextOverrides(linkCache))
+                    if (nctx.TryGetParentSimpleContext<ICellGetter>(out var ncell) && ncell.Record.Grid is { } ngrid
+                        && nctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var nws)
+                        && nws.Record.EditorID is { } nid && targetsByChild.TryGetValue(nid, out var ntgt))
+                        ntgt.NavmeshCells.Add((ngrid.Point.X, ngrid.Point.Y));
+            // A child without a Bounds line (Dragonsreach, which sits on top of Whiterun) gets the copy region of the configured child
+            // whose Bounds (grown by the margin) hold most of its cells; DynDOLOD's output for it matches Whiterun's region exactly.
+            foreach (var t in targetsByChild.Values.Where(t => t.Config.Bounds is null).ToList())
+            {
+                var best = targetsByChild.Values.Where(o => o.Config.Bounds is not null)
+                    .Select(o => (o, n: t.Cells.Count(c => o.Config.Bounds!.Value.Expand(ParentCopyWorld.BoundsMargin).Contains(c.X, c.Y))))
+                    .OrderByDescending(x => x.n).FirstOrDefault();
+                if (best.o is null || best.n == 0) continue;
+                var fixedTarget = t with { Config = t.Config with { Bounds = best.o.Config.Bounds } };
+                targetsByChild[t.Config.Child] = fixedTarget;
+                var list = parentCopyTargets[t.Config.Parent];
+                list[list.IndexOf(t)] = fixedTarget;
+            }
+            progress?.Report("Parent > Child copies: " + string.Join(", ", targetsByChild.Values.Select(t =>
+                $"{t.Config.Child} ({t.Cells.Count} cells, from {t.Config.Parent})")));
+        }
+
+        void CollectParentCopy(Mutagen.Bethesda.Plugins.Cache.IModContext<ISkyrimMod, ISkyrimModGetter, IPlacedObject, IPlacedObjectGetter> pctx, List<ParentCopyTarget> targets)
+        {
+            var r = pctx.Record;
+            if (r.IsDeleted || r.Placement is not { } p) return;
+            if (!pctx.TryGetParentSimpleContext<ICellGetter>(out var cellCtx) || cellCtx.Record.Grid is not { } g) return;   // persistent cell: no coordinates
+            int cx = g.Point.X, cy = g.Point.Y;
+            var baseKey = r.Base.FormKeyNullable;
+            if (baseKey is null || baseKey.Value.IsNull) return;
+
+            foreach (var t in targets)
+            {
+                if (!t.Config.Covers(cx, cy)) continue;
+                pcInRegion++;
+                bool childCell = t.Cells.Contains((cx, cy));
+                if (t.Config.NoCellsWithNavmesh && t.NavmeshCells.Contains((cx, cy))) { pcNavmesh++; continue; }
+                var raw = r.MajorRecordFlagsRaw;
+                // Whatever a quest can switch off would stay visible: same rule as the child-to-parent copies.
+                if ((raw & FlagInitiallyDisabled) != 0 || (raw & FlagPersistent) != 0 || (r.EnableParent is { } pep && !pep.Reference.IsNull)) { pcSwitchable++; continue; }
+                var edid = baseEdid.GetOrAdd(baseKey.Value, k => linkCache.TryResolve(k, out var b) ? b.EditorID : null);
+                if (t.Config.IgnoresEditorId(edid)) { pcIgnored++; continue; }
+                if (_childCopies.IsParentStandIn(LodRules.FormIdKey(r.FormKey.ModKey.ToString(), r.FormKey.ID))) { pcStandIn++; continue; }
+
+                string? model = null;
+                bool alt = false;
+                if (isTreeCache.GetOrAdd(baseKey.Value, IsTree))
+                {
+                    if (treeCache.GetOrAdd(baseKey.Value, ReadTree) is null) { pcNoLod++; continue; }   // no billboard = DynDOLOD has no LOD for it either
+                    if (linkCache.TryResolve<ITreeGetter>(baseKey.Value, out var tree) && tree.Model?.File is { IsNull: false } tf) model = tf.DataRelativePath.Path;
+                }
+                else
+                {
+                    var info = baseCache.GetOrAdd(baseKey.Value, ReadBase);
+                    if (info is null) { pcNoLod++; continue; }
+                    var refKey = LodRules.FormIdKey(r.FormKey.ModKey.ToString(), r.FormKey.ID);
+                    var res = resolver.HasFormIdRule(refKey)
+                        ? resolver.Resolve(refKey, info.FormIdKey, info.ModelPath, info.Mnam)
+                        : resolved.GetOrAdd(baseKey.Value, _ => resolver.Resolve(null, info.FormIdKey, info.ModelPath, info.Mnam));
+                    if (!res.Meshes.HasAny) { pcNoLod++; continue; }
+                    model = info.ModelPath;
+                    alt = info.Variant is { Alternates.Count: > 0 };
+                }
+                if (model is null) { pcNoLod++; continue; }
+                if (IsFlatModel(model)) { pcFlat++; continue; }
+
+                parentCopies.Add(new ParentCopy(t.Config.Child, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID,
+                    r.FormKey.ModKey.FileName.String, r.FormKey.ID, edid, model,
+                    new Vector3(p.Position.X, p.Position.Y, p.Position.Z), new Vector3(p.Rotation.X, p.Rotation.Y, p.Rotation.Z),
+                    r.Scale ?? 1f, cx, cy, childCell, alt));
+                parentCopiesByChild[t.Config.Child] = parentCopiesByChild.GetValueOrDefault(t.Config.Child) + 1;
+            }
+        }
+
         foreach (var ctx in priority.PlacedObject().WinningContextOverrides(linkCache))
         {
             ct.ThrowIfCancellationRequested();
@@ -273,6 +401,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             if (wsId is null) continue;
             if (resolver.Rules.IgnoresWorld(r.FormKey.ModKey.FileName.String, wsId)) { ignoredByWorldRule++; continue; }
             if (grids.ContainsKey(wsId)) Handle(wsId, null);
+            if (parentCopyTargets.Count > 0 && parentCopyTargets.TryGetValue(wsId, out var pcTargets)) CollectParentCopy(ctx, pcTargets);
             // Walled cities: the child's references also go into the parent's LOD (DynDOLOD child world configs).
             if (CopyFor(wsCtx.Record) is { } copyCfg)
             {
@@ -539,8 +668,13 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             MissingMeshes: missing.ToDictionary(kv => kv.Key, kv => kv.Value),
             Elapsed: sw.Elapsed);
 
+        if (options.ParentCopies)
+            progress?.Report($"Parent > Child copies: {parentCopies.Count:N0} references ({string.Join(", ", parentCopiesByChild.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value:N0}"))}); "
+                + $"left out: {pcNoLod:N0} without LOD, {pcSwitchable:N0} switchable, {pcIgnored:N0} by the ignore list, {pcNavmesh:N0} in navmesh cells, {pcStandIn:N0} city stand-ins listed in ChildworldMatches, {pcFlat:N0} flat ground pieces (roads)");
         return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic,
-            options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null);
+            options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null,
+            options.ParentCopies ? parentCopies : null,
+            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh) : null);
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>

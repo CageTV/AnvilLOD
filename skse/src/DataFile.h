@@ -25,6 +25,31 @@ namespace AnvilLOD
 		static constexpr std::uint32_t kNeverFade = 16;   // "Never Fade LOD": drawn at any distance
 	};
 
+	/// One Parent > Child copy from AnvilLOD.copies: a parent worldspace reference around a walled city, drawn while the player is
+	/// in the city's child worldspace (no plugin, no record).
+	struct CopyEntry
+	{
+		std::uint32_t        worldPlugin;
+		std::uint32_t        worldLocalId;
+		std::uint32_t        model;  // string index, relative to Data\meshes
+		std::array<float, 3> pos;
+		std::array<float, 3> rot;  // radians, as stored in the REFR
+		float                scale;
+		std::uint32_t        flags;
+
+		static constexpr std::uint32_t kChildCell = 1;     // the child worldspace has a cell at these coordinates
+		static constexpr std::uint32_t kAltTextures = 2;   // the base record swaps textures; the copy shows the model's own
+	};
+
+	struct CopyFile
+	{
+		std::vector<std::string> strings;
+		std::vector<CopyEntry>   entries;
+
+		/// Reads Data\SKSE\Plugins\AnvilLOD\AnvilLOD.copies. Returns false (quietly when it just isn't there) if it can't be used.
+		bool Read(const std::filesystem::path& a_path);
+	};
+
 	struct DataFile
 	{
 		std::vector<std::string>  strings;

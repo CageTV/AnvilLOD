@@ -138,6 +138,51 @@ namespace AnvilLOD
 	{
 		LoadDynamic();
 		LoadUndersides();  // after the dynamic file: they share the mesh string table
+		LoadCopies();
+	}
+
+	/// AnvilLOD.copies, written by the generator when "Parent > Child copies" is on: the references around Whiterun, Solitude, Windhelm and
+	/// Riften that those walled cities' child worldspaces leave out, so the view over the wall is empty. DynDOLOD puts copies of them into
+	/// the child worldspace with a plugin; here the model is attached at the reference's place while the player is in that worldspace
+	/// and the object is inside the loaded cells (outside them the parent's LOD is drawn).
+	void Controller::LoadCopies()
+	{
+		CopyFile file;
+		if (!file.Read("Data/SKSE/Plugins/AnvilLOD/AnvilLOD.copies")) {
+			return;
+		}
+		auto* data = RE::TESDataHandler::GetSingleton();
+		if (!data) {
+			return;
+		}
+
+		std::unordered_map<std::uint32_t, std::uint32_t> meshOf;  // the file's string index -> our shared mesh table
+		std::size_t                                      missingWorld = 0;
+		for (const auto& e : file.entries) {
+			Item item;
+			item.world = data->LookupFormID(e.worldLocalId, file.strings[e.worldPlugin]);
+			if (item.world == 0) {
+				++missingWorld;  // the plugin is not in this load order any more
+				continue;
+			}
+			auto it = meshOf.find(e.model);
+			if (it == meshOf.end()) {
+				_meshes.push_back(file.strings[e.model]);
+				it = meshOf.emplace(e.model, static_cast<std::uint32_t>(_meshes.size() - 1)).first;
+			}
+			item.mesh = it->second;
+			item.pos = RE::NiPoint3(e.pos[0], e.pos[1], e.pos[2]);
+			item.rot = ReferenceRotation(e.rot[0], e.rot[1], e.rot[2]);
+			item.scale = e.scale;
+			item.cellX = CellOf(e.pos[0]);
+			item.cellY = CellOf(e.pos[1]);
+			item.copy = true;
+			item.childCell = (e.flags & CopyEntry::kChildCell) != 0;
+			_byWorld[item.world].push_back(_items.size());
+			_items.push_back(std::move(item));
+			++_copyCount;
+		}
+		logger::info("Parent > Child copies: {} references around walled cities, {} skipped: plugin not loaded", _copyCount, missingWorld);
 	}
 
 	/// AnvilLOD.underside, written by the generator: child worldspaces (Markarth, Sovngarde, Deepwood Redoubt, ...) share cell
@@ -347,6 +392,14 @@ namespace AnvilLOD
 		if (a_item.underside) {
 			return settings.undersides;  // no reference behind it and no distance: it's there while the player is in its worldspace
 		}
+		if (a_item.copy) {
+			// A reference the child worldspace left out: where the engine has loaded the child's cell it hides the parent's LOD and
+			// the object is simply missing, so draw it, but only inside the loaded cells (beyond them the parent's LOD shows it).
+			if (!settings.parentCopies || (!settings.parentCopyAllCells && !a_item.childCell)) {
+				return false;
+			}
+			return std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half;
+		}
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
 		}
@@ -488,7 +541,7 @@ namespace AnvilLOD
 		// Which entries can be visible: the current worldspace, plus its parent's when it uses the parent's LOD
 		// (Whiterun's city space shows Tamriel's LOD, so Tamriel's dynamic LOD belongs there too).
 		std::vector<const std::vector<std::size_t>*> lists;
-		if ((settings.enabled || settings.gridObjects || settings.undersides) && world) {
+		if ((settings.enabled || settings.gridObjects || settings.undersides || settings.parentCopies) && world) {
 			if (auto it = _byWorld.find(world->GetFormID()); it != _byWorld.end()) {
 				lists.push_back(&it->second);
 			}

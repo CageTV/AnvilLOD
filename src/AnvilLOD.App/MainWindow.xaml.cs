@@ -91,6 +91,7 @@ public partial class MainWindow : Window
         ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
+        ParentCopiesCheck.IsChecked = _settings.ParentCopies;
         SeasonsCheck.IsChecked = _settings.Seasons;
         WaterStandInsCheck.IsChecked = _settings.WaterStandIns;
         SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 4);
@@ -142,6 +143,7 @@ public partial class MainWindow : Window
         _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
+        _settings.ParentCopies = ParentCopiesCheck.IsChecked == true;
         _settings.Seasons = SeasonsCheck.IsChecked == true;
         _settings.WaterStandIns = WaterStandInsCheck.IsChecked == true;
         _settings.SkseDll = Math.Max(0, SkseDllBox.SelectedIndex);
@@ -387,6 +389,7 @@ public partial class MainWindow : Window
                 TreeLod: _settings.TreeLod,
                 DynamicLod: _settings.DynamicLod,
                 GridObjects: _settings.GridObjects,
+                ParentCopies: _settings.ParentCopies,
                 Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,

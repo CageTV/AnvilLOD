@@ -201,6 +201,15 @@ Object LOD textures follow the full model, the way DynDOLOD does: a base record'
 
 The game puts its snow and ash LOD shader on object LOD shapes by the shape's name in the `.bto` (`objSnow`, `objSnowHD`, `objAsh`, `objAshHD`). Like DynDOLOD, AnvilLOD names an object's shapes that way when its base record's Material has "snow" or "Ash" in its EditorID (for example `SnowMaterialMountain1P`), and uses the HD name for shapes that use full textures instead of LOD textures. Without it, mountains in LOD have no snow until the real model loads. Run Generate again to get it (existing LOD is rewritten once). Snow intensity (vertex alpha) and the Majestic Mountains `_lod_0l`/`_lod_0h` variants are not handled yet.
 
+## Parent > Child copies (experimental)
+
+The walled cities (Whiterun, Solitude, Windhelm, Riften, and Dragonsreach's porch) are worldspaces of their own that deliberately leave out the objects outside the walls, so the view over the wall is empty. DynDOLOD fixes it with its **Parent > Child** option: it copies Tamriel's trees, rocks, roads, fences and mountains around the city into the city's worldspace, about 20,000 references in a plugin. AnvilLOD does it without a plugin: tick **Parent > Child copies** (`--parent-copies`; needs `--dyndolod`, because the rules come from DynDOLOD's `childworld_*.ini` files) and Generate writes `SKSE\Plugins\AnvilLOD\AnvilLOD.copies`. The SKSE plugin draws each model while you are in that city's worldspace and the object is inside the loaded cells (beyond them Tamriel's LOD shows it).
+
+- **Which references:** the ones DynDOLOD copies: inside each city's `Bounds` grown by 5 cells (minus `BoundsIgnore`), with LOD (a LOD mesh or a tree billboard), not switchable (start disabled, enable parent, persistent), not on the `IgnoreParentEDID` list, and not in a navmesh cell where `NoCellsWithNAVM=1`. Checked against a real DynDOLOD run: 96% of its copies are found, 93% of ours are in its list.
+- **Where it draws:** by default only in cells the city worldspace has (where the engine hides Tamriel's LOD and the object is simply missing). **Also where the city worldspace has no cell** (`bParentCopyAllCells=1`, in the in-game menu too) draws them everywhere in the loaded cells, which may show a model on top of its own LOD.
+- **Limits:** the copies are drawn models, not references: no collision, no activation, probably no shadows. Rock piles that swap textures (snow, moss, tundra variants) show the model's default textures; the log counts them. Off by default.
+- `bParentCopies=0` in `AnvilLOD.ini` turns the drawing off without regenerating.
+
 ## Terrain underside (opt-in)
 
 Volumetric lighting mods (DVLaSS, EVLaS, Community Shaders' sky sync) need a low-resolution copy of the terrain facing downward under the world, or sun rays and shadows leak through the landscape. DynDOLOD makes it ("Terrain underside"); tick **Terrain underside** (`--underside`) and AnvilLOD does too, for every worldspace that has LOD32 blocks, including ones added by mods.
