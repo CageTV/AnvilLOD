@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Language picker -->
+  <data name="Language_Label" xml:space="preserve"><value>Language</value></data>
+  <data name="Language_System" xml:space="preserve"><value>Follow system</value></data>
+
+  <!-- Header bar -->
+  <data name="Status_Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="Status_Idle" xml:space="preserve"><value>Idle</value></data>
+  <data name="Status_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Status_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Status_Cancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="Status_FailedLog" xml:space="preserve"><value>Failed — see Log</value></data>
+  <data name="Status_RunningFmt" xml:space="preserve"><value>Running… {0}</value></data>
+  <data name="Status_ReportSaved" xml:space="preserve"><value>Report saved</value></data>
+  <data name="Status_ScanFmt" xml:space="preserve"><value>Scan finished in {0:F1}s</value></data>
+  <data name="Status_GeneratedFmt" xml:space="preserve"><value>LOD generated in {0:F1}s</value></data>
+  <data name="Title_UnderMo2" xml:space="preserve"><value>(running under MO2)</value></data>
+  <data name="Section_Game" xml:space="preserve"><value>GAME</value></data>
+  <data name="Source_Mo2" xml:space="preserve"><value>MO2 instance</value></data>
+  <data name="Source_DataFolder" xml:space="preserve"><value>Data folder</value></data>
+  <data name="Mo2_InstanceFolder" xml:space="preserve"><value>Instance folder</value></data>
+  <data name="Tip_Mo2Box" xml:space="preserve"><value>Folder containing ModOrganizer.ini (e.g. D:\Modlists\MyList)</value></data>
+  <data name="Mo2_Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Locations_Button" xml:space="preserve"><value>Locations ▾</value></data>
+  <data name="Locations_ButtonOverride" xml:space="preserve"><value>Locations ● ▾</value></data>
+  <data name="Tip_Locations" xml:space="preserve"><value>Auto-detect reads the game, mods, profiles and overwrite folders from ModOrganizer.ini. Type a folder here only if it is wrong, or your game, mods or profiles are on another drive. Leave a box empty to keep the auto-detect for it. With the game, mods and profiles folders typed, ModOrganizer.ini isn't needed.</value></data>
+  <data name="Mo2_InfoDefault" xml:space="preserve"><value>Reads your mods directly. No need to launch AnvilLOD from MO2.</value></data>
+  <data name="Locations_Section" xml:space="preserve"><value>LOCATIONS (OPTIONAL)</value></data>
+  <data name="Locations_PopupHint" xml:space="preserve"><value>Type a folder to override what ModOrganizer.ini says; a box left empty keeps the auto-detect. Needed when the game, mods or profiles are on another drive, or the ini is wrong.</value></data>
+  <data name="Locations_GameFolder" xml:space="preserve"><value>Game folder (the one with SkyrimSE.exe)</value></data>
+  <data name="Tip_Mo2GameBox" xml:space="preserve"><value>Empty = gamePath from ModOrganizer.ini. Example: F:\Games\Stock Game</value></data>
+  <data name="Locations_ModsFolder" xml:space="preserve"><value>Mods folder</value></data>
+  <data name="Tip_Mo2ModsBox" xml:space="preserve"><value>Empty = the ini's mod_directory (usually &lt;instance&gt;\mods)</value></data>
+  <data name="Locations_ProfilesFolder" xml:space="preserve"><value>Profiles folder</value></data>
+  <data name="Tip_Mo2ProfilesBox" xml:space="preserve"><value>Empty = the ini's profiles_directory (usually &lt;instance&gt;\profiles)</value></data>
+  <data name="Locations_OverwriteFolder" xml:space="preserve"><value>Overwrite folder</value></data>
+  <data name="Tip_Mo2OverwriteBox" xml:space="preserve"><value>Empty = the ini's overwrite_directory (usually &lt;instance&gt;\overwrite)</value></data>
+  <data name="Tip_DataBox" xml:space="preserve"><value>Leave empty to auto-detect</value></data>
+  <data name="Data_PluginsTxt" xml:space="preserve"><value>plugins.txt (optional)</value></data>
+  <data name="Tip_PluginsBox" xml:space="preserve"><value>Use a specific load order. Requires the Data folder.</value></data>
+  <data name="Data_InfoPlain" xml:space="preserve"><value>For a plain (non-MO2) install.</value></data>
+  <data name="Data_InfoVortex" xml:space="preserve"><value>Vortex deploys mods into the game's Data folder: leave Data folder empty to auto-detect, and plugins.txt empty for Vortex's load order. Deploy in Vortex before generating.</value></data>
+  <data name="Vortex_OutputToStaging" xml:space="preserve"><value>Output to Vortex staging (AnvilLOD Output)</value></data>
+  <data name="Vortex_StagingFmt" xml:space="preserve"><value>Staging folder: {0}. After Generate, refresh Vortex (or restart it), enable "{1}" and Deploy.</value></data>
+  <data name="Vortex_NotFound" xml:space="preserve"><value>Vortex's Skyrim SE staging folder wasn't found at the default place (%APPDATA%\Vortex\skyrimse\mods). Pick an output folder, then install it in Vortex as a mod.</value></data>
+  <data name="Vortex_NotInstalled" xml:space="preserve"><value>Vortex doesn't seem to be installed for this user.</value></data>
+
+  <!-- Footer buttons -->
+  <data name="Btn_Export" xml:space="preserve"><value>Export report…</value></data>
+  <data name="Btn_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Btn_Scan" xml:space="preserve"><value>Scan</value></data>
+  <data name="Btn_Generate" xml:space="preserve"><value>Generate LOD</value></data>
+  <data name="Tip_Generate" xml:space="preserve"><value>Scan, then write the changed LOD blocks (.bto) into the output folder</value></data>
+
+  <!-- Left navigation -->
+  <data name="Nav_Settings" xml:space="preserve"><value>SETTINGS</value></data>
+  <data name="Nav_Output" xml:space="preserve"><value>Output and worlds</value></data>
+  <data name="Nav_Rules" xml:space="preserve"><value>LOD rules</value></data>
+  <data name="Nav_Objects" xml:space="preserve"><value>Objects and terrain</value></data>
+  <data name="Nav_Trees" xml:space="preserve"><value>Trees</value></data>
+  <data name="Nav_Grass" xml:space="preserve"><value>Grass and size</value></data>
+  <data name="Nav_Dynamic" xml:space="preserve"><value>Seasons, water, dynamic</value></data>
+  <data name="Nav_AuthorTools" xml:space="preserve"><value>MOD AUTHOR TOOLS</value></data>
+  <data name="Nav_Finder" xml:space="preserve"><value>Missing LOD finder</value></data>
+  <data name="Tip_Nav_Finder" xml:space="preserve"><value>Finds the objects and trees of one plugin that are seen from afar but have no LOD, and makes what is missing.</value></data>
+  <data name="Nav_Maker" xml:space="preserve"><value>LOD Mesh Maker</value></data>
+  <data name="Tip_Nav_Maker" xml:space="preserve"><value>Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick.</value></data>
+
+  <!-- Results area -->
+  <data name="Tab_Overview" xml:space="preserve"><value>Overview</value></data>
+  <data name="Tab_Blocks" xml:space="preserve"><value>Blocks</value></data>
+  <data name="Tab_Missing" xml:space="preserve"><value>Missing meshes</value></data>
+  <data name="Tab_Log" xml:space="preserve"><value>Log</value></data>
+  <data name="Overview_Hint" xml:space="preserve"><value>Set your paths on the left and press Scan to analyse the load order.</value></data>
+  <data name="Overview_NoneFmt" xml:space="preserve"><value>No worldspace with a .lod settings file matched. Check the worldspace names and that LODSettings files are present.</value></data>
+  <data name="Overview_ScannedFmt" xml:space="preserve"><value>Scanned {0}.</value></data>
+  <data name="Tile_Plugins" xml:space="preserve"><value>Plugins</value></data>
+  <data name="Tile_PluginsFoundFmt" xml:space="preserve"><value>Plugins found (of {0} listed)</value></data>
+  <data name="Tile_Visited" xml:space="preserve"><value>References scanned</value></data>
+  <data name="Tile_LodRefs" xml:space="preserve"><value>LOD references</value></data>
+  <data name="Tile_Blocks" xml:space="preserve"><value>LOD blocks</value></data>
+  <data name="Tile_Rebuild" xml:space="preserve"><value>Blocks to rebuild</value></data>
+  <data name="Tile_WrittenFailedFmt" xml:space="preserve"><value>Blocks written ({0} failed)</value></data>
+  <data name="Tile_WrittenUnchangedFmt" xml:space="preserve"><value>Blocks written ({0} unchanged)</value></data>
+  <data name="Tile_Missing" xml:space="preserve"><value>Missing LOD meshes</value></data>
+  <data name="Tile_Time" xml:space="preserve"><value>Total time</value></data>
+  <data name="Section_BlocksPerLevel" xml:space="preserve"><value>BLOCKS PER LEVEL</value></data>
+  <data name="Section_Timing" xml:space="preserve"><value>TIMING</value></data>
+  <data name="Header_Worldspace" xml:space="preserve"><value>Worldspace</value></data>
+  <data name="Header_File" xml:space="preserve"><value>File</value></data>
+  <data name="Header_Level" xml:space="preserve"><value>Level</value></data>
+  <data name="Header_Refs" xml:space="preserve"><value>Refs</value></data>
+  <data name="Header_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Header_MeshPath" xml:space="preserve"><value>Mesh path</value></data>
+  <data name="Header_Problem" xml:space="preserve"><value>Problem</value></data>
+  <data name="Tip_BlockFilter" xml:space="preserve"><value>Filter by file name, e.g. Tamriel.4.</value></data>
+  <data name="Missing_Description" xml:space="preserve"><value>LOD meshes that are missing (named in a STAT's MNAM but not installed) or that couldn't be used when generating. Objects using them are left out of LOD at that level.</value></data>
+  <data name="Row_Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Row_Written" xml:space="preserve"><value>Written</value></data>
+  <data name="Row_Unchanged" xml:space="preserve"><value>Unchanged</value></data>
+  <data name="Row_Rebuild" xml:space="preserve"><value>Rebuild</value></data>
+  <data name="Missing_NotInstalledFmt" xml:space="preserve"><value>not installed ({0} base objects)</value></data>
+  <data name="Missing_SmallPlantFmt" xml:space="preserve"><value>small plant, TexGen skips it, no LOD (same as DynDOLOD) ({0} placed)</value></data>
+  <data name="Missing_NoBillboardFmt" xml:space="preserve"><value>no tree billboard ({0} placed trees) - run TexGen</value></data>
+  <data name="Missing_SmallGrass" xml:space="preserve"><value>small grass, TexGen skips it, no grass LOD</value></data>
+  <data name="Missing_NoGrassBillboard" xml:space="preserve"><value>no grass billboard - run TexGen with grass billboards</value></data>
+  <data name="Timing_BsaFmt" xml:space="preserve"><value>BSA index     {0,8:F2}s   ({1:N0} files in {2} archives)</value></data>
+  <data name="Timing_PluginFmt" xml:space="preserve"><value>Plugin scan   {0,8:F2}s</value></data>
+  <data name="Timing_BucketFmt" xml:space="preserve"><value>Bucket+hash   {0,8:F2}s</value></data>
+  <data name="Timing_TotalFmt" xml:space="preserve"><value>Total         {0,8:F2}s</value></data>
+  <data name="Timing_SkippedFmt" xml:space="preserve"><value>Skipped: {0:N0} disabled, {1:N0} without usable mesh, {2:N0} outside LOD grid</value></data>
+  <data name="Timing_DynamicFmt" xml:space="preserve"><value>Dynamic LOD: {0:N0} switchable references (shown by the SKSE plugin)</value></data>
+  <data name="Timing_GrassFmt" xml:space="preserve"><value>Grass LOD: {0:N0} cached cells{1}</value></data>
+  <data name="Timing_GrassMissingFmt" xml:space="preserve"><value>, {0:N0} grass types without billboard</value></data>
+  <data name="Timing_TreesFmt" xml:space="preserve"><value>Trees: {0:N0} with billboards, {1:N0} without ({2:N0} tree types, {3:N0} of them small plants TexGen skips)</value></data>
+  <data name="Timing_TreeLodFmt" xml:space="preserve"><value>Tree LOD: {0:N0} trees, {1} types, {2:N0} blocks ({3:N0} vanilla blocks emptied), {4:F1}s</value></data>
+  <data name="Btn_Print" xml:space="preserve"><value>Print to file…</value></data>
+  <data name="Tip_Print" xml:space="preserve"><value>Saves what this tab shows to a file (Overview and Log as text, Blocks and Missing meshes as CSV) so you can read it later.</value></data>
+  <data name="Btn_Expand" xml:space="preserve"><value>⤢  Expand</value></data>
+  <data name="Btn_Restore" xml:space="preserve"><value>⤡  Restore</value></data>
+  <data name="Tip_Expand" xml:space="preserve"><value>Fills the window with this box. Press again (or Esc) to bring the options back.</value></data>
+  <data name="Tip_PresetFmt" xml:space="preserve"><value>Preset {0}. Each preset remembers every setting in this column. Click to switch, double-click to rename.</value></data>
+  <data name="Print_NothingFmt" xml:space="preserve"><value>Nothing to print in {0} yet</value></data>
+  <data name="Print_SaveFmt" xml:space="preserve"><value>Save {0}</value></data>
+  <data name="Print_SavedFmt" xml:space="preserve"><value>{0} saved: {1}</value></data>
+  <data name="Filter_TxtFile" xml:space="preserve"><value>Text (*.txt)|*.txt</value></data>
+  <data name="Text_BlocksPerLevel" xml:space="preserve"><value>Blocks per level</value></data>
+  <data name="Text_Timing" xml:space="preserve"><value>Timing</value></data>
+
+  <!-- Presets -->
+  <data name="Preset_Low" xml:space="preserve"><value>Low</value></data>
+  <data name="Preset_Medium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Preset_High" xml:space="preserve"><value>High</value></data>
+
+  <!-- Output and worlds -->
+  <data name="CatOutput_Desc" xml:space="preserve"><value>Where the LOD goes, which worldspaces and which LOD levels to build.</value></data>
+  <data name="Section_Output" xml:space="preserve"><value>OUTPUT</value></data>
+  <data name="Output_Folder" xml:space="preserve"><value>Output folder</value></data>
+  <data name="Tip_OutputBox" xml:space="preserve"><value>Where LOD files go. Leave it empty to use 'AnvilLOD Output' (a new mod folder in the MO2 mods folder, Vortex's staging folder, or Documents). The folder is created if it doesn't exist.</value></data>
+  <data name="Opt_CleanOutput" xml:space="preserve"><value>Empty the output folder before generating</value></data>
+  <data name="Tip_CleanOutput" xml:space="preserve"><value>Deletes what the last run left in the output folder first, so old files never mix with the new ones. Only done in an empty folder or one AnvilLOD wrote (it has AnvilLOD.manifest.json or AnvilLOD.log); any other folder is left alone and the log says so. MO2's meta.ini is kept. Every block is written again each run; untick to update the folder in place and only rewrite what changed.</value></data>
+  <data name="Section_Worldspaces" xml:space="preserve"><value>WORLDSPACES</value></data>
+  <data name="Opt_AllWorldspaces" xml:space="preserve"><value>All worldspaces with a .lod file</value></data>
+  <data name="Tip_WorldspaceBox" xml:space="preserve"><value>Comma separated EditorIDs, e.g. Tamriel, DLC2SolstheimWorld</value></data>
+  <data name="Section_LodLevels" xml:space="preserve"><value>LOD LEVELS</value></data>
+
+  <!-- LOD rules -->
+  <data name="CatRules_Desc" xml:space="preserve"><value>Which LOD model or billboard each kind of object uses at each LOD level. AnvilLOD reuses DynDOLOD rule files.</value></data>
+  <data name="Section_LodRules" xml:space="preserve"><value>LOD RULES</value></data>
+  <data name="Rules_DynDolodFolder" xml:space="preserve"><value>DynDOLOD folder (optional, reuses its rules)</value></data>
+  <data name="Tip_DynDolodBox" xml:space="preserve"><value>Folder with DynDOLODx64.exe. Its rule files plus the ones mods ship in Data\DynDOLOD decide which LOD mesh each object uses.</value></data>
+  <data name="Rules_Preset" xml:space="preserve"><value>DynDOLOD rule preset</value></data>
+  <data name="Btn_EditRules" xml:space="preserve"><value>Edit rules…</value></data>
+  <data name="Tip_EditRules" xml:space="preserve"><value>Look at and change the LOD rules of this preset: which LOD model or billboard each kind of object uses at each LOD level. Your changes are saved as your own rule file.</value></data>
+  <data name="Opt_Candles" xml:space="preserve"><value>Candles</value></data>
+  <data name="Tip_Candles" xml:space="preserve"><value>Also load DynDOLOD's Candles rules for this preset: candles, lanterns and sconces get Far LOD, so their light shows in the distance. Needs the DynDOLOD folder.</value></data>
+  <data name="Opt_FxGlow" xml:space="preserve"><value>FXGlow</value></data>
+  <data name="Tip_FxGlow" xml:space="preserve"><value>Also load DynDOLOD's FXGlow rules for this preset: the glow cards of fires and lights get Far LOD. Needs the DynDOLOD folder.</value></data>
+  <data name="Rules_CustomFile" xml:space="preserve"><value>Custom rules file (optional)</value></data>
+  <data name="Tip_CustomRulesCheck" xml:space="preserve"><value>Use this rule file. Its rules come before DynDOLOD's own and win. Unticked: only DynDOLOD's own rule files are used.</value></data>
+  <data name="Tip_CustomRulesBox" xml:space="preserve"><value>A rule file in DynDOLOD's format: one saved from Edit rules, or a DynDOLOD preset or rule file you have. Tick the box to use it.</value></data>
+
+  <!-- Objects and terrain -->
+  <data name="CatObjects_Desc" xml:space="preserve"><value>Object LOD, PBR, brightness, terrain underside, large references and which references count.</value></data>
+  <data name="Opt_RemoveBuried" xml:space="preserve"><value>Remove faces buried under terrain</value></data>
+  <data name="Tip_RemoveBuried" xml:space="preserve"><value>Drops LOD triangles that are completely underground. Big savings on mountains and rocks.</value></data>
+  <data name="Opt_PbrLod" xml:space="preserve"><value>Match PBR textures in object LOD</value></data>
+  <data name="Tip_PbrLod" xml:space="preserve"><value>LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block.</value></data>
+  <data name="Opt_PbrBrightness" xml:space="preserve"><value>PBR LOD texture brightness (1.0 = DynDOLOD default)</value></data>
+  <data name="Tip_PbrBrightness" xml:space="preserve"><value>Brightness of the converted PBR copies, as a share of DynDOLOD's default PBR scale. Lower it if the LOD looks brighter than the real objects.</value></data>
+  <data name="Item_DefaultPercent" xml:space="preserve"><value>100% (default)</value></data>
+  <data name="Opt_LargeRefs" xml:space="preserve"><value>Large references (writes AnvilLOD.esm)</value></data>
+  <data name="Tip_LargeRefs" xml:space="preserve"><value>The engine's large reference grid (uLargeRefLODGridSize in SkyrimPrefs.ini) shows the full models of listed references beyond the loaded cells. Skyrim.esm and the DLCs list theirs; this lists the qualifying references from your other ESM-flagged plugins that nobody lists yet, in AnvilLOD.esm, flagged ESL (no plugin slot). Enable it after your other ESMs. References that a plugin outside the ESMs overrides or that start disabled are left out, because those make large references flicker. The report says what was listed and what was left out.</value></data>
+  <data name="Opt_LargeRefsEsl" xml:space="preserve"><value>Flag AnvilLOD.esm as ESL (saves a plugin slot)</value></data>
+  <data name="Tip_LargeRefsEsl" xml:space="preserve"><value>On: the plugin is flagged ESL and takes no plugin slot. Off: it is a normal ESM that uses a slot. If large references flicker at a distance, you can untick this to rule the ESL flag out, at the cost of one slot.</value></data>
+  <data name="Opt_LargeRefsEslNote" xml:space="preserve"><value>Flagging it ESL saves a plugin slot. If large references flicker at a distance, untick it to use a normal ESM slot instead.</value></data>
+  <data name="Opt_Underside" xml:space="preserve"><value>Terrain underside (for volumetric lighting mods)</value></data>
+  <data name="Tip_Underside" xml:space="preserve"><value>Builds a low-resolution, downward-facing copy of the terrain (meshes\Terrain\&lt;worldspace&gt;\&lt;worldspace&gt;_Underside.nif) and AnvilLOD.esp, flagged ESL, that places it 500 units below the world. DVLaSS, EVLaS and Community Shaders' sky sync use it to stop sun rays and shadows leaking through the landscape. Enable the plugin in your mod manager and load it after plugins that edit worldspaces. Do not use it together with DynDOLOD's own underside.</value></data>
+  <data name="Opt_ObjectBrightness" xml:space="preserve"><value>Object LOD brightness (buildings, rocks, grass LOD)</value></data>
+  <data name="Tip_ObjectBrightness" xml:space="preserve"><value>Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.</value></data>
+  <data name="Opt_IncludeDisabled" xml:space="preserve"><value>Include initially disabled references</value></data>
+  <data name="Opt_IncludeEnableParent" xml:space="preserve"><value>Include enable-parented references that start enabled</value></data>
+  <data name="Tip_IncludeEnableParent" xml:space="preserve"><value>Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD.</value></data>
+
+  <!-- Trees -->
+  <data name="CatTrees_Desc" xml:space="preserve"><value>Billboard tree LOD and 3D tree LOD models.</value></data>
+  <data name="Opt_TreeLod" xml:space="preserve"><value>Tree LOD (billboards from TexGen output)</value></data>
+  <data name="Tip_TreeLod" xml:space="preserve"><value>Builds the engine's billboard tree LOD (.lst, .btt and the tree atlas) from textures\terrain\LODGen billboards, e.g. TexGen output.</value></data>
+  <data name="Opt_TreeBrightness" xml:space="preserve"><value>Tree LOD brightness</value></data>
+  <data name="Tip_TreeBrightness" xml:space="preserve"><value>Darkens or brightens the distant tree billboards to match your lighting/ENB.</value></data>
+  <data name="Opt_Tree3D" xml:space="preserve"><value>3D tree LOD (use 3D models where found)</value></data>
+  <data name="Tip_Tree3D" xml:space="preserve"><value>Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders.</value></data>
+  <data name="Opt_Tree3DLod8" xml:space="preserve"><value>Also use the 3D models at LOD8</value></data>
+  <data name="Tip_Tree3DLod8" xml:space="preserve"><value>Nicer mid-distance trees, but much bigger LOD files. Off: 3D at LOD4 only, cards from LOD8.</value></data>
+  <data name="Opt_Tree3DByName" xml:space="preserve"><value>Accept models by tree name (DynDOLOD's default)</value></data>
+  <data name="Tip_Tree3DByName" xml:space="preserve"><value>DynDOLOD Resources ships almost all 3D tree models under the plain tree name; a CRC32 in the name is only for name collisions, and DynDOLOD itself matches by name. On (default): a model stored under the plain tree name is used when no CRC32-named one exists. Off: only exact CRC32 matches are used, which finds none with DynDOLOD Resources. A model made for another version of a tree mesh (before a mod or PGPatcher changed it) can look slightly off.</value></data>
+
+  <!-- Grass and size -->
+  <data name="CatGrass_Desc" xml:space="preserve"><value>Distant grass from your grass cache. This is the biggest choice for file size, disk space and graphics load.</value></data>
+  <data name="Opt_GrassLod" xml:space="preserve"><value>Grass LOD (from the grass cache)</value></data>
+  <data name="Tip_GrassLod" xml:space="preserve"><value>Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards.</value></data>
+  <data name="Opt_GrassDensity" xml:space="preserve"><value>Grass LOD density</value></data>
+  <data name="Tip_GrassDensity" xml:space="preserve"><value>Share of the cached grass kept as LOD tufts, spread evenly over the ground. More is fuller and closer to the real grass, but makes bigger files and more triangles to draw. The sizes listed are for a large load order's Tamriel (object LOD, normal grass cache). Seasons of Skyrim adds a full set per season, and summer's grass cache is much denser than winter's, so seasonal output is several times bigger.</value></data>
+  <data name="Item_Density_Low" xml:space="preserve"><value>Low (4%): 15M triangles, 0.7 GB</value></data>
+  <data name="Item_Density_Medium" xml:space="preserve"><value>Medium (8%): 20M triangles, 1.1 GB</value></data>
+  <data name="Item_Density_High" xml:space="preserve"><value>High (15%): 29M triangles, 1.7 GB</value></data>
+  <data name="Item_Density_Higher" xml:space="preserve"><value>Higher (25%): 43M triangles, 2.7 GB</value></data>
+  <data name="Item_Density_VeryHigh" xml:space="preserve"><value>Very high (40%): 60M triangles, 3.9 GB</value></data>
+  <data name="Item_Density_Ultra" xml:space="preserve"><value>Ultra (60%): 92M triangles, 6.1 GB, strong GPU</value></data>
+  <data name="Item_Density_Full" xml:space="preserve"><value>Full (100%): 162M triangles, 11 GB, every blade</value></data>
+  <data name="Opt_GrassBrightness" xml:space="preserve"><value>Grass LOD brightness: top of the tufts / roots</value></data>
+  <data name="Tip_GrassTop" xml:space="preserve"><value>How bright the top of each grass tuft is (like DynDOLOD's GrassBrightnessTop). Lower it if distant grass looks brighter than the real grass. Changing it rebuilds the grass blocks.</value></data>
+  <data name="Tip_GrassBottom" xml:space="preserve"><value>How bright the roots are (like DynDOLOD's GrassBrightnessBottom). A darker root fakes the shadow inside the grass. Changing it rebuilds the grass blocks.</value></data>
+  <data name="Section_Estimate" xml:space="preserve"><value>ESTIMATED OUTPUT SIZE</value></data>
+  <data name="Estimate_Default" xml:space="preserve"><value>Generate once and AnvilLOD can estimate the size of your next generation from your own list.</value></data>
+  <data name="Estimate_Guide" xml:space="preserve"><value>As a guide for one big worldspace without seasons: grass at 4% is about 0.7 GB, 15% about 1.7 GB, 40% about 3.9 GB and 100% about 11 GB. Seasons add a full copy of the changed blocks for each season (summer is the biggest, its grass cache is much denser).</value></data>
+  <data name="Estimate_GrassPercent" xml:space="preserve"><value>{0}%</value></data>
+  <data name="Estimate_Tip" xml:space="preserve"><value>Tip: set this to the most your PC can really run, not the maximum on offer. Grass, trees and seasons multiply each other, so a higher setting than your graphics card or memory can use only costs disk space, load time and frame rate. If in doubt, generate at a lower density first: the in-game Quality Layers menu can lower the load later, but cannot make a file smaller.</value></data>
+
+  <!-- Seasons, water, dynamic -->
+  <data name="CatDynamic_Desc" xml:space="preserve"><value>Seasons of Skyrim LOD, the SKSE plugin, quest-switched references, water and animated objects.</value></data>
+  <data name="Opt_DynamicLod" xml:space="preserve"><value>Dynamic LOD for switchable references (SKSE)</value></data>
+  <data name="Tip_DynamicLod" xml:space="preserve"><value>References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled.</value></data>
+  <data name="Opt_GridObjects" xml:space="preserve"><value>Water and animated distant objects (SKSE)</value></data>
+  <data name="Tip_GridObjects" xml:space="preserve"><value>Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them.</value></data>
+  <data name="Opt_WaterStandIns" xml:space="preserve"><value>Stream, creek and pond water stand-ins</value></data>
+  <data name="Tip_WaterStandIns" xml:space="preserve"><value>Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed.</value></data>
+  <data name="Opt_Seasons" xml:space="preserve"><value>Seasons of Skyrim LOD</value></data>
+  <data name="Tip_Seasons" xml:space="preserve"><value>For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season.</value></data>
+  <data name="Opt_SkseDll" xml:space="preserve"><value>SKSE plugin (AnvilLOD.dll) in the output</value></data>
+  <data name="Tip_SkseDll" xml:space="preserve"><value>Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both).</value></data>
+  <data name="Item_Skse_Auto" xml:space="preserve"><value>Auto-detect game version</value></data>
+  <data name="Item_Skse_1170" xml:space="preserve"><value>SE 1.5.97 - AE 1.6.1170</value></data>
+  <data name="Item_Skse_Newer" xml:space="preserve"><value>Newer than 1.6.1170 (1.7.x)</value></data>
+  <data name="Item_Skse_Separate" xml:space="preserve"><value>Installed separately (FOMOD)</value></data>
+  <data name="Item_Skse_Vr" xml:space="preserve"><value>Skyrim VR 1.4.15</value></data>
+
+  <!-- Missing LOD finder -->
+  <data name="Finder_WarningTitle" xml:space="preserve"><value>⚠  Missing LOD finder (mod author tool)</value></data>
+  <data name="Finder_Title" xml:space="preserve"><value>Missing LOD finder (mod author tool)</value></data>
+  <data name="Warning_Generated" xml:space="preserve"><value>These files are generated automatically from the mod's own models and textures. They are a starting point: check them in NifSkope and in game before using them, and only share them with the mod author's permission.</value></data>
+  <data name="Finder_Description" xml:space="preserve"><value>Finds the objects and trees of one plugin that are seen from afar but have no LOD (no LOD mesh, a broken MNAM path, missing LOD textures, no tree billboard) and can generate them: simplified name_lod_0/1/2.nif, TexGen-style billboards and a DynDOLOD-format rule file. Everything goes into its own folder, never into your LOD output.</value></data>
+  <data name="Agree_Text" xml:space="preserve"><value>I understand. Generated files are a starting point that I check before using, and I only share them with the mod author's permission.</value></data>
+  <data name="Finder_Plugin" xml:space="preserve"><value>Plugin</value></data>
+  <data name="Tip_AuthorPlugin" xml:space="preserve"><value>The plugin to check, e.g. The Archwood.esp</value></data>
+  <data name="Finder_OutputFolder" xml:space="preserve"><value>Output folder (a new, separate mod)</value></data>
+  <data name="Tip_AuthorOut" xml:space="preserve"><value>Defaults to mods\AnvilLOD Author - &lt;plugin&gt; in your MO2 instance</value></data>
+  <data name="Section_Generate" xml:space="preserve"><value>Generate</value></data>
+  <data name="Finder_Meshes" xml:space="preserve"><value>LOD meshes</value></data>
+  <data name="Tip_AuthorMeshes" xml:space="preserve"><value>Simplified name_lod_0/1/2.nif for big objects without LOD</value></data>
+  <data name="Finder_Billboards" xml:space="preserve"><value>Tree billboards</value></data>
+  <data name="Tip_AuthorBillboards" xml:space="preserve"><value>TexGen-style billboards (.dds + .txt) for trees and big plants without one</value></data>
+  <data name="Finder_Rules" xml:space="preserve"><value>Rule file</value></data>
+  <data name="Tip_AuthorRules" xml:space="preserve"><value>DynDOLOD\DynDOLOD_SSE_&lt;plugin&gt;.ini for the generated meshes (works with AnvilLOD and DynDOLOD)</value></data>
+  <data name="Opt_Overwrite" xml:space="preserve"><value>Overwrite existing files</value></data>
+  <data name="Tip_Overwrite" xml:space="preserve"><value>Off: files already in the output folder (maybe hand-edited) are kept</value></data>
+  <data name="Finder_Budget" xml:space="preserve"><value>Triangle budget (recommended)</value></data>
+  <data name="Tip_AuthorBudget" xml:space="preserve"><value>Keeps each generated LOD mesh within the triangles that SE/AE LOD meshes of the same size use (measured from DynDOLOD Resources SE and LOD Model Library). Off: only the simplifier's error limit applies, so dense models stay heavy.</value></data>
+  <data name="Finder_FromSize" xml:space="preserve"><value>Objects need LOD from</value></data>
+  <data name="Finder_TreesFrom" xml:space="preserve"><value>units;  trees need a billboard from</value></data>
+  <data name="Finder_UnitsTall" xml:space="preserve"><value>units tall</value></data>
+  <data name="Btn_AuthorCheck" xml:space="preserve"><value>Check plugin</value></data>
+  <data name="Tip_AuthorCheck" xml:space="preserve"><value>Report only, nothing is written except the report</value></data>
+  <data name="Btn_AuthorGenerate" xml:space="preserve"><value>Generate missing LOD</value></data>
+  <data name="Btn_OpenOutput" xml:space="preserve"><value>Open output folder</value></data>
+  <data name="Header_Kind" xml:space="preserve"><value>Kind</value></data>
+  <data name="Header_EditorId" xml:space="preserve"><value>Editor ID</value></data>
+  <data name="Header_Placed" xml:space="preserve"><value>Placed</value></data>
+  <data name="Header_Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Header_Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Header_Model" xml:space="preserve"><value>Model</value></data>
+  <data name="Author_ListFailedFmt" xml:space="preserve"><value>Couldn't list plugins (type the name instead): {0}</value></data>
+  <data name="Author_CheckedFmt" xml:space="preserve"><value>{0} placed objects/trees checked: {1} missing LOD or billboards, {2} with broken files. </value></data>
+  <data name="Author_GeneratedFmt" xml:space="preserve"><value>Generated {0} LOD meshes and {1} billboards{2}. </value></data>
+  <data name="Author_PlusRules" xml:space="preserve"><value> plus a rule file</value></data>
+  <data name="Author_ReportFmt" xml:space="preserve"><value>Report: {0}</value></data>
+  <data name="Author_DoneFmt" xml:space="preserve"><value>Mod author check finished in {0:F0}s</value></data>
+  <data name="Msg_AuthorTitle" xml:space="preserve"><value>Mod author tools</value></data>
+
+  <!-- LOD Mesh Maker -->
+  <data name="Maker_WarningTitle" xml:space="preserve"><value>⚠  LOD Mesh Maker</value></data>
+  <data name="Maker_Title" xml:space="preserve"><value>LOD Mesh Maker (mod author tool)</value></data>
+  <data name="Maker_Description" xml:space="preserve"><value>Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick: small parts are dropped, the rest is simplified, the model's own textures are kept and collision is not copied. A DynDOLOD-format rule file makes AnvilLOD and DynDOLOD use them. It only reads the model files, so it needs no load order.</value></data>
+  <data name="Maker_Models" xml:space="preserve"><value>Models (one per line: a .nif, a mod folder, its meshes folder, or any folder of models)</value></data>
+  <data name="Tip_MakerInput" xml:space="preserve"><value>Folders are searched for .nif files (inside their meshes folder if they have one). Models that are already LOD meshes are skipped.</value></data>
+  <data name="Btn_AddFiles" xml:space="preserve"><value>Add files…</value></data>
+  <data name="Btn_AddFolder" xml:space="preserve"><value>Add folder…</value></data>
+  <data name="Btn_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Maker_OutputTo" xml:space="preserve"><value>Put the LOD meshes in</value></data>
+  <data name="Maker_NewMod" xml:space="preserve"><value>A new mod in my MO2 mods folder (needs MO2 instance mode above)</value></data>
+  <data name="Maker_ModName" xml:space="preserve"><value>Mod name</value></data>
+  <data name="Tip_MakerModName" xml:space="preserve"><value>Becomes mods\&lt;name&gt; in your MO2 instance. Run it again with the same name to add more models to it.</value></data>
+  <data name="Maker_ChooseFolder" xml:space="preserve"><value>A folder I choose (new or existing)</value></data>
+  <data name="Tip_MakerOut" xml:space="preserve"><value>Use a separate folder, not your LOD output folder</value></data>
+  <data name="Maker_Levels" xml:space="preserve"><value>LOD levels</value></data>
+  <data name="Maker_Lod0" xml:space="preserve"><value>LOD 0 (LOD4)</value></data>
+  <data name="Tip_MakerLod0" xml:space="preserve"><value>Closest: the most detail</value></data>
+  <data name="Maker_Lod1" xml:space="preserve"><value>LOD 1 (LOD8)</value></data>
+  <data name="Maker_Lod2" xml:space="preserve"><value>LOD 2 (LOD16, also used for LOD32)</value></data>
+  <data name="Tip_MakerLod2" xml:space="preserve"><value>Farthest: the least detail</value></data>
+  <data name="Maker_Detail" xml:space="preserve"><value>Detail</value></data>
+  <data name="Tip_MakerDetail" xml:space="preserve"><value>How much is removed. A finer setting keeps more triangles. Very dense models stay heavy at the normal setting: use a coarser one.</value></data>
+  <data name="Item_Detail_Finer" xml:space="preserve"><value>Finer (keeps more)</value></data>
+  <data name="Item_Detail_Normal" xml:space="preserve"><value>Normal (default)</value></data>
+  <data name="Item_Detail_Coarser" xml:space="preserve"><value>Coarser</value></data>
+  <data name="Item_Detail_Much" xml:space="preserve"><value>Much coarser</value></data>
+  <data name="Maker_SkipSmaller" xml:space="preserve"><value>Skip models smaller than</value></data>
+  <data name="Tip_MakerMinSize" xml:space="preserve"><value>Largest dimension in game units. 0 = make LOD for every model you picked.</value></data>
+  <data name="Maker_Units" xml:space="preserve"><value>units</value></data>
+  <data name="Maker_Budget" xml:space="preserve"><value>Triangle budget per model</value></data>
+  <data name="Tip_MakerBudget" xml:space="preserve"><value>Recommended: a budget for each level that grows with the model's size, taken from the LOD meshes SE/AE lists already use. Custom: your own maximums. Off: only the Detail setting limits the triangles.</value></data>
+  <data name="Item_Budget_Recommended" xml:space="preserve"><value>Recommended (by model size)</value></data>
+  <data name="Item_Budget_Custom" xml:space="preserve"><value>Custom</value></data>
+  <data name="Item_Budget_Off" xml:space="preserve"><value>Off</value></data>
+  <data name="Tip_MakerBudget0" xml:space="preserve"><value>Most triangles at LOD 0 (0 = no limit)</value></data>
+  <data name="Tip_MakerBudget1" xml:space="preserve"><value>Most triangles at LOD 1 (0 = no limit)</value></data>
+  <data name="Tip_MakerBudget2" xml:space="preserve"><value>Most triangles at LOD 2 (0 = no limit)</value></data>
+  <data name="Maker_HintRecommended" xml:space="preserve"><value>Most triangles at LOD 0 / 1 / 2, by the model's largest dimension: {0}. Based on the {1}.</value></data>
+  <data name="Maker_HintCustom" xml:space="preserve"><value>Your own maximums per level; 0 means no limit for that level. A farther level never gets more triangles than a nearer one.</value></data>
+  <data name="Maker_HintOff" xml:space="preserve"><value>No budget: only the Detail setting limits the triangles, so very dense models stay heavy.</value></data>
+  <data name="Tip_MakerRules" xml:space="preserve"><value>DynDOLOD\DynDOLOD_SSE_&lt;name&gt;.ini so the meshes are used for the models they were made from. An existing file only gets lines for new models.</value></data>
+  <data name="Btn_MakeLod" xml:space="preserve"><value>Make LOD meshes</value></data>
+  <data name="Header_SourceTris" xml:space="preserve"><value>Source tris</value></data>
+  <data name="Header_Result" xml:space="preserve"><value>Result</value></data>
+  <data name="Maker_SummaryFmt" xml:space="preserve"><value>{0} models done, {1} LOD meshes written{2}{3}. Output: {4}. Report: {5}</value></data>
+  <data name="Maker_SkippedFmt" xml:space="preserve"><value>, {0} skipped (see the table)</value></data>
+  <data name="Maker_RulesWritten" xml:space="preserve"><value>, rule file written</value></data>
+  <data name="Maker_DoneFmt" xml:space="preserve"><value>LOD Mesh Maker finished in {0:F0}s</value></data>
+  <data name="Msg_LodMakerTitle" xml:space="preserve"><value>LOD Mesh Maker</value></data>
+
+  <!-- Messages and dialogs -->
+  <data name="Msg_ChooseMo2" xml:space="preserve"><value>Choose your MO2 instance folder and a profile.</value></data>
+  <data name="Msg_PluginsNeedsData" xml:space="preserve"><value>A plugins.txt needs a Data folder too.</value></data>
+  <data name="Msg_PickLevel" xml:space="preserve"><value>Pick at least one LOD level.</value></data>
+  <data name="Msg_ScanFailed" xml:space="preserve"><value>Scan failed</value></data>
+  <data name="Msg_ChoosePluginOutput" xml:space="preserve"><value>Choose a plugin and an output folder.</value></data>
+  <data name="Msg_SeparateFolder" xml:space="preserve"><value>Use a separate folder, not your LOD output folder.</value></data>
+  <data name="Msg_CouldNotSave" xml:space="preserve"><value>Could not save</value></data>
+  <data name="Msg_AddModels" xml:space="preserve"><value>Add the models (or folders of models) to make LOD meshes from.</value></data>
+  <data name="Msg_ChooseOutput" xml:space="preserve"><value>Choose the output folder.</value></data>
+  <data name="Msg_ModNameInvalid" xml:space="preserve"><value>Give the new mod a name (no \ / : * ? " &lt; &gt; |).</value></data>
+  <data name="Msg_NewModNeedsMo2" xml:space="preserve"><value>A new mod needs MO2 instance mode (to find your mods folder). Choose "A folder I choose" instead, or switch the source to MO2 instance.</value></data>
+  <data name="Dlg_SelectMo2" xml:space="preserve"><value>Select the MO2 instance folder (contains ModOrganizer.ini)</value></data>
+  <data name="Dlg_SelectData" xml:space="preserve"><value>Select the Skyrim Data folder</value></data>
+  <data name="Dlg_SelectPluginsTxt" xml:space="preserve"><value>Select plugins.txt</value></data>
+  <data name="Dlg_SelectOutput" xml:space="preserve"><value>Select the output folder for generated LOD</value></data>
+  <data name="Dlg_SelectRules" xml:space="preserve"><value>Select your LOD rules file</value></data>
+  <data name="Dlg_SelectDynDolod" xml:space="preserve"><value>Select your DynDOLOD folder (the one with DynDOLODx64.exe)</value></data>
+  <data name="Dlg_SelectAuthorOut" xml:space="preserve"><value>Select an empty folder for the generated files (a new MO2 mod)</value></data>
+  <data name="Dlg_SelectModels" xml:space="preserve"><value>Select full models</value></data>
+  <data name="Dlg_SelectModFolder" xml:space="preserve"><value>Select a mod folder, a meshes folder or a folder of models</value></data>
+  <data name="Dlg_SelectMakerOut" xml:space="preserve"><value>Select a folder for the LOD meshes (a new or existing mod folder)</value></data>
+  <data name="Dlg_SaveScan" xml:space="preserve"><value>Save scan report</value></data>
+  <data name="Filter_TextFiles" xml:space="preserve"><value>Text files (*.txt)</value></data>
+  <data name="Filter_AllFiles" xml:space="preserve"><value>All files</value></data>
+  <data name="Filter_AllFilesStar" xml:space="preserve"><value>All files (*.*)</value></data>
+  <data name="Filter_RuleFiles" xml:space="preserve"><value>Rule files (*.ini)</value></data>
+  <data name="Filter_Models" xml:space="preserve"><value>Models (*.nif)</value></data>
+  <data name="Filter_Json" xml:space="preserve"><value>JSON (*.json)|*.json</value></data>
+
+  <!-- Size estimate (MainWindow.Layout.cs) -->
+  <data name="Estimate_TextNone" xml:space="preserve"><value>Size estimate: generate once and it is worked out for your list.</value></data>
+  <data name="Estimate_TextFmt" xml:space="preserve"><value>Estimated size: about {0}{1}</value></data>
+  <data name="Estimate_NoneSeasons" xml:space="preserve"><value> (without seasons)</value></data>
+  <data name="Estimate_SeasonsNotMeasured" xml:space="preserve"><value> + seasonal copies (not measured yet: generate once with Seasons on)</value></data>
+  <data name="Estimate_SeasonsFmt" xml:space="preserve"><value> + seasons {0}</value></data>
+  <data name="Estimate_DetailFmt" xml:space="preserve"><value>About {0} of base object LOD{1}, scaled from your last generation ({2}, grass {3}). An estimate: the real size depends on your list. {4}</value></data>
+  <data name="Estimate_GrassOff" xml:space="preserve"><value>off</value></data>
+
+  <!-- Rules editor -->
+  <data name="Rules_WindowTitle" xml:space="preserve"><value>LOD rules</value></data>
+  <data name="Editor_Find" xml:space="preserve"><value>Find</value></data>
+  <data name="Tip_EditorFilter" xml:space="preserve"><value>Show only rules whose mesh mask, FormID or file name contains this text</value></data>
+  <data name="Btn_LoadFile" xml:space="preserve"><value>Load file…</value></data>
+  <data name="Tip_LoadFile" xml:space="preserve"><value>Replace your custom rules with the rules of a DynDOLOD-format rule file.</value></data>
+  <data name="Btn_SaveAs" xml:space="preserve"><value>Save as…</value></data>
+  <data name="Btn_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Tip_Save" xml:space="preserve"><value>Write your custom rules to the custom rules file and switch it on.</value></data>
+  <data name="Btn_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Btn_AddRule" xml:space="preserve"><value>Add rule…</value></data>
+  <data name="Btn_EditRule" xml:space="preserve"><value>Edit…</value></data>
+  <data name="Tip_EditRule" xml:space="preserve"><value>Double-click a row to edit it too. Editing one of DynDOLOD's rules makes your own copy that wins over it.</value></data>
+  <data name="Btn_RemoveRule" xml:space="preserve"><value>Remove my rule</value></data>
+  <data name="Tip_RemoveRule" xml:space="preserve"><value>Removes one of your rules; if it replaced one of DynDOLOD's, that one applies again.</value></data>
+  <data name="Tip_Up" xml:space="preserve"><value>Move one of your rules up (the first matching rule wins)</value></data>
+  <data name="Tip_Down" xml:space="preserve"><value>Move one of your rules down</value></data>
+  <data name="Btn_ResetRules" xml:space="preserve"><value>Reset all my rules</value></data>
+  <data name="Header_Mask" xml:space="preserve"><value>Mesh mask / reference</value></data>
+  <data name="Header_Flags" xml:space="preserve"><value>Flags</value></data>
+  <data name="Header_Grid" xml:space="preserve"><value>Grid</value></data>
+  <data name="Header_Reference" xml:space="preserve"><value>Reference</value></data>
+  <data name="Header_From" xml:space="preserve"><value>From</value></data>
+  <data name="Rule_None" xml:space="preserve"><value>None</value></data>
+  <data name="Editor_MyRules" xml:space="preserve"><value>my rules</value></data>
+  <data name="Editor_TitleFmt" xml:space="preserve"><value>LOD rules: {0}{1}{2}</value></data>
+  <data name="Editor_WithCandles" xml:space="preserve"><value> + Candles</value></data>
+  <data name="Editor_WithFxGlow" xml:space="preserve"><value> + FXGlow</value></data>
+  <data name="Editor_InfoNoDynDolod" xml:space="preserve"><value>DynDOLOD's own rules are not shown because no DynDOLOD folder is set. You can still write rules of your own here.</value></data>
+  <data name="Editor_Info" xml:space="preserve"><value>DynDOLOD's rules are listed in the order they apply; the first matching rule wins. Your own rules (orange) come first and win. Rules that only apply to certain plugins are not listed here. Double-click a row to edit it.</value></data>
+  <data name="Editor_CountFmt" xml:space="preserve"><value>{0} of your rules, {1} of DynDOLOD's{2}</value></data>
+  <data name="Editor_ShownFmt" xml:space="preserve"><value> ({0} shown)</value></data>
+  <data name="Editor_NoFile" xml:space="preserve"><value>Custom rules file: none yet. Save creates one.</value></data>
+  <data name="Editor_FileFmt" xml:space="preserve"><value>Custom rules file: {0}{1}</value></data>
+  <data name="Editor_Unsaved" xml:space="preserve"><value>  (unsaved changes)</value></data>
+  <data name="Editor_DefaultFileFmt" xml:space="preserve"><value>AnvilLOD custom rules - preset {0}.ini</value></data>
+  <data name="Msg_ResetRules" xml:space="preserve"><value>Remove all of your own rules from this list? The file is only changed when you save.</value></data>
+  <data name="Msg_NoRulesInFile" xml:space="preserve"><value>That file has no LODGen rules. Use it anyway?</value></data>
+  <data name="Msg_CouldNotWriteFmt" xml:space="preserve"><value>Could not write the file:
+{0}</value></data>
+  <data name="Msg_SaveChanges" xml:space="preserve"><value>Save your changes to the custom rules file?</value></data>
+  <data name="Dlg_OpenRuleFile" xml:space="preserve"><value>Open a LOD rule file</value></data>
+  <data name="Dlg_SaveRules" xml:space="preserve"><value>Save your LOD rules</value></data>
+
+  <!-- Rule edit dialog -->
+  <data name="Dialog_Title" xml:space="preserve"><value>Edit mesh mask / reference rule</value></data>
+  <data name="Dialog_MaskLabel" xml:space="preserve"><value>Mesh mask / reference FormID</value></data>
+  <data name="Tip_DialogMask" xml:space="preserve"><value>A mesh mask, 'Path\To\Model.nif' or part of the path of the full model a base record uses (tree, \road, rtkeep), or the FormID of a reference or base record, 'Plugin.esp;000F64BF'. The catch-all rule is a single backslash.</value></data>
+  <data name="Dialog_MaskHelp" xml:space="preserve"><value>Mesh mask: part of the full model's path. Reference FormID: Plugin.esp;FormID of a reference or base record. A single \ is the catch-all rule (always applied last).</value></data>
+  <data name="Dialog_SectionFlags" xml:space="preserve"><value>FLAGS</value></data>
+  <data name="Dialog_FlagVwd" xml:space="preserve"><value>VWD - Visible When Distant: apply the rule only if a matching LOD model exists</value></data>
+  <data name="Dialog_FlagNoGlow" xml:space="preserve"><value>NoGlow - no glowing windows (saved in the file; AnvilLOD does not apply it yet)</value></data>
+  <data name="Dialog_FlagNoMato" xml:space="preserve"><value>NoMATO - no material object shader: do not apply it to the LOD model</value></data>
+  <data name="Dialog_FlagDynamic" xml:space="preserve"><value>Dynamic - force dynamic LOD: adds both dynamic LOD and the object LOD model</value></data>
+  <data name="Dialog_FlagTree" xml:space="preserve"><value>TREE - also apply the rule to tree base records and ones with the Has Tree LOD flag</value></data>
+  <data name="Dialog_SectionStatic" xml:space="preserve"><value>STATIC OBJECT LOD</value></data>
+  <data name="Dialog_Level4" xml:space="preserve"><value>LOD level 4</value></data>
+  <data name="Dialog_Level8" xml:space="preserve"><value>LOD level 8</value></data>
+  <data name="Dialog_Level16" xml:space="preserve"><value>LOD level 16</value></data>
+  <data name="Dialog_Level32" xml:space="preserve"><value>LOD level 32</value></data>
+  <data name="Dialog_LevelHelp" xml:space="preserve"><value>Level0 = the LOD4 model, Level1 = LOD8, Level2 = LOD16. BillboardN = a tree billboard. Full model = the object's own model. None = no LOD at this level.</value></data>
+  <data name="Dialog_SectionDynamic" xml:space="preserve"><value>DYNAMIC LOD</value></data>
+  <data name="Tip_DialogReference" xml:space="preserve"><value>What happens to the original reference. It is kept in the file; AnvilLOD does not act on this column yet.</value></data>
+  <data name="Dialog_GridHelp" xml:space="preserve"><value>Grid: water, fires, windmills and other objects that only get dynamic LOD (Near LOD, Far LOD, Far Full). The Reference column is saved in the file but AnvilLOD does not act on it yet.</value></data>
+  <data name="Dialog_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Msg_RuleNeedsMask" xml:space="preserve"><value>The rule needs a mesh mask or a reference FormID.</value></data>
+  <data name="Btn_Ok" xml:space="preserve"><value>OK</value></data>
+</root>

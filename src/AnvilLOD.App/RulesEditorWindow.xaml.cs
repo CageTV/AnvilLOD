@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using AnvilLOD.App.Localization;
 using AnvilLOD.Core.Lod;
 using Microsoft.Win32;
 
@@ -18,7 +19,7 @@ public sealed class RuleRow(RuleEntry entry)
     public string Lod32 => Shown(Entry.Lod32);
     public string Grid => Shown(Entry.Grid);
     public string Reference => Entry.Reference;
-    public string Source => Entry.IsCustom ? "my rules" : Entry.Source;
+    public string Source => Entry.IsCustom ? L.T("Editor_MyRules") : Entry.Source;
     public string FlagsText => string.Join(' ', new[]
     {
         Entry.HasFlag(RuleEntry.FlagVwd) ? "VWD" : null,
@@ -28,7 +29,7 @@ public sealed class RuleRow(RuleEntry entry)
         Entry.HasFlag(RuleEntry.FlagTree) ? "TREE" : null,
     }.Where(s => s is not null));
 
-    private static string Shown(string s) => string.IsNullOrWhiteSpace(s) ? "None" : s;
+    private static string Shown(string s) => string.IsNullOrWhiteSpace(s) ? L.T("Rule_None") : s;
 }
 
 /// <summary>
@@ -57,15 +58,22 @@ public partial class RulesEditorWindow : Window
         _custom = [];
         _file = string.IsNullOrWhiteSpace(customFile) ? null : customFile;
         if (_file is not null && File.Exists(_file))
-            _custom.AddRange(RuleEntry.ParseFile(File.ReadAllText(_file), "my rules", isCustom: true));
+            _custom.AddRange(RuleEntry.ParseFile(File.ReadAllText(_file), L.T("Editor_MyRules"), isCustom: true));
 
-        TitleText.Text = $"LOD rules: {preset}" + (candles ? " + Candles" : "") + (fxGlow ? " + FXGlow" : "");
+        TitleText.Text = L.F("Editor_TitleFmt", PresetName(preset), candles ? L.T("Editor_WithCandles") : "", fxGlow ? L.T("Editor_WithFxGlow") : "");
         InfoText.Text = _installRulesFolder is null
-            ? "DynDOLOD's own rules are not shown because no DynDOLOD folder is set. You can still write rules of your own here."
-            : "DynDOLOD's rules are listed in the order they apply; the first matching rule wins. Your own rules (orange) come first and win. "
-              + "Rules that only apply to certain plugins are not listed here. Double-click a row to edit it.";
+            ? L.T("Editor_InfoNoDynDolod")
+            : L.T("Editor_Info");
         Refresh();
     }
+
+    /// <summary>The preset's localized name (the rule files themselves always use the English low/medium/high).</summary>
+    private static string PresetName(LodPreset preset) => preset switch
+    {
+        LodPreset.Low => L.T("Preset_Low"),
+        LodPreset.Medium => L.T("Preset_Medium"),
+        _ => L.T("Preset_High"),
+    };
 
     private void Refresh(RuleEntry? select = null)
     {
@@ -84,11 +92,11 @@ public partial class RulesEditorWindow : Window
             RuleGrid.SelectedItem = row;
             RuleGrid.ScrollIntoView(row);
         }
-        CountText.Text = $"{_custom.Count} of your rules, {all.Count - _custom.Count} of DynDOLOD's"
-                         + (filter.Length > 0 ? $" ({rows.Count} shown)" : "");
+        CountText.Text = L.F("Editor_CountFmt", _custom.Count, all.Count - _custom.Count,
+            filter.Length > 0 ? L.F("Editor_ShownFmt", rows.Count) : "");
         FileText.Text = _file is null
-            ? "Custom rules file: none yet. Save creates one."
-            : "Custom rules file: " + _file + (_dirty ? "  (unsaved changes)" : "");
+            ? L.T("Editor_NoFile")
+            : L.F("Editor_FileFmt", _file, _dirty ? L.T("Editor_Unsaved") : "");
         UpdateButtons();
     }
 
@@ -118,7 +126,7 @@ public partial class RulesEditorWindow : Window
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        var rule = new RuleEntry { Mask = "", Lod4 = "Level0", Lod8 = "Level1", Lod16 = "Level2", Lod32 = "", Flags = RuleEntry.FlagVwd, IsCustom = true, Source = "my rules" };
+        var rule = new RuleEntry { Mask = "", Lod4 = "Level0", Lod8 = "Level1", Lod16 = "Level2", Lod32 = "", Flags = RuleEntry.FlagVwd, IsCustom = true, Source = L.T("Editor_MyRules") };
         if (new RuleEditDialog(rule) { Owner = this }.ShowDialog() != true) return;
         _custom.Insert(0, rule);
         _dirty = true;
@@ -130,7 +138,7 @@ public partial class RulesEditorWindow : Window
         if (Selected is not { } row) return;
         var copy = row.Entry.Clone();
         copy.IsCustom = true;
-        copy.Source = "my rules";
+        copy.Source = L.T("Editor_MyRules");
         if (new RuleEditDialog(copy) { Owner = this }.ShowDialog() != true) return;
         if (row.IsCustom) _custom[_custom.IndexOf(row.Entry)] = copy;
         else _custom.Insert(0, copy); // an edited default rule becomes the user's own, and wins over the original
@@ -162,7 +170,7 @@ public partial class RulesEditorWindow : Window
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
         if (_custom.Count == 0) return;
-        if (MessageBox.Show(this, "Remove all of your own rules from this list? The file is only changed when you save.", "AnvilLOD",
+        if (MessageBox.Show(this, L.T("Msg_ResetRules"), "AnvilLOD",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         _custom.Clear();
         _dirty = true;
@@ -171,11 +179,11 @@ public partial class RulesEditorWindow : Window
 
     private void Load_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFileDialog { Title = "Open a LOD rule file", Filter = "Rule files (*.ini)|*.ini|All files (*.*)|*.*", CheckFileExists = true };
+        var d = new OpenFileDialog { Title = L.T("Dlg_OpenRuleFile"), Filter = L.T("Filter_RuleFiles") + "|*.ini|" + L.T("Filter_AllFilesStar") + "|*.*", CheckFileExists = true };
         if (!string.IsNullOrEmpty(_file) && Directory.Exists(Path.GetDirectoryName(_file))) d.InitialDirectory = Path.GetDirectoryName(_file);
         if (d.ShowDialog(this) != true) return;
-        var rules = RuleEntry.ParseFile(File.ReadAllText(d.FileName), "my rules", isCustom: true);
-        if (rules.Count == 0 && MessageBox.Show(this, "That file has no LODGen rules. Use it anyway?", "AnvilLOD", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var rules = RuleEntry.ParseFile(File.ReadAllText(d.FileName), L.T("Editor_MyRules"), isCustom: true);
+        if (rules.Count == 0 && MessageBox.Show(this, L.T("Msg_NoRulesInFile"), "AnvilLOD", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         _custom.Clear();
         _custom.AddRange(rules);
         _file = d.FileName;
@@ -197,10 +205,10 @@ public partial class RulesEditorWindow : Window
             Directory.CreateDirectory(DefaultFolder);
             var d = new SaveFileDialog
             {
-                Title = "Save your LOD rules",
-                Filter = "Rule files (*.ini)|*.ini",
+                Title = L.T("Dlg_SaveRules"),
+                Filter = L.T("Filter_RuleFiles") + "|*.ini",
                 InitialDirectory = DefaultFolder,
-                FileName = Path.GetFileName(path is null || InsideDynDolodRules(path) ? $"AnvilLOD custom rules - preset {_presetIndex + 1}.ini" : path),
+                FileName = Path.GetFileName(path is null || InsideDynDolodRules(path) ? L.F("Editor_DefaultFileFmt", _presetIndex + 1) : path),
                 OverwritePrompt = true,
             };
             if (d.ShowDialog(this) != true) return false;
@@ -212,7 +220,7 @@ public partial class RulesEditorWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "Could not write the file:\n" + ex.Message, "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.F("Msg_CouldNotWriteFmt", ex.Message), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
         _file = path;
@@ -228,7 +236,7 @@ public partial class RulesEditorWindow : Window
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         if (!_dirty) return;
-        var answer = MessageBox.Show(this, "Save your changes to the custom rules file?", "AnvilLOD", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        var answer = MessageBox.Show(this, L.T("Msg_SaveChanges"), "AnvilLOD", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         if (answer == MessageBoxResult.Cancel || (answer == MessageBoxResult.Yes && !Save(false))) e.Cancel = true;
     }
 }

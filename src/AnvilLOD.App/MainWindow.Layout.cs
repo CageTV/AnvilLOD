@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using AnvilLOD.App.Localization;
 using AnvilLOD.Plugins;
 using Microsoft.Win32;
 
@@ -23,14 +24,14 @@ public partial class MainWindow
     {
         _categories = new()
         {
-            ["Output"] = (CatOutput, "Output and worlds"),
-            ["Rules"] = (CatRules, "LOD rules"),
-            ["Objects"] = (CatObjects, "Objects and terrain"),
-            ["Trees"] = (CatTrees, "Trees"),
-            ["Grass"] = (CatGrass, "Grass and size"),
-            ["Dynamic"] = (CatDynamic, "Seasons, water and dynamic LOD"),
-            ["Finder"] = (CatFinder, "Missing LOD finder (mod author tool)"),
-            ["Maker"] = (CatMaker, "LOD Mesh Maker (mod author tool)"),
+            ["Output"] = (CatOutput, "Nav_Output"),
+            ["Rules"] = (CatRules, "Nav_Rules"),
+            ["Objects"] = (CatObjects, "Nav_Objects"),
+            ["Trees"] = (CatTrees, "Nav_Trees"),
+            ["Grass"] = (CatGrass, "Nav_Grass"),
+            ["Dynamic"] = (CatDynamic, "Cat_Dynamic"),
+            ["Finder"] = (CatFinder, "Finder_Title"),
+            ["Maker"] = (CatMaker, "Maker_Title"),
         };
         PreviewKeyDown += (_, e) =>
         {
@@ -57,7 +58,7 @@ public partial class MainWindow
         if (_categories is null || !_categories.TryGetValue(tag, out var target)) return;
         foreach (var (key, (panel, _)) in _categories)
             panel.Visibility = key == tag ? Visibility.Visible : Visibility.Collapsed;
-        OptionsTitle.Text = target.Title;
+        OptionsTitle.Text = L.T(target.Title);
         SettingsScroll.ScrollToTop();
         // a short fade-in so the switch isn't abrupt
         target.Panel.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180))
@@ -80,7 +81,7 @@ public partial class MainWindow
     {
         if (expand == _expanded) return;
         _expanded = expand;
-        ExpandButton.Content = expand ? "⤡  Restore" : "⤢  Expand";
+        ExpandButton.Content = expand ? L.T("Btn_Restore") : L.T("Btn_Expand");
         var span = TimeSpan.FromMilliseconds(340);
         var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
 
@@ -116,7 +117,9 @@ public partial class MainWindow
 
     private void PrintResults_Click(object sender, RoutedEventArgs e)
     {
-        var tab = (ResultsTabs.SelectedItem as TabItem)?.Header as string ?? "Results";
+        var tabItem = ResultsTabs.SelectedItem as TabItem;
+        var tab = tabItem?.Tag as string ?? "Overview";              // stable id, independent of the language
+        var tabName = tabItem?.Header as string ?? L.T("Tab_Overview");
         string body;
         string ext;
         switch (tab)
@@ -141,25 +144,25 @@ public partial class MainWindow
         }
         if (string.IsNullOrWhiteSpace(body))
         {
-            StatusText.Text = $"Nothing to print in {tab} yet";
+            StatusText.Text = L.F("Print_NothingFmt", tabName);
             return;
         }
         var d = new SaveFileDialog
         {
-            Title = $"Save {tab}",
-            Filter = ext == "csv" ? "CSV (*.csv)|*.csv" : "Text (*.txt)|*.txt",
-            FileName = $"AnvilLOD {tab.ToLowerInvariant()} {DateTime.Now:yyyy-MM-dd HHmm}.{ext}",
+            Title = L.F("Print_SaveFmt", tabName),
+            Filter = ext == "csv" ? "CSV (*.csv)|*.csv" : L.T("Filter_TxtFile"),
+            FileName = $"AnvilLOD {tabName.ToLowerInvariant()} {DateTime.Now:yyyy-MM-dd HHmm}.{ext}",
         };
         if (_settings.OutputFolder is { } o && Directory.Exists(o)) d.InitialDirectory = o;
         if (d.ShowDialog(this) != true) return;
         try
         {
             File.WriteAllText(d.FileName, body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            StatusText.Text = $"{tab} saved: {d.FileName}";
+            StatusText.Text = L.F("Print_SavedFmt", tabName, d.FileName);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, ex.Message, "Could not save", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, ex.Message, L.T("Msg_CouldNotSave"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -186,19 +189,19 @@ public partial class MainWindow
         foreach (var w in WarningList.Items) sb.AppendLine("WARNING: " + w);
         if (WarningList.Items.Count > 0) sb.AppendLine();
         sb.AppendLine($"{TilePluginsLabel.Text}: {TilePlugins.Text}");
-        sb.AppendLine($"References scanned: {TileVisited.Text}");
-        sb.AppendLine($"LOD references: {TileLodRefs.Text}");
-        sb.AppendLine($"LOD blocks: {TileBlocks.Text}");
+        sb.AppendLine($"{L.T("Tile_Visited")}: {TileVisited.Text}");
+        sb.AppendLine($"{L.T("Tile_LodRefs")}: {TileLodRefs.Text}");
+        sb.AppendLine($"{L.T("Tile_Blocks")}: {TileBlocks.Text}");
         sb.AppendLine($"{TileRebuildLabel.Text}: {TileRebuild.Text}");
-        sb.AppendLine($"Missing LOD meshes: {TileMissing.Text}");
-        sb.AppendLine($"Total time: {TileTime.Text}");
+        sb.AppendLine($"{L.T("Tile_Missing")}: {TileMissing.Text}");
+        sb.AppendLine($"{L.T("Tile_Time")}: {TileTime.Text}");
         sb.AppendLine();
-        sb.AppendLine("Blocks per level");
+        sb.AppendLine(L.T("Text_BlocksPerLevel"));
         sb.AppendLine("Worldspace\tLOD 4\tLOD 8\tLOD 16\tLOD 32");
         foreach (var r in LevelGrid.ItemsSource as IEnumerable<LevelRow> ?? [])
             sb.AppendLine($"{r.Worldspace}\t{r.Lod4}\t{r.Lod8}\t{r.Lod16}\t{r.Lod32}");
         sb.AppendLine();
-        sb.AppendLine("Timing");
+        sb.AppendLine(L.T("Text_Timing"));
         sb.AppendLine(TimingText.Text);
         return sb.ToString();
     }
@@ -243,21 +246,21 @@ public partial class MainWindow
         var calibration = LoadCalibration();
         if (calibration is null)
         {
-            EstimateText.Text = "Size estimate: generate once and it is worked out for your list.";
-            EstimateDetail.Text = "Generate once and AnvilLOD can estimate the size of your next generation from your own list. "
-                + "As a guide for one big worldspace without seasons: grass at 4% is about 0.7 GB, 15% about 1.7 GB, 40% about 3.9 GB and 100% about 11 GB. "
-                + "Seasons add a full copy of the changed blocks for each season (summer is the biggest, its grass cache is much denser).";
+            EstimateText.Text = L.T("Estimate_TextNone");
+            EstimateDetail.Text = L.T("Estimate_Default") + " "
+                + L.T("Estimate_Guide");
             return;
         }
         var c = CurrentChoices();
         var est = SizeEstimator.Estimate(calibration, c.Percent, c.GrassOn, c.Tree3D, c.Lod8, c.Seasons);
         if (est is null) return;
-        string seasons = est.Seasons is null ? " + seasonal copies (not measured yet: generate once with Seasons on)" : est.Seasons > 0 ? $" + seasons {SizeEstimator.Format(est.Seasons.Value)}" : "";
+        string seasons = est.Seasons is null ? L.T("Estimate_SeasonsNotMeasured") : est.Seasons > 0 ? L.F("Estimate_SeasonsFmt", SizeEstimator.Format(est.Seasons.Value)) : "";
         long total = est.Base + (est.Seasons ?? 0);
-        EstimateText.Text = $"Estimated size: about {SizeEstimator.Format(total)}{(est.Seasons is null ? " (without seasons)" : "")}";
-        EstimateDetail.Text = $"About {SizeEstimator.Format(est.Base)} of base object LOD{seasons}, scaled from your last generation "
-            + $"({SizeEstimator.Format(calibration.BaseTotal + calibration.SeasonTotal)}, grass {(calibration.GrassOn ? calibration.GrassPercent + "%" : "off")}). "
-            + "An estimate: the real size depends on your list. " + est.Note;
+        EstimateText.Text = L.F("Estimate_TextFmt", SizeEstimator.Format(total), est.Seasons is null ? L.T("Estimate_NoneSeasons") : "");
+        EstimateDetail.Text = L.F("Estimate_DetailFmt", SizeEstimator.Format(est.Base), seasons,
+            SizeEstimator.Format(calibration.BaseTotal + calibration.SeasonTotal),
+            calibration.GrassOn ? L.F("Estimate_GrassPercent", calibration.GrassPercent) : L.T("Estimate_GrassOff"))
+            + " " + est.Note;
     }
 
     /// <summary>After a generation: remember what it was made of, so the next one can be estimated.</summary>

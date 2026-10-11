@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Language picker -->
+  <data name="Language_Label" xml:space="preserve"><value>语言</value></data>
+  <data name="Language_System" xml:space="preserve"><value>跟随系统</value></data>
+
+  <!-- Header bar -->
+  <data name="Status_Ready" xml:space="preserve"><value>就绪</value></data>
+  <data name="Status_Idle" xml:space="preserve"><value>空闲</value></data>
+  <data name="Status_Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Status_Cancelled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Status_Cancelling" xml:space="preserve"><value>正在取消…</value></data>
+  <data name="Status_FailedLog" xml:space="preserve"><value>失败——见日志</value></data>
+  <data name="Status_RunningFmt" xml:space="preserve"><value>运行中… {0}</value></data>
+  <data name="Status_ReportSaved" xml:space="preserve"><value>报告已保存</value></data>
+  <data name="Status_ScanFmt" xml:space="preserve"><value>扫描完成，用时 {0:F1} 秒</value></data>
+  <data name="Status_GeneratedFmt" xml:space="preserve"><value>LOD 已生成，用时 {0:F1} 秒</value></data>
+  <data name="Title_UnderMo2" xml:space="preserve"><value>（在 MO2 下运行）</value></data>
+  <data name="Section_Game" xml:space="preserve"><value>游戏</value></data>
+  <data name="Source_Mo2" xml:space="preserve"><value>MO2 实例</value></data>
+  <data name="Source_DataFolder" xml:space="preserve"><value>Data 文件夹</value></data>
+  <data name="Mo2_InstanceFolder" xml:space="preserve"><value>实例文件夹</value></data>
+  <data name="Tip_Mo2Box" xml:space="preserve"><value>包含 ModOrganizer.ini 的文件夹（例如 D:\Modlists\MyList）</value></data>
+  <data name="Mo2_Profile" xml:space="preserve"><value>配置档</value></data>
+  <data name="Locations_Button" xml:space="preserve"><value>位置 ▾</value></data>
+  <data name="Locations_ButtonOverride" xml:space="preserve"><value>位置 ● ▾</value></data>
+  <data name="Tip_Locations" xml:space="preserve"><value>自动检测会从 ModOrganizer.ini 读取游戏、MOD、配置档和 overwrite 文件夹。只有当它检测错了，或你的游戏、MOD 或配置档在其他盘上时，才需要在这里填写。留空则该项继续使用自动检测结果。填好游戏、MOD 和配置档三个文件夹后，就不再需要 ModOrganizer.ini。</value></data>
+  <data name="Mo2_InfoDefault" xml:space="preserve"><value>直接读取你的 MOD。无需从 MO2 启动 AnvilLOD。</value></data>
+  <data name="Locations_Section" xml:space="preserve"><value>位置（可选）</value></data>
+  <data name="Locations_PopupHint" xml:space="preserve"><value>在这里填写文件夹即可覆盖 ModOrganizer.ini 的设定；留空则继续使用自动检测。当游戏、MOD 或配置档在其他盘上，或 ini 有误时需要用到。</value></data>
+  <data name="Locations_GameFolder" xml:space="preserve"><value>游戏文件夹（包含 SkyrimSE.exe 的那个）</value></data>
+  <data name="Tip_Mo2GameBox" xml:space="preserve"><value>留空 = 使用 ModOrganizer.ini 里的 gamePath。示例：F:\Games\Stock Game</value></data>
+  <data name="Locations_ModsFolder" xml:space="preserve"><value>MOD 文件夹</value></data>
+  <data name="Tip_Mo2ModsBox" xml:space="preserve"><value>留空 = 使用 ini 里的 mod_directory（通常是 &lt;实例&gt;\mods）</value></data>
+  <data name="Locations_ProfilesFolder" xml:space="preserve"><value>配置档文件夹</value></data>
+  <data name="Tip_Mo2ProfilesBox" xml:space="preserve"><value>留空 = 使用 ini 里的 profiles_directory（通常是 &lt;实例&gt;\profiles）</value></data>
+  <data name="Locations_OverwriteFolder" xml:space="preserve"><value>Overwrite 文件夹</value></data>
+  <data name="Tip_Mo2OverwriteBox" xml:space="preserve"><value>留空 = 使用 ini 里的 overwrite_directory（通常是 &lt;实例&gt;\overwrite）</value></data>
+  <data name="Tip_DataBox" xml:space="preserve"><value>留空自动检测</value></data>
+  <data name="Data_PluginsTxt" xml:space="preserve"><value>plugins.txt（可选）</value></data>
+  <data name="Tip_PluginsBox" xml:space="preserve"><value>使用指定的加载顺序。需要同时填写 Data 文件夹。</value></data>
+  <data name="Data_InfoPlain" xml:space="preserve"><value>适用于普通（非 MO2）安装。</value></data>
+  <data name="Data_InfoVortex" xml:space="preserve"><value>Vortex 会把 MOD 部署到游戏的 Data 文件夹：Data 文件夹留空自动检测，plugins.txt 留空使用 Vortex 的加载顺序。生成前先在 Vortex 里完成部署。</value></data>
+  <data name="Vortex_OutputToStaging" xml:space="preserve"><value>输出到 Vortex 暂存区（AnvilLOD Output）</value></data>
+  <data name="Vortex_StagingFmt" xml:space="preserve"><value>暂存文件夹：{0}。生成后，刷新 Vortex（或重启它），启用“{1}”并部署。</value></data>
+  <data name="Vortex_NotFound" xml:space="preserve"><value>未在默认位置（%APPDATA%\Vortex\skyrimse\mods）找到 Vortex 的 Skyrim SE 暂存文件夹。请自行选择输出文件夹，然后将其作为 MOD 安装进 Vortex。</value></data>
+  <data name="Vortex_NotInstalled" xml:space="preserve"><value>当前用户似乎没有安装 Vortex。</value></data>
+
+  <!-- Footer buttons -->
+  <data name="Btn_Export" xml:space="preserve"><value>导出报告…</value></data>
+  <data name="Btn_Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="Btn_Scan" xml:space="preserve"><value>扫描</value></data>
+  <data name="Btn_Generate" xml:space="preserve"><value>生成 LOD</value></data>
+  <data name="Tip_Generate" xml:space="preserve"><value>先扫描，再把发生变化的 LOD 块（.bto）写入输出文件夹</value></data>
+
+  <!-- Left navigation -->
+  <data name="Nav_Settings" xml:space="preserve"><value>设置</value></data>
+  <data name="Nav_Output" xml:space="preserve"><value>输出与世界空间</value></data>
+  <data name="Nav_Rules" xml:space="preserve"><value>LOD 规则</value></data>
+  <data name="Nav_Objects" xml:space="preserve"><value>物件与地形</value></data>
+  <data name="Nav_Trees" xml:space="preserve"><value>树木</value></data>
+  <data name="Nav_Grass" xml:space="preserve"><value>草地与大小</value></data>
+  <data name="Nav_Dynamic" xml:space="preserve"><value>四季、水体、动态</value></data>
+  <data name="Nav_AuthorTools" xml:space="preserve"><value>MOD 作者工具</value></data>
+  <data name="Nav_Finder" xml:space="preserve"><value>缺失 LOD 查找器</value></data>
+  <data name="Tip_Nav_Finder" xml:space="preserve"><value>找出某个插件里远距离可见却没有 LOD 的物件和树木，并生成缺失的部分。</value></data>
+  <data name="Nav_Maker" xml:space="preserve"><value>LOD 网格制作器</value></data>
+  <data name="Tip_Nav_Maker" xml:space="preserve"><value>从你选择的完整模型制作 LOD 网格（name_lod_0/1/2.nif）。</value></data>
+
+  <!-- Results area -->
+  <data name="Tab_Overview" xml:space="preserve"><value>总览</value></data>
+  <data name="Tab_Blocks" xml:space="preserve"><value>块</value></data>
+  <data name="Tab_Missing" xml:space="preserve"><value>缺失网格</value></data>
+  <data name="Tab_Log" xml:space="preserve"><value>日志</value></data>
+  <data name="Overview_Hint" xml:space="preserve"><value>在左侧设置好路径，然后点击“扫描”来分析加载顺序。</value></data>
+  <data name="Overview_NoneFmt" xml:space="preserve"><value>没有匹配到带 .lod 设置文件的世界空间。请检查世界空间名称，并确认 LODSettings 文件存在。</value></data>
+  <data name="Overview_ScannedFmt" xml:space="preserve"><value>已扫描：{0}。</value></data>
+  <data name="Tile_Plugins" xml:space="preserve"><value>插件</value></data>
+  <data name="Tile_PluginsFoundFmt" xml:space="preserve"><value>找到的插件（共列出 {0} 个）</value></data>
+  <data name="Tile_Visited" xml:space="preserve"><value>已扫描引用</value></data>
+  <data name="Tile_LodRefs" xml:space="preserve"><value>LOD 引用</value></data>
+  <data name="Tile_Blocks" xml:space="preserve"><value>LOD 块</value></data>
+  <data name="Tile_Rebuild" xml:space="preserve"><value>待重建的块</value></data>
+  <data name="Tile_WrittenFailedFmt" xml:space="preserve"><value>已写入块（{0} 个失败）</value></data>
+  <data name="Tile_WrittenUnchangedFmt" xml:space="preserve"><value>已写入块（{0} 个无变化）</value></data>
+  <data name="Tile_Missing" xml:space="preserve"><value>缺失的 LOD 网格</value></data>
+  <data name="Tile_Time" xml:space="preserve"><value>总耗时</value></data>
+  <data name="Section_BlocksPerLevel" xml:space="preserve"><value>各层级块数</value></data>
+  <data name="Section_Timing" xml:space="preserve"><value>耗时明细</value></data>
+  <data name="Header_Worldspace" xml:space="preserve"><value>世界空间</value></data>
+  <data name="Header_File" xml:space="preserve"><value>文件</value></data>
+  <data name="Header_Level" xml:space="preserve"><value>层级</value></data>
+  <data name="Header_Refs" xml:space="preserve"><value>引用数</value></data>
+  <data name="Header_Status" xml:space="preserve"><value>状态</value></data>
+  <data name="Header_MeshPath" xml:space="preserve"><value>网格路径</value></data>
+  <data name="Header_Problem" xml:space="preserve"><value>问题</value></data>
+  <data name="Tip_BlockFilter" xml:space="preserve"><value>按文件名筛选，例如 Tamriel.4。</value></data>
+  <data name="Missing_Description" xml:space="preserve"><value>缺失（STAT 的 MNAM 里指明但未安装）或生成时无法使用的 LOD 网格。使用它们的物件在该层级不会进入 LOD。</value></data>
+  <data name="Row_Failed" xml:space="preserve"><value>失败</value></data>
+  <data name="Row_Written" xml:space="preserve"><value>已写入</value></data>
+  <data name="Row_Unchanged" xml:space="preserve"><value>无变化</value></data>
+  <data name="Row_Rebuild" xml:space="preserve"><value>待重建</value></data>
+  <data name="Missing_NotInstalledFmt" xml:space="preserve"><value>未安装（{0} 个基础对象）</value></data>
+  <data name="Missing_SmallPlantFmt" xml:space="preserve"><value>小型植物，TexGen 会跳过，无 LOD（与 DynDOLOD 相同）（已摆放 {0} 个）</value></data>
+  <data name="Missing_NoBillboardFmt" xml:space="preserve"><value>没有树木广告牌（已摆放 {0} 棵树）——请运行 TexGen</value></data>
+  <data name="Missing_SmallGrass" xml:space="preserve"><value>小草，TexGen 会跳过，无草地 LOD</value></data>
+  <data name="Missing_NoGrassBillboard" xml:space="preserve"><value>没有草地广告牌——请运行带草地广告牌的 TexGen</value></data>
+  <data name="Timing_BsaFmt" xml:space="preserve"><value>BSA 索引     {0,8:F2}s   （{1:N0} 个文件，{2} 个档案）</value></data>
+  <data name="Timing_PluginFmt" xml:space="preserve"><value>插件扫描   {0,8:F2}s</value></data>
+  <data name="Timing_BucketFmt" xml:space="preserve"><value>分桶+哈希   {0,8:F2}s</value></data>
+  <data name="Timing_TotalFmt" xml:space="preserve"><value>总计         {0,8:F2}s</value></data>
+  <data name="Timing_SkippedFmt" xml:space="preserve"><value>跳过：{0:N0} 个禁用，{1:N0} 个没有可用网格，{2:N0} 个在 LOD 网格之外</value></data>
+  <data name="Timing_DynamicFmt" xml:space="preserve"><value>动态 LOD：{0:N0} 个可切换引用（由 SKSE 插件显示）</value></data>
+  <data name="Timing_GrassFmt" xml:space="preserve"><value>草地 LOD：{0:N0} 个缓存单元{1}</value></data>
+  <data name="Timing_GrassMissingFmt" xml:space="preserve"><value>，{0:N0} 种草没有广告牌</value></data>
+  <data name="Timing_TreesFmt" xml:space="preserve"><value>树木：{0:N0} 棵有广告牌，{1:N0} 棵没有（{2:N0} 种树，其中 {3:N0} 种是 TexGen 跳过的小型植物）</value></data>
+  <data name="Timing_TreeLodFmt" xml:space="preserve"><value>树 LOD：{0:N0} 棵树，{1} 种类型，{2:N0} 个块（清空了 {3:N0} 个原版块），{4:F1}s</value></data>
+  <data name="Btn_Print" xml:space="preserve"><value>打印到文件…</value></data>
+  <data name="Tip_Print" xml:space="preserve"><value>把此标签页显示的内容保存为文件（总览和日志为文本，块和缺失网格为 CSV），方便以后查看。</value></data>
+  <data name="Btn_Expand" xml:space="preserve"><value>⤢  放大</value></data>
+  <data name="Btn_Restore" xml:space="preserve"><value>⤡  还原</value></data>
+  <data name="Tip_Expand" xml:space="preserve"><value>让此框占满整个窗口。再按一次（或按 Esc）恢复显示设置区。</value></data>
+  <data name="Tip_PresetFmt" xml:space="preserve"><value>预设 {0}。每个预设会记住此栏中的全部设置。单击切换，双击重命名。</value></data>
+  <data name="Print_NothingFmt" xml:space="preserve"><value>{0} 中还没有可打印的内容</value></data>
+  <data name="Print_SaveFmt" xml:space="preserve"><value>保存{0}</value></data>
+  <data name="Print_SavedFmt" xml:space="preserve"><value>{0} 已保存：{1}</value></data>
+  <data name="Filter_TxtFile" xml:space="preserve"><value>文本 (*.txt)|*.txt</value></data>
+  <data name="Text_BlocksPerLevel" xml:space="preserve"><value>各层级块数</value></data>
+  <data name="Text_Timing" xml:space="preserve"><value>耗时明细</value></data>
+
+  <!-- Presets -->
+  <data name="Preset_Low" xml:space="preserve"><value>低</value></data>
+  <data name="Preset_Medium" xml:space="preserve"><value>中</value></data>
+  <data name="Preset_High" xml:space="preserve"><value>高</value></data>
+
+  <!-- Output and worlds -->
+  <data name="CatOutput_Desc" xml:space="preserve"><value>LOD 输出到哪里、构建哪些世界空间以及哪些 LOD 层级。</value></data>
+  <data name="Section_Output" xml:space="preserve"><value>输出</value></data>
+  <data name="Output_Folder" xml:space="preserve"><value>输出文件夹</value></data>
+  <data name="Tip_OutputBox" xml:space="preserve"><value>LOD 文件的输出位置。留空则使用“AnvilLOD Output”（MO2 的 mods 文件夹、Vortex 的暂存文件夹或文档里的一个新 MOD 文件夹）。文件夹不存在时会自动创建。</value></data>
+  <data name="Opt_CleanOutput" xml:space="preserve"><value>生成前清空输出文件夹</value></data>
+  <data name="Tip_CleanOutput" xml:space="preserve"><value>先删除上次运行遗留在输出文件夹里的内容，避免新旧文件混在一起。只对空文件夹或 AnvilLOD 自己写过的文件夹（含 AnvilLOD.manifest.json 或 AnvilLOD.log）执行；其他文件夹一律不动，并会在日志中说明。MO2 的 meta.ini 会保留。每次运行都会重写所有块；取消勾选则就地更新文件夹，只重写有变化的部分。</value></data>
+  <data name="Section_Worldspaces" xml:space="preserve"><value>世界空间</value></data>
+  <data name="Opt_AllWorldspaces" xml:space="preserve"><value>所有带 .lod 文件的世界空间</value></data>
+  <data name="Tip_WorldspaceBox" xml:space="preserve"><value>逗号分隔的 EditorID，例如 Tamriel, DLC2SolstheimWorld</value></data>
+  <data name="Section_LodLevels" xml:space="preserve"><value>LOD 层级</value></data>
+
+  <!-- LOD rules -->
+  <data name="CatRules_Desc" xml:space="preserve"><value>每类物件在各 LOD 层级使用哪个 LOD 模型或广告牌。AnvilLOD 复用 DynDOLOD 规则文件。</value></data>
+  <data name="Section_LodRules" xml:space="preserve"><value>LOD 规则</value></data>
+  <data name="Rules_DynDolodFolder" xml:space="preserve"><value>DynDOLOD 文件夹（可选，复用其规则）</value></data>
+  <data name="Tip_DynDolodBox" xml:space="preserve"><value>包含 DynDOLODx64.exe 的文件夹。它的规则文件加上 MOD 在 Data\DynDOLOD 中自带的规则，共同决定每个物件使用哪个 LOD 网格。</value></data>
+  <data name="Rules_Preset" xml:space="preserve"><value>DynDOLOD 规则预设</value></data>
+  <data name="Btn_EditRules" xml:space="preserve"><value>编辑规则…</value></data>
+  <data name="Tip_EditRules" xml:space="preserve"><value>查看并修改此预设的 LOD 规则：每类物件在各 LOD 层级使用哪个 LOD 模型或广告牌。你的修改会保存为你自己的规则文件。</value></data>
+  <data name="Opt_Candles" xml:space="preserve"><value>Candles（蜡烛）</value></data>
+  <data name="Tip_Candles" xml:space="preserve"><value>同时加载 DynDOLOD 此预设的 Candles 规则：蜡烛、灯笼和壁装烛台获得远景 LOD，让它们的灯光在远处可见。需要 DynDOLOD 文件夹。</value></data>
+  <data name="Opt_FxGlow" xml:space="preserve"><value>FXGlow</value></data>
+  <data name="Tip_FxGlow" xml:space="preserve"><value>同时加载 DynDOLOD 此预设的 FXGlow 规则：火焰和光源的辉光卡片获得远景 LOD。需要 DynDOLOD 文件夹。</value></data>
+  <data name="Rules_CustomFile" xml:space="preserve"><value>自定义规则文件（可选）</value></data>
+  <data name="Tip_CustomRulesCheck" xml:space="preserve"><value>使用此规则文件。其中的规则优先于 DynDOLOD 自带的规则。取消勾选：仅使用 DynDOLOD 自己的规则文件。</value></data>
+  <data name="Tip_CustomRulesBox" xml:space="preserve"><value>DynDOLOD 格式的规则文件：可以是从“编辑规则”保存的，也可以是你手头的 DynDOLOD 预设或规则文件。勾选复选框即可启用。</value></data>
+
+  <!-- Objects and terrain -->
+  <data name="CatObjects_Desc" xml:space="preserve"><value>物件 LOD、PBR、亮度、地形底面、大型引用，以及哪些引用会被计入。</value></data>
+  <data name="Opt_RemoveBuried" xml:space="preserve"><value>移除埋入地形的面</value></data>
+  <data name="Tip_RemoveBuried" xml:space="preserve"><value>丢弃完全处于地下的 LOD 三角面。对山脉和岩石能大幅省面。</value></data>
+  <data name="Opt_PbrLod" xml:space="preserve"><value>让物件 LOD 匹配 PBR 纹理</value></data>
+  <data name="Tip_PbrLod" xml:space="preserve"><value>LOD 使用原版着色器，因此 LOD 网格若使用了被 PBR MOD 替换的纹理，LOD 会显示原版观感而真实物件是 PBR 观感（山脉、建筑）。开启后，TexGen 生成了 pbr_lod 孪生版的 LOD 纹理会改用孪生版；其他有 PBR 版本的纹理（textures\pbr\...）则使用写入 textures\anvillod\pbr 的 PBR albedo 调暗缩小副本。更改此项或亮度会重建所有块。</value></data>
+  <data name="Opt_PbrBrightness" xml:space="preserve"><value>PBR LOD 纹理亮度（1.0 = DynDOLOD 默认值）</value></data>
+  <data name="Tip_PbrBrightness" xml:space="preserve"><value>转换后的 PBR 副本的亮度，以 DynDOLOD 默认 PBR 缩放的比例表示。如果 LOD 比真实物件亮就调低它。</value></data>
+  <data name="Item_DefaultPercent" xml:space="preserve"><value>100%（默认）</value></data>
+  <data name="Opt_LargeRefs" xml:space="preserve"><value>大型引用（写入 AnvilLOD.esm）</value></data>
+  <data name="Tip_LargeRefs" xml:space="preserve"><value>引擎的大型引用网格（SkyrimPrefs.ini 里的 uLargeRefLODGridSize）会在加载单元之外显示已列出引用的完整模型。Skyrim.esm 和 DLC 已列出它们自己的；此项把其他 ESM 插件中符合条件但无人列出的引用写入 AnvilLOD.esm 并标记为 ESL（不占插件槽位）。请将它排在你其他 ESM 之后启用。会被 ESM 之外的插件覆盖、或初始处于禁用状态的引用不会列出，因为它们会导致大型引用闪烁。报告会说明列出了什么、跳过了什么。</value></data>
+  <data name="Opt_LargeRefsEsl" xml:space="preserve"><value>将 AnvilLOD.esm 标记为 ESL（节省插件槽位）</value></data>
+  <data name="Tip_LargeRefsEsl" xml:space="preserve"><value>开：插件标记为 ESL，不占插件槽位。关：作为占用槽位的普通 ESM。如果大型引用在远处闪烁，可以取消勾选来排除 ESL 标记的嫌疑，代价是占用一个槽位。</value></data>
+  <data name="Opt_LargeRefsEslNote" xml:space="preserve"><value>标记为 ESL 可节省插件槽位。如果大型引用在远处闪烁，可取消勾选改用普通 ESM 槽位。</value></data>
+  <data name="Opt_Underside" xml:space="preserve"><value>地形底面（供体积光照 MOD 使用）</value></data>
+  <data name="Tip_Underside" xml:space="preserve"><value>构建一个低分辨率、朝下的地形副本（meshes\Terrain\&lt;世界空间&gt;\&lt;世界空间&gt;_Underside.nif）和一个标记为 ESL 的 AnvilLOD.esp，将其放置在世界下方 500 单位处。DVLaSS、EVLaS 和 Community Shaders 的天空同步用它来防止阳光和阴影穿透地形。请在 MOD 管理器中启用该插件，并让它排在编辑世界空间的插件之后。不要与 DynDOLOD 自带的 underside 同时使用。</value></data>
+  <data name="Opt_ObjectBrightness" xml:space="preserve"><value>物件 LOD 亮度（建筑、岩石、草地 LOD）</value></data>
+  <data name="Tip_ObjectBrightness" xml:space="preserve"><value>通过顶点色调暗物件 LOD，因此 LOD 纹理本身（与其他 MOD 共享）不受影响。更改后会重建所有块。</value></data>
+  <data name="Opt_IncludeDisabled" xml:space="preserve"><value>包含初始禁用的引用</value></data>
+  <data name="Opt_IncludeEnableParent" xml:space="preserve"><value>包含有启用父级且初始启用的引用</value></data>
+  <data name="Tip_IncludeEnableParent" xml:space="preserve"><value>初始禁用且有启用父级的引用（任务建造或重建的地点，如 Helgen Reborn）始终不进入静态 LOD。</value></data>
+
+  <!-- Trees -->
+  <data name="CatTrees_Desc" xml:space="preserve"><value>广告牌树 LOD 与 3D 树 LOD 模型。</value></data>
+  <data name="Opt_TreeLod" xml:space="preserve"><value>树 LOD（使用 TexGen 输出的广告牌）</value></data>
+  <data name="Tip_TreeLod" xml:space="preserve"><value>从 textures\terrain\LODGen 广告牌（例如 TexGen 输出）构建引擎的广告牌树 LOD（.lst、.btt 和树木图集）。</value></data>
+  <data name="Opt_TreeBrightness" xml:space="preserve"><value>树 LOD 亮度</value></data>
+  <data name="Tip_TreeBrightness" xml:space="preserve"><value>调暗或调亮远景树木广告牌，以匹配你的光照/ENB。</value></data>
+  <data name="Opt_Tree3D" xml:space="preserve"><value>3D 树 LOD（有 3D 模型时使用）</value></data>
+  <data name="Tip_Tree3D" xml:space="preserve"><value>拥有 3D 树 LOD 模型（DynDOLOD 的 passthru_lod.nif，通过树木网格的 CRC32 匹配）的树木会进入物件 LOD：LOD4 用 3D 模型，LOD8 起用广告牌卡片。没有模型的树木保持广告牌树 LOD。需要模型的纹理，包括 TexGen 渲染的树干广告牌。</value></data>
+  <data name="Opt_Tree3DLod8" xml:space="preserve"><value>在 LOD8 也使用 3D 模型</value></data>
+  <data name="Tip_Tree3DLod8" xml:space="preserve"><value>中距离树木更美观，但 LOD 文件大得多。关闭：仅 LOD4 用 3D，LOD8 起用卡片。</value></data>
+  <data name="Opt_Tree3DByName" xml:space="preserve"><value>按树木名称接受模型（DynDOLOD 的默认方式）</value></data>
+  <data name="Tip_Tree3DByName" xml:space="preserve"><value>DynDOLOD Resources 几乎所有 3D 树模型都以树木的纯名称存放；文件名中的 CRC32 只用于重名冲突，DynDOLOD 本身也按名称匹配。开（默认）：不存在 CRC32 命名的模型时使用纯名称下的模型。关：只使用 CRC32 精确匹配，用 DynDOLOD Resources 时会一个都找不到。为树木网格的其他版本（被 MOD 或 PGPatcher 修改前）制作的模型可能略有出入。</value></data>
+
+  <!-- Grass and size -->
+  <data name="CatGrass_Desc" xml:space="preserve"><value>用你的草地缓存生成远景草地。这是对文件大小、磁盘占用和图形负载影响最大的选项。</value></data>
+  <data name="Opt_GrassLod" xml:space="preserve"><value>草地 LOD（来自草地缓存）</value></data>
+  <data name="Tip_GrassLod" xml:space="preserve"><value>用 NGIO/FasterNGIO 草地缓存为 LOD4 块添加远景草地，纹理使用 TexGen 草地广告牌。</value></data>
+  <data name="Opt_GrassDensity" xml:space="preserve"><value>草地 LOD 密度</value></data>
+  <data name="Tip_GrassDensity" xml:space="preserve"><value>缓存草地中保留为 LOD 草丛的比例，均匀铺在地面上。比例越高越茂密、越接近真实草地，但文件更大、需要绘制的三角面更多。所列大小是针对大型加载顺序的 Tamriel（物件 LOD、普通草地缓存）。Seasons of Skyrim 会为每个季节生成一整套，且夏季草地缓存比冬季密得多，因此季节输出会大几倍。</value></data>
+  <data name="Item_Density_Low" xml:space="preserve"><value>低（4%）：15M 三角面，0.7 GB</value></data>
+  <data name="Item_Density_Medium" xml:space="preserve"><value>中（8%）：20M 三角面，1.1 GB</value></data>
+  <data name="Item_Density_High" xml:space="preserve"><value>高（15%）：29M 三角面，1.7 GB</value></data>
+  <data name="Item_Density_Higher" xml:space="preserve"><value>更高（25%）：43M 三角面，2.7 GB</value></data>
+  <data name="Item_Density_VeryHigh" xml:space="preserve"><value>很高（40%）：60M 三角面，3.9 GB</value></data>
+  <data name="Item_Density_Ultra" xml:space="preserve"><value>超高（60%）：92M 三角面，6.1 GB，需要较强 GPU</value></data>
+  <data name="Item_Density_Full" xml:space="preserve"><value>全量（100%）：162M 三角面，11 GB，每根草</value></data>
+  <data name="Opt_GrassBrightness" xml:space="preserve"><value>草地 LOD 亮度：草丛顶部 / 根部</value></data>
+  <data name="Tip_GrassTop" xml:space="preserve"><value>每个草丛顶部的亮度（类似 DynDOLOD 的 GrassBrightnessTop）。如果远景草地比真实草地亮就调低。更改后会重建草地块。</value></data>
+  <data name="Tip_GrassBottom" xml:space="preserve"><value>草根的亮度（类似 DynDOLOD 的 GrassBrightnessBottom）。较暗的根部可以模拟草地内部的阴影。更改后会重建草地块。</value></data>
+  <data name="Section_Estimate" xml:space="preserve"><value>预计输出大小</value></data>
+  <data name="Estimate_Default" xml:space="preserve"><value>生成一次后，AnvilLOD 就能根据你自己的列表估算下次生成的大小。</value></data>
+  <data name="Estimate_Guide" xml:space="preserve"><value>作为单个大型世界空间（无四季）的参考：草地 4% 约 0.7 GB，15% 约 1.7 GB，40% 约 3.9 GB，100% 约 11 GB。四季会为每个季节添加一份有变化块的完整副本（夏季最大，其草地缓存要密得多）。</value></data>
+  <data name="Estimate_GrassPercent" xml:space="preserve"><value>{0}%</value></data>
+  <data name="Estimate_Tip" xml:space="preserve"><value>提示：按你电脑实际能承受的来设置，而不是选最大值。草地、树木和四季会相互叠加，超过显卡或内存承受能力的设置只会白白增加磁盘占用、加载时间和掉帧。拿不准就先用较低密度生成：游戏内的 Quality Layers 菜单之后可以降低负载，但没法把文件变小。</value></data>
+
+  <!-- Seasons, water, dynamic -->
+  <data name="CatDynamic_Desc" xml:space="preserve"><value>Seasons of Skyrim LOD、SKSE 插件、任务切换引用、水体和动画物件。</value></data>
+  <data name="Opt_DynamicLod" xml:space="preserve"><value>可切换引用的动态 LOD（SKSE）</value></data>
+  <data name="Tip_DynamicLod" xml:space="preserve"><value>任务会启用或禁用的引用（例如 Helgen Reborn 被摧毁/重建的城镇）不会生成静态 LOD。AnvilLOD SKSE 插件只在它们处于启用状态时显示其 LOD。</value></data>
+  <data name="Opt_GridObjects" xml:space="preserve"><value>远景水体和动画物件（SKSE）</value></data>
+  <data name="Tip_GridObjects" xml:space="preserve"><value>水面、瀑布、溪流、火焰、风车和船只（DynDOLOD 的“grid”物件，来自规则中的 Grid 列）由 AnvilLOD SKSE 插件在加载单元之外绘制，并保留动画。MOD 自带 _dyndolod_lod 网格时优先使用。</value></data>
+  <data name="Opt_WaterStandIns" xml:space="preserve"><value>溪流与池塘水体替身</value></data>
+  <data name="Tip_WaterStandIns" xml:space="preserve"><value>溪流和池塘水面（Water1024Creek、苔原溪流件等）使用真实水着色器，在加载单元之外会渲染成黑色。此项为每个这样的水面写入一个受光照的半透明“假水”副本到输出（meshes\anvillod\water），让 SKSE 插件改为绘制它，效果类似 CS Water Mod 自带的溪流孪生网格。海洋和大湖来自地形 LOD（xLODGen），不受影响。需要勾选“远景水体和动画物件（SKSE）”。原始网格不会被修改。</value></data>
+  <data name="Opt_Seasons" xml:space="preserve"><value>Seasons of Skyrim LOD</value></data>
+  <data name="Tip_Seasons" xml:space="preserve"><value>支持 powerof3 的 Seasons of Skyrim：为 Data\Seasons 中存在 form-swap INI 的每个季节写入季节性物件 LOD（*.WIN.bto、*.SUM.bto 等）。被替换的物件使用其替换版本的 LOD；无变化的块用硬链接，几乎不占额外磁盘空间。树和地形 LOD 四季不变。</value></data>
+  <data name="Opt_SkseDll" xml:space="preserve"><value>输出中包含 SKSE 插件（AnvilLOD.dll）</value></data>
+  <data name="Tip_SkseDll" xml:space="preserve"><value>把 AnvilLOD SKSE 插件放进输出文件夹，让 LOD 输出成为单一安装。自动检测会读取 SkyrimSE.exe（或 SkyrimVR.exe）的版本。如果你改用 AnvilLOD SKSE Plugin FOMOD 安装，请选“单独安装”（两者不要同时有）。</value></data>
+  <data name="Item_Skse_Auto" xml:space="preserve"><value>自动检测游戏版本</value></data>
+  <data name="Item_Skse_1170" xml:space="preserve"><value>SE 1.5.97 - AE 1.6.1170</value></data>
+  <data name="Item_Skse_Newer" xml:space="preserve"><value>高于 1.6.1170（1.7.x）</value></data>
+  <data name="Item_Skse_Separate" xml:space="preserve"><value>单独安装（FOMOD）</value></data>
+  <data name="Item_Skse_Vr" xml:space="preserve"><value>Skyrim VR 1.4.15</value></data>
+
+  <!-- Missing LOD finder -->
+  <data name="Finder_WarningTitle" xml:space="preserve"><value>⚠  缺失 LOD 查找器（Mod 作者工具）</value></data>
+  <data name="Finder_Title" xml:space="preserve"><value>缺失 LOD 查找器（Mod 作者工具）</value></data>
+  <data name="Warning_Generated" xml:space="preserve"><value>这些文件由 MOD 自带的模型和纹理自动生成，仅是起点：使用前请先在 NifSkope 和游戏内检查，并且只有在 MOD 作者许可的情况下才能分享。</value></data>
+  <data name="Finder_Description" xml:space="preserve"><value>查找某个插件中远距离可见却没有 LOD 的物件和树木（没有 LOD 网格、MNAM 路径损坏、LOD 纹理缺失、没有树木广告牌），并能生成它们：简化过的 name_lod_0/1/2.nif、TexGen 风格广告牌和 DynDOLOD 格式规则文件。所有内容都写入自己的文件夹，绝不会进入你的 LOD 输出。</value></data>
+  <data name="Agree_Text" xml:space="preserve"><value>我明白。生成的文件只是起点，使用前我会自行检查，并且只在 MOD 作者许可的情况下分享。</value></data>
+  <data name="Finder_Plugin" xml:space="preserve"><value>插件</value></data>
+  <data name="Tip_AuthorPlugin" xml:space="preserve"><value>要检查的插件，例如 The Archwood.esp</value></data>
+  <data name="Finder_OutputFolder" xml:space="preserve"><value>输出文件夹（一个新的独立 MOD）</value></data>
+  <data name="Tip_AuthorOut" xml:space="preserve"><value>默认为 MO2 实例中的 mods\AnvilLOD Author - &lt;插件&gt;</value></data>
+  <data name="Section_Generate" xml:space="preserve"><value>生成内容</value></data>
+  <data name="Finder_Meshes" xml:space="preserve"><value>LOD 网格</value></data>
+  <data name="Tip_AuthorMeshes" xml:space="preserve"><value>为没有 LOD 的大型物件生成简化的 name_lod_0/1/2.nif</value></data>
+  <data name="Finder_Billboards" xml:space="preserve"><value>树木广告牌</value></data>
+  <data name="Tip_AuthorBillboards" xml:space="preserve"><value>为没有广告牌的树木和大型植物生成 TexGen 风格广告牌（.dds + .txt）</value></data>
+  <data name="Finder_Rules" xml:space="preserve"><value>规则文件</value></data>
+  <data name="Tip_AuthorRules" xml:space="preserve"><value>为生成的网格生成 DynDOLOD\DynDOLOD_SSE_&lt;插件&gt;.ini（AnvilLOD 和 DynDOLOD 都可用）</value></data>
+  <data name="Opt_Overwrite" xml:space="preserve"><value>覆盖已有文件</value></data>
+  <data name="Tip_Overwrite" xml:space="preserve"><value>关闭时：输出文件夹中已有的文件（可能手动改过）会被保留</value></data>
+  <data name="Finder_Budget" xml:space="preserve"><value>三角面预算（推荐）</value></data>
+  <data name="Tip_AuthorBudget" xml:space="preserve"><value>让每个生成的 LOD 网格不超过同等尺寸 SE/AE LOD 网格通常使用的三角面数（测量自 DynDOLOD Resources SE 和 LOD Model Library）。关闭时：只受简化器的误差限制，密集模型会保持较重。</value></data>
+  <data name="Finder_FromSize" xml:space="preserve"><value>物件需要 LOD 的起始尺寸</value></data>
+  <data name="Finder_TreesFrom" xml:space="preserve"><value>单位；树木需要广告牌的起始高度</value></data>
+  <data name="Finder_UnitsTall" xml:space="preserve"><value>单位</value></data>
+  <data name="Btn_AuthorCheck" xml:space="preserve"><value>检查插件</value></data>
+  <data name="Tip_AuthorCheck" xml:space="preserve"><value>仅生成报告，除报告外不写入任何文件</value></data>
+  <data name="Btn_AuthorGenerate" xml:space="preserve"><value>生成缺失 LOD</value></data>
+  <data name="Btn_OpenOutput" xml:space="preserve"><value>打开输出文件夹</value></data>
+  <data name="Header_Kind" xml:space="preserve"><value>类型</value></data>
+  <data name="Header_EditorId" xml:space="preserve"><value>Editor ID</value></data>
+  <data name="Header_Placed" xml:space="preserve"><value>摆放数</value></data>
+  <data name="Header_Size" xml:space="preserve"><value>尺寸</value></data>
+  <data name="Header_Action" xml:space="preserve"><value>处理</value></data>
+  <data name="Header_Model" xml:space="preserve"><value>模型</value></data>
+  <data name="Author_ListFailedFmt" xml:space="preserve"><value>无法列出插件（可直接输入名称）：{0}</value></data>
+  <data name="Author_CheckedFmt" xml:space="preserve"><value>已检查 {0} 个摆放的物件/树木：{1} 个缺失 LOD 或广告牌，{2} 个文件损坏。 </value></data>
+  <data name="Author_GeneratedFmt" xml:space="preserve"><value>生成了 {0} 个 LOD 网格和 {1} 个广告牌{2}。 </value></data>
+  <data name="Author_PlusRules" xml:space="preserve"><value>，外加一个规则文件</value></data>
+  <data name="Author_ReportFmt" xml:space="preserve"><value>报告：{0}</value></data>
+  <data name="Author_DoneFmt" xml:space="preserve"><value>Mod 作者检查完成，用时 {0:F0} 秒</value></data>
+  <data name="Msg_AuthorTitle" xml:space="preserve"><value>Mod 作者工具</value></data>
+
+  <!-- LOD Mesh Maker -->
+  <data name="Maker_WarningTitle" xml:space="preserve"><value>⚠  LOD 网格制作器</value></data>
+  <data name="Maker_Title" xml:space="preserve"><value>LOD 网格制作器（Mod 作者工具）</value></data>
+  <data name="Maker_Description" xml:space="preserve"><value>从你选择的完整模型制作 LOD 网格（name_lod_0/1/2.nif）：丢弃细小部件，其余简化，保留模型原有纹理，不复制碰撞。DynDOLOD 格式规则文件让 AnvilLOD 和 DynDOLOD 使用它们。只读取模型文件，因此不需要加载顺序。</value></data>
+  <data name="Maker_Models" xml:space="preserve"><value>模型（每行一个：.nif 文件、MOD 文件夹、其 meshes 文件夹，或任意模型文件夹）</value></data>
+  <data name="Tip_MakerInput" xml:space="preserve"><value>会搜索文件夹中的 .nif 文件（若文件夹包含 meshes 子文件夹则在其中搜索）。本身已是 LOD 网格的模型会被跳过。</value></data>
+  <data name="Btn_AddFiles" xml:space="preserve"><value>添加文件…</value></data>
+  <data name="Btn_AddFolder" xml:space="preserve"><value>添加文件夹…</value></data>
+  <data name="Btn_Clear" xml:space="preserve"><value>清空</value></data>
+  <data name="Maker_OutputTo" xml:space="preserve"><value>LOD 网格输出到</value></data>
+  <data name="Maker_NewMod" xml:space="preserve"><value>我 MO2 mods 文件夹里的新 MOD（需要上方选择 MO2 实例模式）</value></data>
+  <data name="Maker_ModName" xml:space="preserve"><value>MOD 名称</value></data>
+  <data name="Tip_MakerModName" xml:space="preserve"><value>将成为 MO2 实例中的 mods\&lt;名称&gt;。用相同名称再次运行可向其中添加更多模型。</value></data>
+  <data name="Maker_ChooseFolder" xml:space="preserve"><value>我自己选择的文件夹（新建或已有）</value></data>
+  <data name="Tip_MakerOut" xml:space="preserve"><value>使用单独的文件夹，不要用 LOD 输出文件夹</value></data>
+  <data name="Maker_Levels" xml:space="preserve"><value>LOD 层级</value></data>
+  <data name="Maker_Lod0" xml:space="preserve"><value>LOD 0（LOD4）</value></data>
+  <data name="Tip_MakerLod0" xml:space="preserve"><value>最近：细节最多</value></data>
+  <data name="Maker_Lod1" xml:space="preserve"><value>LOD 1（LOD8）</value></data>
+  <data name="Maker_Lod2" xml:space="preserve"><value>LOD 2（LOD16，也用于 LOD32）</value></data>
+  <data name="Tip_MakerLod2" xml:space="preserve"><value>最远：细节最少</value></data>
+  <data name="Maker_Detail" xml:space="preserve"><value>细节</value></data>
+  <data name="Tip_MakerDetail" xml:space="preserve"><value>移除多少细节。越精细保留的三角面越多。非常密集的模型在“正常”档仍会很重：请用更粗的档。</value></data>
+  <data name="Item_Detail_Finer" xml:space="preserve"><value>较精细（保留更多）</value></data>
+  <data name="Item_Detail_Normal" xml:space="preserve"><value>正常（默认）</value></data>
+  <data name="Item_Detail_Coarser" xml:space="preserve"><value>较粗略</value></data>
+  <data name="Item_Detail_Much" xml:space="preserve"><value>更粗略</value></data>
+  <data name="Maker_SkipSmaller" xml:space="preserve"><value>跳过小于此尺寸的模型</value></data>
+  <data name="Tip_MakerMinSize" xml:space="preserve"><value>游戏单位下的最大边长。0 = 为选中的每个模型都生成 LOD。</value></data>
+  <data name="Maker_Units" xml:space="preserve"><value>单位</value></data>
+  <data name="Maker_Budget" xml:space="preserve"><value>每个模型的三角面预算</value></data>
+  <data name="Tip_MakerBudget" xml:space="preserve"><value>推荐：按模型大小增长的各层级预算，来自 SE/AE 现有列表已在使用的 LOD 网格。自定义：你自己设定的上限。关闭：只有“细节”设置限制三角面。</value></data>
+  <data name="Item_Budget_Recommended" xml:space="preserve"><value>推荐（按模型大小）</value></data>
+  <data name="Item_Budget_Custom" xml:space="preserve"><value>自定义</value></data>
+  <data name="Item_Budget_Off" xml:space="preserve"><value>关闭</value></data>
+  <data name="Tip_MakerBudget0" xml:space="preserve"><value>LOD 0 的最大三角面数（0 = 不限制）</value></data>
+  <data name="Tip_MakerBudget1" xml:space="preserve"><value>LOD 1 的最大三角面数（0 = 不限制）</value></data>
+  <data name="Tip_MakerBudget2" xml:space="preserve"><value>LOD 2 的最大三角面数（0 = 不限制）</value></data>
+  <data name="Maker_HintRecommended" xml:space="preserve"><value>各层级在 LOD 0 / 1 / 2 的最大三角面数，按模型最大边长划分：{0}。依据：{1}。</value></data>
+  <data name="Maker_HintCustom" xml:space="preserve"><value>每个层级由你自己设定上限；0 表示该层级不限制。较远的层级的三角面数绝不会比较近的多。</value></data>
+  <data name="Maker_HintOff" xml:space="preserve"><value>无预算：只有“细节”设置限制三角面，因此非常密集的模型会保持较重。</value></data>
+  <data name="Tip_MakerRules" xml:space="preserve"><value>生成 DynDOLOD\DynDOLOD_SSE_&lt;名称&gt;.ini，让这些网格被用于它们对应的模型。已有文件只会添加新模型的条目。</value></data>
+  <data name="Btn_MakeLod" xml:space="preserve"><value>制作 LOD 网格</value></data>
+  <data name="Header_SourceTris" xml:space="preserve"><value>源三角面</value></data>
+  <data name="Header_Result" xml:space="preserve"><value>结果</value></data>
+  <data name="Maker_SummaryFmt" xml:space="preserve"><value>完成 {0} 个模型，写入 {1} 个 LOD 网格{2}{3}。输出：{4}。报告：{5}</value></data>
+  <data name="Maker_SkippedFmt" xml:space="preserve"><value>，跳过 {0} 个（见表格）</value></data>
+  <data name="Maker_RulesWritten" xml:space="preserve"><value>，已写入规则文件</value></data>
+  <data name="Maker_DoneFmt" xml:space="preserve"><value>LOD 网格制作完成，用时 {0:F0} 秒</value></data>
+  <data name="Msg_LodMakerTitle" xml:space="preserve"><value>LOD 网格制作器</value></data>
+
+  <!-- Messages and dialogs -->
+  <data name="Msg_ChooseMo2" xml:space="preserve"><value>请选择你的 MO2 实例文件夹和配置档。</value></data>
+  <data name="Msg_PluginsNeedsData" xml:space="preserve"><value>使用 plugins.txt 时还需要 Data 文件夹。</value></data>
+  <data name="Msg_PickLevel" xml:space="preserve"><value>请至少选择一个 LOD 层级。</value></data>
+  <data name="Msg_ScanFailed" xml:space="preserve"><value>扫描失败</value></data>
+  <data name="Msg_ChoosePluginOutput" xml:space="preserve"><value>请选择插件和输出文件夹。</value></data>
+  <data name="Msg_SeparateFolder" xml:space="preserve"><value>请使用单独的文件夹，不要用 LOD 输出文件夹。</value></data>
+  <data name="Msg_CouldNotSave" xml:space="preserve"><value>无法保存</value></data>
+  <data name="Msg_AddModels" xml:space="preserve"><value>请先添加用于制作 LOD 网格的模型（或模型文件夹）。</value></data>
+  <data name="Msg_ChooseOutput" xml:space="preserve"><value>请选择输出文件夹。</value></data>
+  <data name="Msg_ModNameInvalid" xml:space="preserve"><value>请给新 MOD 起个名字（不能含 \ / : * ? " &lt; &gt; |）。</value></data>
+  <data name="Msg_NewModNeedsMo2" xml:space="preserve"><value>新建 MOD 需要 MO2 实例模式（用于定位你的 mods 文件夹）。请改选“我自己选择的文件夹”，或把数据源切换为 MO2 实例。</value></data>
+  <data name="Dlg_SelectMo2" xml:space="preserve"><value>选择 MO2 实例文件夹（包含 ModOrganizer.ini）</value></data>
+  <data name="Dlg_SelectData" xml:space="preserve"><value>选择 Skyrim 的 Data 文件夹</value></data>
+  <data name="Dlg_SelectPluginsTxt" xml:space="preserve"><value>选择 plugins.txt</value></data>
+  <data name="Dlg_SelectOutput" xml:space="preserve"><value>选择生成的 LOD 的输出文件夹</value></data>
+  <data name="Dlg_SelectRules" xml:space="preserve"><value>选择你的 LOD 规则文件</value></data>
+  <data name="Dlg_SelectDynDolod" xml:space="preserve"><value>选择你的 DynDOLOD 文件夹（包含 DynDOLODx64.exe 的那个）</value></data>
+  <data name="Dlg_SelectAuthorOut" xml:space="preserve"><value>为生成的文件选择一个空文件夹（作为新的 MO2 MOD）</value></data>
+  <data name="Dlg_SelectModels" xml:space="preserve"><value>选择完整模型</value></data>
+  <data name="Dlg_SelectModFolder" xml:space="preserve"><value>选择 MOD 文件夹、meshes 文件夹或模型文件夹</value></data>
+  <data name="Dlg_SelectMakerOut" xml:space="preserve"><value>选择 LOD 网格的目标文件夹（新建或已有的 MOD 文件夹）</value></data>
+  <data name="Dlg_SaveScan" xml:space="preserve"><value>保存扫描报告</value></data>
+  <data name="Filter_TextFiles" xml:space="preserve"><value>文本文件 (*.txt)</value></data>
+  <data name="Filter_AllFiles" xml:space="preserve"><value>所有文件</value></data>
+  <data name="Filter_AllFilesStar" xml:space="preserve"><value>所有文件 (*.*)</value></data>
+  <data name="Filter_RuleFiles" xml:space="preserve"><value>规则文件 (*.ini)</value></data>
+  <data name="Filter_Models" xml:space="preserve"><value>模型 (*.nif)</value></data>
+  <data name="Filter_Json" xml:space="preserve"><value>JSON (*.json)|*.json</value></data>
+
+  <!-- Size estimate (MainWindow.Layout.cs) -->
+  <data name="Estimate_TextNone" xml:space="preserve"><value>大小估算：生成一次后即可按你的列表计算。</value></data>
+  <data name="Estimate_TextFmt" xml:space="preserve"><value>预计大小：约 {0}{1}</value></data>
+  <data name="Estimate_NoneSeasons" xml:space="preserve"><value>（不含四季）</value></data>
+  <data name="Estimate_SeasonsNotMeasured" xml:space="preserve"><value> + 季节副本（尚未测量：开启四季生成一次）</value></data>
+  <data name="Estimate_SeasonsFmt" xml:space="preserve"><value> + 四季 {0}</value></data>
+  <data name="Estimate_DetailFmt" xml:space="preserve"><value>约 {0} 的基础物件 LOD{1}，按你上次生成（{2}，草地{3}）缩放。仅为估算：实际大小取决于你的列表。{4}</value></data>
+  <data name="Estimate_GrassOff" xml:space="preserve"><value>关闭</value></data>
+
+  <!-- Rules editor -->
+  <data name="Rules_WindowTitle" xml:space="preserve"><value>LOD 规则</value></data>
+  <data name="Editor_Find" xml:space="preserve"><value>查找</value></data>
+  <data name="Tip_EditorFilter" xml:space="preserve"><value>只显示网格掩码、FormID 或文件名包含此文本的规则</value></data>
+  <data name="Btn_LoadFile" xml:space="preserve"><value>载入文件…</value></data>
+  <data name="Tip_LoadFile" xml:space="preserve"><value>用 DynDOLOD 格式规则文件中的规则替换你的自定义规则。</value></data>
+  <data name="Btn_SaveAs" xml:space="preserve"><value>另存为…</value></data>
+  <data name="Btn_Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Tip_Save" xml:space="preserve"><value>把你的自定义规则写入自定义规则文件并启用它。</value></data>
+  <data name="Btn_Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="Btn_AddRule" xml:space="preserve"><value>添加规则…</value></data>
+  <data name="Btn_EditRule" xml:space="preserve"><value>编辑…</value></data>
+  <data name="Tip_EditRule" xml:space="preserve"><value>双击行也可以编辑。编辑 DynDOLOD 的规则会生成你自己的副本，并优先生效。</value></data>
+  <data name="Btn_RemoveRule" xml:space="preserve"><value>删除我的规则</value></data>
+  <data name="Tip_RemoveRule" xml:space="preserve"><value>删除你的一条规则；如果它替换了 DynDOLOD 的规则，则后者重新生效。</value></data>
+  <data name="Tip_Up" xml:space="preserve"><value>上移你的规则（第一条匹配的规则生效）</value></data>
+  <data name="Tip_Down" xml:space="preserve"><value>下移你的规则</value></data>
+  <data name="Btn_ResetRules" xml:space="preserve"><value>重置我的全部规则</value></data>
+  <data name="Header_Mask" xml:space="preserve"><value>网格掩码 / 引用</value></data>
+  <data name="Header_Flags" xml:space="preserve"><value>标志</value></data>
+  <data name="Header_Grid" xml:space="preserve"><value>Grid</value></data>
+  <data name="Header_Reference" xml:space="preserve"><value>Reference</value></data>
+  <data name="Header_From" xml:space="preserve"><value>来源</value></data>
+  <data name="Rule_None" xml:space="preserve"><value>无</value></data>
+  <data name="Editor_MyRules" xml:space="preserve"><value>我的规则</value></data>
+  <data name="Editor_TitleFmt" xml:space="preserve"><value>LOD 规则：{0}{1}{2}</value></data>
+  <data name="Editor_WithCandles" xml:space="preserve"><value> + Candles</value></data>
+  <data name="Editor_WithFxGlow" xml:space="preserve"><value> + FXGlow</value></data>
+  <data name="Editor_InfoNoDynDolod" xml:space="preserve"><value>未设置 DynDOLOD 文件夹，因此不显示 DynDOLOD 自带的规则。你仍可以在这里编写自己的规则。</value></data>
+  <data name="Editor_Info" xml:space="preserve"><value>DynDOLOD 的规则按生效顺序列出；第一条匹配的规则生效。你自己的规则（橙色）排在最前并优先生效。仅对特定插件生效的规则不在此列出。双击行可编辑。</value></data>
+  <data name="Editor_CountFmt" xml:space="preserve"><value>你的规则 {0} 条，DynDOLOD 的规则 {1} 条{2}</value></data>
+  <data name="Editor_ShownFmt" xml:space="preserve"><value>（显示 {0} 条）</value></data>
+  <data name="Editor_NoFile" xml:space="preserve"><value>自定义规则文件：暂无。保存时会创建。</value></data>
+  <data name="Editor_FileFmt" xml:space="preserve"><value>自定义规则文件：{0}{1}</value></data>
+  <data name="Editor_Unsaved" xml:space="preserve"><value>（有未保存的修改）</value></data>
+  <data name="Editor_DefaultFileFmt" xml:space="preserve"><value>AnvilLOD custom rules - preset {0}.ini</value></data>
+  <data name="Msg_ResetRules" xml:space="preserve"><value>从列表中移除你的全部规则？文件只会在你保存时被修改。</value></data>
+  <data name="Msg_NoRulesInFile" xml:space="preserve"><value>该文件中没有 LODGen 规则。仍要使用它吗？</value></data>
+  <data name="Msg_CouldNotWriteFmt" xml:space="preserve"><value>无法写入文件：
+{0}</value></data>
+  <data name="Msg_SaveChanges" xml:space="preserve"><value>要把修改保存到自定义规则文件吗？</value></data>
+  <data name="Dlg_OpenRuleFile" xml:space="preserve"><value>打开 LOD 规则文件</value></data>
+  <data name="Dlg_SaveRules" xml:space="preserve"><value>保存你的 LOD 规则</value></data>
+
+  <!-- Rule edit dialog -->
+  <data name="Dialog_Title" xml:space="preserve"><value>编辑网格掩码 / 引用规则</value></data>
+  <data name="Dialog_MaskLabel" xml:space="preserve"><value>网格掩码 / 引用 FormID</value></data>
+  <data name="Tip_DialogMask" xml:space="preserve"><value>网格掩码（'Path\To\Model.nif' 或基础记录所用完整模型路径的一部分，如 tree、\road、rtkeep），或引用/基础记录的 FormID（'Plugin.esp;000F64BF'）。单条反斜杠 \ 是兜底规则。</value></data>
+  <data name="Dialog_MaskHelp" xml:space="preserve"><value>网格掩码：完整模型路径的一部分。引用 FormID：Plugin.esp;引用或基础记录的 FormID。单条反斜杠 \ 是兜底规则（总是最后应用）。</value></data>
+  <data name="Dialog_SectionFlags" xml:space="preserve"><value>标志</value></data>
+  <data name="Dialog_FlagVwd" xml:space="preserve"><value>VWD - 远距离可见：仅当存在匹配的 LOD 模型时应用此规则</value></data>
+  <data name="Dialog_FlagNoGlow" xml:space="preserve"><value>NoGlow - 无发光窗户（会保存在文件中；AnvilLOD 暂未应用）</value></data>
+  <data name="Dialog_FlagNoMato" xml:space="preserve"><value>NoMATO - 无材质对象着色器：不将其应用于 LOD 模型</value></data>
+  <data name="Dialog_FlagDynamic" xml:space="preserve"><value>Dynamic - 强制动态 LOD：同时添加动态 LOD 和物件 LOD 模型</value></data>
+  <data name="Dialog_FlagTree" xml:space="preserve"><value>TREE - 同时将规则应用于树木基础记录和带 Has Tree LOD 标志的记录</value></data>
+  <data name="Dialog_SectionStatic" xml:space="preserve"><value>静态物件 LOD</value></data>
+  <data name="Dialog_Level4" xml:space="preserve"><value>LOD 层级 4</value></data>
+  <data name="Dialog_Level8" xml:space="preserve"><value>LOD 层级 8</value></data>
+  <data name="Dialog_Level16" xml:space="preserve"><value>LOD 层级 16</value></data>
+  <data name="Dialog_Level32" xml:space="preserve"><value>LOD 层级 32</value></data>
+  <data name="Dialog_LevelHelp" xml:space="preserve"><value>Level0 = LOD4 模型，Level1 = LOD8，Level2 = LOD16。BillboardN = 树木广告牌。Full model = 物件自身模型。None = 该层级无 LOD。</value></data>
+  <data name="Dialog_SectionDynamic" xml:space="preserve"><value>动态 LOD</value></data>
+  <data name="Tip_DialogReference" xml:space="preserve"><value>原始引用的处理方式。会保存在文件中；AnvilLOD 暂未使用此列。</value></data>
+  <data name="Dialog_GridHelp" xml:space="preserve"><value>Grid：水体、火焰、风车等只有动态 LOD 的物件（Near LOD、Far LOD、Far Full）。Reference 列会保存在文件中，但 AnvilLOD 暂未使用。</value></data>
+  <data name="Dialog_Description" xml:space="preserve"><value>描述</value></data>
+  <data name="Msg_RuleNeedsMask" xml:space="preserve"><value>规则需要网格掩码或引用 FormID。</value></data>
+  <data name="Btn_Ok" xml:space="preserve"><value>确定</value></data>
+</root>

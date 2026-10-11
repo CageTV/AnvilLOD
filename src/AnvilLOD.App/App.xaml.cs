@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using AnvilLOD.Core.Localization;
 
 namespace AnvilLOD.App;
 
@@ -14,6 +15,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         StartupLog.Write("OnStartup");
+        // Before the main window is built, so its strings resolve in the saved language from the start.
+        Locale.Set(AppSettings.Load().Language);
         base.OnStartup(e);
     }
 

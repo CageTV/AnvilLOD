@@ -1,23 +1,24 @@
 <Window x:Class="AnvilLOD.App.RuleEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Edit mesh mask / reference rule" Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        xmlns:loc="clr-namespace:AnvilLOD.App.Localization"
+        Title="{loc:Loc Dialog_Title}" Width="640" SizeToContent="Height" ResizeMode="NoResize"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}" FontFamily="Segoe UI" FontSize="13"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <StackPanel Margin="18,14,18,16">
-        <TextBlock Text="Mesh mask / reference FormID" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
-        <TextBox x:Name="MaskBox" ToolTip="A mesh mask, 'Path\To\Model.nif' or part of the path of the full model a base record uses (tree, \road, rtkeep), or the FormID of a reference or base record, 'Plugin.esp;000F64BF'. The catch-all rule is a single backslash." />
+        <TextBlock Text="{loc:Loc Dialog_MaskLabel}" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
+        <TextBox x:Name="MaskBox" ToolTip="{loc:Loc Tip_DialogMask}" />
         <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
-                   Text="Mesh mask: part of the full model's path. Reference FormID: Plugin.esp;FormID of a reference or base record. A single \ is the catch-all rule (always applied last)." />
+                   Text="{loc:Loc Dialog_MaskHelp}" />
 
-        <TextBlock Text="FLAGS" Style="{StaticResource SectionHeader}" />
-        <CheckBox x:Name="VwdCheck" Content="VWD - Visible When Distant: apply the rule only if a matching LOD model exists" />
-        <CheckBox x:Name="NoGlowCheck" Content="NoGlow - no glowing windows (saved in the file; AnvilLOD does not apply it yet)" />
-        <CheckBox x:Name="NoMatoCheck" Content="NoMATO - no material object shader: do not apply it to the LOD model" />
-        <CheckBox x:Name="DynamicCheck" Content="Dynamic - force dynamic LOD: adds both dynamic LOD and the object LOD model" />
-        <CheckBox x:Name="TreeCheck" Content="TREE - also apply the rule to tree base records and ones with the Has Tree LOD flag" />
+        <TextBlock Text="{loc:Loc Dialog_SectionFlags}" Style="{StaticResource SectionHeader}" />
+        <CheckBox x:Name="VwdCheck" Content="{loc:Loc Dialog_FlagVwd}" />
+        <CheckBox x:Name="NoGlowCheck" Content="{loc:Loc Dialog_FlagNoGlow}" />
+        <CheckBox x:Name="NoMatoCheck" Content="{loc:Loc Dialog_FlagNoMato}" />
+        <CheckBox x:Name="DynamicCheck" Content="{loc:Loc Dialog_FlagDynamic}" />
+        <CheckBox x:Name="TreeCheck" Content="{loc:Loc Dialog_FlagTree}" />
 
-        <TextBlock Text="STATIC OBJECT LOD" Style="{StaticResource SectionHeader}" />
+        <TextBlock Text="{loc:Loc Dialog_SectionStatic}" Style="{StaticResource SectionHeader}" />
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="22" />
@@ -26,39 +27,39 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="LOD level 4" VerticalAlignment="Center" Margin="0,0,10,8" />
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Loc Dialog_Level4}" VerticalAlignment="Center" Margin="0,0,10,8" />
             <ComboBox x:Name="Lod4Box" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" />
-            <TextBlock Grid.Row="0" Grid.Column="3" Text="LOD level 8" VerticalAlignment="Center" Margin="0,0,10,8" />
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="{loc:Loc Dialog_Level8}" VerticalAlignment="Center" Margin="0,0,10,8" />
             <ComboBox x:Name="Lod8Box" Grid.Row="0" Grid.Column="4" Margin="0,0,0,8" />
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="LOD level 16" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Loc Dialog_Level16}" VerticalAlignment="Center" Margin="0,0,10,0" />
             <ComboBox x:Name="Lod16Box" Grid.Row="1" Grid.Column="1" />
-            <TextBlock Grid.Row="1" Grid.Column="3" Text="LOD level 32" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Grid.Row="1" Grid.Column="3" Text="{loc:Loc Dialog_Level32}" VerticalAlignment="Center" Margin="0,0,10,0" />
             <ComboBox x:Name="Lod32Box" Grid.Row="1" Grid.Column="4" />
         </Grid>
         <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
-                   Text="Level0 = the LOD4 model, Level1 = LOD8, Level2 = LOD16. BillboardN = a tree billboard. Full model = the object's own model. None = no LOD at this level." />
+                   Text="{loc:Loc Dialog_LevelHelp}" />
 
-        <TextBlock Text="DYNAMIC LOD" Style="{StaticResource SectionHeader}" />
+        <TextBlock Text="{loc:Loc Dialog_SectionDynamic}" Style="{StaticResource SectionHeader}" />
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="22" />
                 <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Grid" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Grid.Column="0" Text="{loc:Loc Header_Grid}" VerticalAlignment="Center" Margin="0,0,10,0" />
             <ComboBox x:Name="GridBox" Grid.Column="1" />
-            <TextBlock Grid.Column="3" Text="Reference" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock Grid.Column="3" Text="{loc:Loc Header_Reference}" VerticalAlignment="Center" Margin="0,0,10,0" />
             <ComboBox x:Name="ReferenceBox" Grid.Column="4"
-                      ToolTip="What happens to the original reference. It is kept in the file; AnvilLOD does not act on this column yet." />
+                      ToolTip="{loc:Loc Tip_DialogReference}" />
         </Grid>
         <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
-                   Text="Grid: water, fires, windmills and other objects that only get dynamic LOD (Near LOD, Far LOD, Far Full). The Reference column is saved in the file but AnvilLOD does not act on it yet." />
+                   Text="{loc:Loc Dialog_GridHelp}" />
 
-        <TextBlock Text="Description" Style="{StaticResource FieldLabel}" Margin="0,12,0,3" />
+        <TextBlock Text="{loc:Loc Dialog_Description}" Style="{StaticResource FieldLabel}" Margin="0,12,0,3" />
         <TextBox x:Name="DescriptionBox" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="OK" Style="{StaticResource PrimaryButton}" Width="90" Margin="0,0,8,0" Click="Ok_Click" IsDefault="True" />
-            <Button Content="Cancel" Width="90" IsCancel="True" />
+            <Button Content="{loc:Loc Btn_Ok}" Style="{StaticResource PrimaryButton}" Width="90" Margin="0,0,8,0" Click="Ok_Click" IsDefault="True" />
+            <Button Content="{loc:Loc Btn_Cancel}" Width="90" IsCancel="True" />
         </StackPanel>
     </StackPanel>
 </Window>

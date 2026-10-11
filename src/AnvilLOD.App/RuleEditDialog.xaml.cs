@@ -1,4 +1,5 @@
 using System.Windows;
+using AnvilLOD.App.Localization;
 using AnvilLOD.Core.Lod;
 
 namespace AnvilLOD.App;
@@ -49,7 +50,7 @@ public partial class RuleEditDialog : Window
         var mask = MaskBox.Text.Trim().Replace('/', '\\');
         if (mask.Length == 0)
         {
-            MessageBox.Show(this, "The rule needs a mesh mask or a reference FormID.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, L.T("Msg_RuleNeedsMask"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         _rule.Mask = mask;

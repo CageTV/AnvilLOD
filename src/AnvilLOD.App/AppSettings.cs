@@ -66,6 +66,7 @@ public sealed class AppSettings
     public int GrassBottom { get; set; } = 50;   // ... and at the roots (GrassBrightnessBottom)
     public bool IncludeDisabled { get; set; }
     public bool IncludeEnableParented { get; set; } = true;
+    public string Language { get; set; } = "";   // UI language: "" = follow the system, then the codes of Locale.Languages (e.g. "en", "zh-CN")
 
     // ----- presets: the three tabs above the settings column -----
 
