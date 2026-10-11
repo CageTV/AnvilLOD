@@ -69,6 +69,22 @@ public static class UndersidePluginWriter
                 var ws = ctx.GetOrAddAsOverride(esp);
                 top = ws.TopCell ??= new Cell(esp);
             }
+            // The worldspace record that came along carries the winner's max height data (MHDT). Several plugins (the
+            // Unofficial Patch, patches copying it, ...) leave an old table in it, and DynDOLOD's own worldspace override
+            // carries none, so ours doesn't either: stale max heights make the engine cull terrain LOD that is taller than
+            // the table says (rectangular holes), and the underside then shows through them as a flat slab.
+            var carried = esp.Worldspaces.FirstOrDefault(w => w.FormKey == ctx.Record.FormKey);
+            if (carried is not null) carried.MaxHeight = null;
+            // Same for the persistent cell: the override copies the winner's occlusion data (TVDT), max heights and region
+            // list, and a stale copy of those culls terrain and LOD around the cell. DynDOLOD's override is empty; ours is too.
+            top.OcclusionData = null;
+            top.MaxHeightData = null;
+            top.Regions = null;
+            // The winner also flags the persistent cell as having water (DATA 2) with a water height and a grid. DynDOLOD's
+            // override has none of them, and the plugin with them in it showed a teal translucent slab near Dragon Bridge.
+            top.Flags = 0;
+            top.WaterHeight = null;
+            top.Grid = null;
             top.Persistent.Clear();
             top.Temporary.Clear();
             top.Persistent.Add(new PlacedObject(esp)

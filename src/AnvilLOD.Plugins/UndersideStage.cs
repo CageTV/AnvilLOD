@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using AnvilLOD.Core.World;
 using AnvilLOD.Meshes;
+using Mutagen.Bethesda.Plugins.Order;
+using Mutagen.Bethesda.Skyrim;
 
 namespace AnvilLOD.Plugins;
 
@@ -28,10 +30,28 @@ public static class UndersideStage
         int blocks = 0, written = 0, unchanged = 0;
         long tris = 0;
 
+        var parents = ParentWorldspaces(game);
+
         foreach (var (ws, grid) in grids.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
             ct.ThrowIfCancellationRequested();
             if (IgnoredWorlds.Contains(ws) || grid.Settings.MaxLevel < (int)LodLevel.Lod32) continue;
+
+            // A child worldspace whose terrain sits on cell coordinates its parent also uses (all of Tamriel's children do;
+            // DeepwoodRedoubtWorld even repeats the Dragon Bridge cells) can't have an always-enabled underside: the reference
+            // is a full-LOD persistent one, and the engine drew DeepwoodRedoubtWorld's in Tamriel too, as a translucent slab at
+            // Dragon Bridge (tested in game: Tamriel + Solstheim clean, + Deepwood slab). DynDOLOD keeps such references
+            // disabled until a script enables them; without that script the safe choice is none.
+            if (parents.TryGetValue(ws, out var parent) && grids.ContainsKey(parent))
+            {
+                var shared = terrain.CellsOf(ws).Intersect(terrain.CellsOf(parent)).Count();
+                if (shared > 0)
+                {
+                    // Expected, not a problem: log only, so the summary doesn't show a warning on every run.
+                    progress?.Report($"Underside: {ws} gets none: it is a child of {parent} on {shared} of the same cell coordinates, where an always-enabled underside is drawn in {parent} as a slab.");
+                    continue;
+                }
+            }
 
             var origins = terrain.CellsOf(ws)
                 .Select(c => grid.BlockOrigin(c, LodLevel.Lod32))
@@ -78,6 +98,20 @@ public static class UndersideStage
         else RemovePlugin(output);
 
         return new Result(made.Count, blocks, tris, written, unchanged, plugin, sw.Elapsed);
+    }
+
+    /// <summary>EditorID of each worldspace's parent worldspace (winning records), for the ones that have one.</summary>
+    private static Dictionary<string, string> ParentWorldspaces(GameContext game)
+    {
+        var worlds = game.LoadOrder.PriorityOrder.Worldspace().WinningOverrides().ToList();
+        var byKey = worlds.Where(w => w.EditorID is not null).ToDictionary(w => w.FormKey, w => w.EditorID!);
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in worlds)
+        {
+            if (w.EditorID is null || w.Parent is null) continue;
+            if (byKey.TryGetValue(w.Parent.Worldspace.FormKey, out var parent)) result[w.EditorID] = parent;
+        }
+        return result;
     }
 
     /// <summary>Deletes every underside file this tool wrote (used when the option is off).</summary>
