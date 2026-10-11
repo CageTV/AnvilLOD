@@ -28,15 +28,17 @@ public static class BtoBuilder
     /// <summary>
     /// The shape name the engine reads the LOD material from: <c>obj</c> normally, <c>objSnow</c>/<c>objAsh</c> for objects
     /// whose base record has a snow/ash Material, and the <c>HD</c> form when the shape uses full textures instead of LOD
-    /// textures (DynDOLOD's output does the same; the nearest mountains use the HD material).
+    /// textures, at LOD4 only: DynDOLOD's documentation says the higher LOD levels use only the non-HD snow shader by default, and its
+    /// output has about 5% of its LOD8 snow shapes and 2% of its LOD16 ones in the HD form, against 20% at LOD4 here before this rule.
+    /// (https://dyndolod.info/Help/Snow-Ash-LOD-Shader: "HD objects are used only at LOD Level 4".)
     /// </summary>
-    internal static string ShapeNameFor(LodShaderKind kind, LodMaterial m)
+    internal static string ShapeNameFor(LodShaderKind kind, LodMaterial m, LodLevel level)
     {
         if (kind == LodShaderKind.None) return ObjName;
         var tex = m.Textures.Count > 0 ? m.Textures[0] : null;
         bool lodTexture = tex is not null && tex.Replace('/', '\\').TrimStart('\\')
             .StartsWith("textures\\lod\\", StringComparison.OrdinalIgnoreCase);
-        return ObjName + (kind == LodShaderKind.Snow ? "Snow" : "Ash") + (lodTexture ? "" : "HD");
+        return ObjName + (kind == LodShaderKind.Snow ? "Snow" : "Ash") + (lodTexture || level != LodLevel.Lod4 ? "" : "HD");
     }
 
     public sealed record Result(byte[] Bytes, int Shapes, int Triangles, int Vertices, int RefsPlaced, int RefsSkipped, int TrianglesCulled = 0,
@@ -100,7 +102,7 @@ public static class BtoBuilder
                 if (part.VertexCount > MaxIndex || part.TriangleCount > MaxIndex) continue; // can't happen for valid SSE shapes
                 // A layer other than plain objects never shares a shape with another layer, even with the same material.
                 // The game puts its snow/ash LOD material on shapes by NAME, so those parts get their own shapes.
-                var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material) : ObjName;
+                var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material, quad.Level) : ObjName;
                 var chunkKey = category == LodLayers.Objects ? part.Material.Key : part.Material.Key + "|layer:" + category;
                 if (shapeName != ObjName) chunkKey += "|shape:" + shapeName;
                 if (!chunks.TryGetValue(chunkKey, out var list))
