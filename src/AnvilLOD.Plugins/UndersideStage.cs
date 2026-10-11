@@ -20,13 +20,17 @@ public static class UndersideStage
         "Blackreach", "DLC01SoulCairn", "DLC2ApocryphaWorld", "ccBGSSSE067DeadlandsWorld", "ccKRTSSE001QNWorld", "JaphetsFollyWorld",
     };
 
-    public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed);
+    /// <summary>Data file for the SKSE plugin: the child worldspaces whose underside it draws itself (see <see cref="Run"/>).</summary>
+    public const string ChildFile = "SKSE\\Plugins\\AnvilLOD\\AnvilLOD.underside";
+
+    public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed, int DrawnByPlugin = 0);
 
     public static Result Run(GameContext game, TerrainHeights terrain, IReadOnlyDictionary<string, LodGrid> grids, string output,
         int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct)
     {
         var sw = Stopwatch.StartNew();
         var made = new List<string>();
+        var drawnByPlugin = new List<string>();   // child worldspaces: NIF written, but no reference in AnvilLOD.esp
         int blocks = 0, written = 0, unchanged = 0;
         long tris = 0;
 
@@ -38,18 +42,20 @@ public static class UndersideStage
             if (IgnoredWorlds.Contains(ws) || grid.Settings.MaxLevel < (int)LodLevel.Lod32) continue;
 
             // A child worldspace whose terrain sits on cell coordinates its parent also uses (all of Tamriel's children do;
-            // DeepwoodRedoubtWorld even repeats the Dragon Bridge cells) can't have an always-enabled underside: the reference
+            // DeepwoodRedoubtWorld even repeats the Dragon Bridge cells) can't have an always-enabled underside reference: it
             // is a full-LOD persistent one, and the engine drew DeepwoodRedoubtWorld's in Tamriel too, as a translucent slab at
             // Dragon Bridge (tested in game: Tamriel + Solstheim clean, + Deepwood slab). DynDOLOD keeps such references
-            // disabled until a script enables them; without that script the safe choice is none.
+            // disabled until a script enables them. Here the SKSE plugin draws their underside itself, only while the player
+            // is in that worldspace (AnvilLOD.underside), so the plugin gets no reference for them.
+            var viaPlugin = false;
             if (parents.TryGetValue(ws, out var parent) && grids.ContainsKey(parent))
             {
                 var shared = terrain.CellsOf(ws).Intersect(terrain.CellsOf(parent)).Count();
                 if (shared > 0)
                 {
                     // Expected, not a problem: log only, so the summary doesn't show a warning on every run.
-                    progress?.Report($"Underside: {ws} gets none: it is a child of {parent} on {shared} of the same cell coordinates, where an always-enabled underside is drawn in {parent} as a slab.");
-                    continue;
+                    progress?.Report($"Underside: {ws} is a child of {parent} on {shared} of the same cell coordinates, so the SKSE plugin draws its underside while you are in it (no reference in {UndersidePluginWriter.FileName}).");
+                    viaPlugin = true;
                 }
             }
 
@@ -78,6 +84,7 @@ public static class UndersideStage
                 written++;
             }
             made.Add(ws);
+            if (viaPlugin) drawnByPlugin.Add(ws);
             blocks += nif.Shapes;
             tris += nif.Triangles;
             progress?.Report($"Underside: {ws}: {nif.Shapes} blocks, {nif.Triangles:N0} triangles, {nif.Bytes.Length / 1024:N0} KB");
@@ -87,9 +94,10 @@ public static class UndersideStage
         RemoveFiles(output, keep: made);
 
         string? plugin = null;
-        if (made.Count > 0)
+        var inPlugin = made.Except(drawnByPlugin, StringComparer.OrdinalIgnoreCase).ToList();
+        if (inPlugin.Count > 0)
         {
-            var r = UndersidePluginWriter.Write(game, made, output);
+            var r = UndersidePluginWriter.Write(game, inPlugin, output);
             plugin = r.Path;
             progress?.Report($"Underside: {UndersidePluginWriter.FileName} written for {r.Worldspaces.Count} worldspaces (placement masters: {string.Join(", ", r.Masters)})");
             if (r.Skipped.Count > 0)
@@ -97,7 +105,9 @@ public static class UndersideStage
         }
         else RemovePlugin(output);
 
-        return new Result(made.Count, blocks, tris, written, unchanged, plugin, sw.Elapsed);
+        var drawn = WriteChildFile(game, drawnByPlugin, output, progress);
+
+        return new Result(made.Count, blocks, tris, written, unchanged, plugin, sw.Elapsed, drawn);
     }
 
     /// <summary>EditorID of each worldspace's parent worldspace (winning records), for the ones that have one.</summary>
@@ -114,11 +124,50 @@ public static class UndersideStage
         return result;
     }
 
+    /// <summary>
+    /// Writes <see cref="ChildFile"/> for the SKSE plugin: one line per worldspace, <c>plugin|local FormID (hex)|model|EditorID</c>.
+    /// Removes the file when there are none. Returns how many worldspaces were written.
+    /// </summary>
+    private static int WriteChildFile(GameContext game, IReadOnlyCollection<string> worldspaces, string output, IProgress<string>? progress)
+    {
+        var path = Path.Combine(output, ChildFile.Replace('\\', Path.DirectorySeparatorChar));
+        var lines = new List<string>();
+        if (worldspaces.Count > 0)
+        {
+            var want = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var w in game.LoadOrder.PriorityOrder.Worldspace().WinningOverrides())
+            {
+                if (w.EditorID is null || !want.Contains(w.EditorID) || !seen.Add(w.EditorID)) continue;
+                lines.Add($"{w.FormKey.ModKey.FileName}|{w.FormKey.ID:X6}|{AnvilLOD.Meshes.UndersideBuilder.ModelPath(w.EditorID)}|{w.EditorID}");
+            }
+            foreach (var missing in want.Where(x => !seen.Contains(x)))
+                progress?.Report($"Underside: no worldspace record found for {missing}; the SKSE plugin will not draw its underside.");
+        }
+        if (lines.Count == 0)
+        {
+            try { if (File.Exists(path)) File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            return 0;
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "# AnvilLOD: child worldspaces whose terrain underside the SKSE plugin draws while you are in them.\n"
+                                + "# plugin|local FormID (hex)|model (relative to Data\\meshes)|EditorID\n" + string.Join("\n", lines) + "\n");
+        progress?.Report($"Underside: {lines.Count} child worldspaces written to {ChildFile} for the AnvilLOD SKSE plugin");
+        return lines.Count;
+    }
+
     /// <summary>Deletes every underside file this tool wrote (used when the option is off).</summary>
     public static void RemoveAll(string output)
     {
         RemoveFiles(output, keep: []);
         RemovePlugin(output);
+        try
+        {
+            var child = Path.Combine(output, ChildFile.Replace('\\', Path.DirectorySeparatorChar));
+            if (File.Exists(child)) File.Delete(child);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static void RemovePlugin(string output)

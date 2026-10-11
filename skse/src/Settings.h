@@ -19,6 +19,9 @@ namespace AnvilLOD
 		bool          animate{ false };             // EXPERIMENTAL: keep grid objects animated (bAnimateExperimental)
 		std::uint32_t animationFps{ 30 };           // update ticks per second while animate is on
 
+		// Terrain underside of child worldspaces (AnvilLOD.underside), drawn only while the player is in that worldspace
+		bool          undersides{ true };
+
 		static Settings& Get();
 		void             Load();
 		bool             Save() const;  // writes the [Dynamic] values back to AnvilLOD.ini

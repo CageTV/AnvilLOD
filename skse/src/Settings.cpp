@@ -77,6 +77,8 @@ namespace AnvilLOD
 					animate = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "iAnimationFps")) {
 					animationFps = std::min<std::uint32_t>(120, static_cast<std::uint32_t>(std::stoul(value)));
+				} else if (EqualsNoCase(key, "bUndersides")) {
+					undersides = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bVerboseLog")) {
 					verboseLog = value != "0" && !EqualsNoCase(value, "false");
 				}
@@ -101,6 +103,7 @@ namespace AnvilLOD
 			{ "fFarGridDistance", std::format("{:.0f}", farGridDistance) },
 			{ "bAnimateExperimental", animate ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
+			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bVerboseLog", verboseLog ? "1" : "0" },
 		});
 	}

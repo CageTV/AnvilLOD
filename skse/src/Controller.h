@@ -48,10 +48,13 @@ namespace AnvilLOD
 			bool                           nearGrid{ false };
 			bool                           neverFade{ false };
 			bool                           water{ false };
+			bool                           underside{ false };  // a child worldspace's terrain underside: drawn whenever the player is in `world`
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held
 		};
 
+		void LoadDynamic();
+		void LoadUndersides();
 		void Update();
 		void Animate();
 		float Seconds() const;

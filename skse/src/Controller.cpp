@@ -136,6 +136,71 @@ namespace AnvilLOD
 
 	void Controller::OnDataLoaded()
 	{
+		LoadDynamic();
+		LoadUndersides();  // after the dynamic file: they share the mesh string table
+	}
+
+	/// AnvilLOD.underside, written by the generator: child worldspaces (Markarth, Sovngarde, Deepwood Redoubt, ...) share cell
+	/// coordinates with their parent, so an always-enabled underside reference there is drawn in the parent as a slab.
+	/// DynDOLOD enables such references from a script; here the underside is simply drawn while the player is in that worldspace.
+	/// One line per worldspace: plugin|local FormID (hex)|model relative to Data\meshes|EditorID.
+	void Controller::LoadUndersides()
+	{
+		std::ifstream in("Data/SKSE/Plugins/AnvilLOD/AnvilLOD.underside");
+		auto*         data = RE::TESDataHandler::GetSingleton();
+		if (!in || !data) {
+			return;
+		}
+
+		std::size_t found = 0, missing = 0;
+		std::string line;
+		while (std::getline(in, line)) {
+			if (!line.empty() && line.back() == '\r') {
+				line.pop_back();
+			}
+			if (line.empty() || line[0] == '#') {
+				continue;
+			}
+			std::vector<std::string> parts;
+			for (std::size_t start = 0;;) {
+				const auto bar = line.find('|', start);
+				parts.push_back(line.substr(start, bar == std::string::npos ? bar : bar - start));
+				if (bar == std::string::npos) {
+					break;
+				}
+				start = bar + 1;
+			}
+			if (parts.size() < 3) {
+				logger::warn("AnvilLOD.underside: bad line: {}", line);
+				continue;
+			}
+			std::uint32_t localId = 0;
+			try {
+				localId = static_cast<std::uint32_t>(std::stoul(parts[1], nullptr, 16));
+			} catch (const std::exception&) {
+				logger::warn("AnvilLOD.underside: bad FormID in line: {}", line);
+				continue;
+			}
+			Item item;
+			item.world = data->LookupFormID(localId, parts[0]);
+			if (item.world == 0) {
+				++missing;  // plugin not in this load order any more
+				continue;
+			}
+			_meshes.push_back(parts[2]);
+			item.mesh = static_cast<std::uint32_t>(_meshes.size() - 1);
+			item.pos = RE::NiPoint3(0.0f, 0.0f, -500.0f);  // where DynDOLOD and AnvilLOD.esp place it
+			item.rot = ReferenceRotation(0.0f, 0.0f, 0.0f);
+			item.underside = true;
+			_byWorld[item.world].push_back(_items.size());
+			_items.push_back(std::move(item));
+			++found;
+		}
+		logger::info("Underside: {} child worldspaces drawn by the plugin, {} skipped: plugin not loaded", found, missing);
+	}
+
+	void Controller::LoadDynamic()
+	{
 		DataFile file;
 		if (!file.Read("Data/SKSE/Plugins/AnvilLOD/AnvilLOD.dyn")) {
 			return;
@@ -279,7 +344,10 @@ namespace AnvilLOD
 	bool Controller::WantShown(const Item& a_item, const RE::NiPoint3& a_player, std::int32_t a_pcx, std::int32_t a_pcy, std::int32_t a_half) const
 	{
 		const auto& settings = Settings::Get();
-		if (a_item.grid ? (!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
+		if (a_item.underside) {
+			return settings.undersides;  // no reference behind it and no distance: it's there while the player is in its worldspace
+		}
+		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
 		}
 		// Inside the loaded cells the real object is (or would be) there.
@@ -420,7 +488,7 @@ namespace AnvilLOD
 		// Which entries can be visible: the current worldspace, plus its parent's when it uses the parent's LOD
 		// (Whiterun's city space shows Tamriel's LOD, so Tamriel's dynamic LOD belongs there too).
 		std::vector<const std::vector<std::size_t>*> lists;
-		if ((settings.enabled || settings.gridObjects) && world) {
+		if ((settings.enabled || settings.gridObjects || settings.undersides) && world) {
 			if (auto it = _byWorld.find(world->GetFormID()); it != _byWorld.end()) {
 				lists.push_back(&it->second);
 			}
