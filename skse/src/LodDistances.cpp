@@ -188,7 +188,7 @@ namespace AnvilLOD
 			{ "Full model fade", "fLODFadeOutMultItems", 1.0f, 40.0f, "%.1f", "Items (Item Fade)" },
 			{ "Full model fade", "fLODFadeOutMultActors", 1.0f, 40.0f, "%.1f", "Actors (Actor Fade)" },
 			{ "Full model fade", "fLODFadeOutMultSkyCell", 1.0f, 40.0f, "%.1f", "Sky-cell (large) references" },
-			{ "Grass", "fGrassStartFadeDistance", 0.0f, 50000.0f, "%.0f", "Where real grass starts to fade (the game's Grass Fade slider)" },
+			{ "Grass", "fGrassStartFadeDistance", 0.0f, 1000000.0f, "%.0f", "Where real grass starts to fade (the game's Grass Fade slider). Ctrl+click to type a value; 999999 is a common setting" },
 			{ "Grass", "fGrassMaxStartFadeDistance", 0.0f, 100000.0f, "%.0f", "Upper limit of the start fade" },
 			{ "Grass", "fGrassMinStartFadeDistance", 0.0f, 50000.0f, "%.0f", "Lower limit of the start fade" },
 			{ "Grass", "fGrassFadeRange", 0.0f, 100000.0f, "%.0f", "How long the fade is; grass LOD shows beyond it" },

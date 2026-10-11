@@ -145,6 +145,7 @@ namespace AnvilLOD::Menu
 					Smf::SeparatorText(group);
 					if (std::strcmp(group, "Grass") == 0) {
 						Smf::TextDisabled("How far real grass reaches is iGrassCellRadius in Skyrim.ini [Grass] (read at startup, not changeable here).");
+						Smf::TextDisabled("Moving a slider changes the live game setting at once, so note the value first: Ctrl+click a slider to type an exact value.");
 					}
 				}
 				auto cur = lod.GetGame(e.key);
