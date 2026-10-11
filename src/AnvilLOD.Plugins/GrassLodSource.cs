@@ -67,6 +67,9 @@ public sealed class GrassLodSource : ISyntheticMeshSource
 
     public int CellsFound { get; private set; }
 
+    /// <summary>The grass cells <see cref="Discover"/> found.</summary>
+    public IReadOnlyList<LodReference> Cells { get; private set; } = [];
+
     private readonly Dictionary<(string Ws, int X, int Y, string Season), string> _seasonal = [];
 
     /// <summary>True if the grass cache has files for this season ("WIN", "SPR", "SUM", "AUT").</summary>
@@ -120,6 +123,7 @@ public sealed class GrassLodSource : ISyntheticMeshSource
                 Flags: LodReferenceFlags.None));
         }
         CellsFound = refs.Count;
+        Cells = refs;
         return refs;
     }
 

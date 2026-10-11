@@ -417,7 +417,17 @@ public static class ScanPipeline
                 var dyn = BuildManifest.FullPath(output, DynamicLodWriter.RelativePath);
                 if (File.Exists(dyn)) File.Delete(dyn);
             }
-            if (req.Scan.ParentCopies && scan.ParentCopies is { Count: > 0 } pcs)
+            var parentCopies = scan.ParentCopies;
+            if (req.Scan.ParentCopies && grass is not null && scan.ParentCopyStats?.Regions is { Count: > 0 } copyRegions)
+            {
+                var gc = GrassCopies.Build(grass, copyRegions, output, ct);
+                if (gc.Copies.Count > 0)
+                {
+                    parentCopies = [.. parentCopies ?? [], .. gc.Copies];
+                    progress?.Report($"Parent > Child copies: grass LOD for {gc.Cells:N0} cells around the walled cities ({gc.Meshes:N0} small meshes in meshes\\{GrassCopies.Folder}), the parent's grass blocks are hidden there");
+                }
+            }
+            if (req.Scan.ParentCopies && parentCopies is { Count: > 0 } pcs)
             {
                 int written = ParentCopyWriter.Write(output, pcs);
                 int altTex = pcs.Count(c => c.HasAlternateTextures), inCells = pcs.Count(c => c.ChildCellExists);

@@ -27,4 +27,12 @@ public sealed record ParentCopyStats(
     long NoLod,              // ... whose base has no LOD mesh / tree billboard
     long Switchable,         // ... that start disabled, have an enable parent or are persistent
     long IgnoredByRule,      // ... skipped by IgnoreParentEDID
-    long InNavmeshCells);    // ... in a child cell with a navmesh (NoCellsWithNAVM=1)
+    long InNavmeshCells,     // ... in a child cell with a navmesh (NoCellsWithNAVM=1)
+    IReadOnlyList<ParentCopyRegion>? Regions = null);
+
+/// <summary>A child worldspace's copy region: where grass LOD (which lives in the parent's blocks, hidden there) is copied too.</summary>
+public sealed record ParentCopyRegion(
+    string ChildWorldspace, string Parent,
+    string WorldPlugin, uint WorldLocalId,
+    AnvilLOD.Core.Lod.ParentCopyWorld Config,
+    IReadOnlySet<(int X, int Y)> ChildCells);   // the cells the child worldspace has

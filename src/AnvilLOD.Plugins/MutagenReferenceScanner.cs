@@ -267,6 +267,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var parentCopyTargets = new Dictionary<string, List<ParentCopyTarget>>(StringComparer.OrdinalIgnoreCase);
         var parentCopies = new List<ParentCopy>();
         var parentCopiesByChild = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var parentCopyRegions = new List<ParentCopyRegion>();
         long pcInRegion = 0, pcNoLod = 0, pcSwitchable = 0, pcIgnored = 0, pcNavmesh = 0, pcStandIn = 0, pcFlat = 0;
         var flatModels = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         // Road chunks, mud patches and other flat ground pieces lie within a few units of the terrain. As a drawn copy (not a real
@@ -331,6 +332,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 var list = parentCopyTargets[t.Config.Parent];
                 list[list.IndexOf(t)] = fixedTarget;
             }
+            foreach (var t in targetsByChild.Values)
+                parentCopyRegions.Add(new ParentCopyRegion(t.Config.Child, t.Config.Parent, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID, t.Config, t.Cells));
             progress?.Report("Parent > Child copies: " + string.Join(", ", targetsByChild.Values.Select(t =>
                 $"{t.Config.Child} ({t.Cells.Count} cells, from {t.Config.Parent})")));
         }
@@ -707,7 +710,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic,
             options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null,
             options.ParentCopies ? parentCopies : null,
-            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh) : null);
+            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions) : null);
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>
