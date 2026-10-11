@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using AnvilLOD.App.Localization;
 using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
 using AnvilLOD.Plugins;
@@ -33,12 +34,69 @@ public partial class MainWindow : Window
         var version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "?";
         VersionText.Text = "v" + version;
         Title = "AnvilLOD " + version;
-        _clock.Tick += (_, _) => StatusText.Text = $"Running… {_elapsed.Elapsed:mm\\:ss}";
+        _clock.Tick += (_, _) => StatusText.Text = L.F("Status_RunningFmt", _elapsed.Elapsed.ToString(@"mm\:ss"));
         ApplySettings();
         InitPresets();
+        InitLanguage();
         InitLayout();
-        AuthorWarningText.Text = AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning;
-        if (StartupLog.IsUnderMo2()) Title = "AnvilLOD  (running under MO2)";
+        AuthorWarningText.Text = L.T("Warning_Generated");
+        MakerWarningText.Text = L.T("Warning_Generated");
+        if (StartupLog.IsUnderMo2()) Title = "AnvilLOD " + L.T("Title_UnderMo2");
+    }
+
+    // ---------- language ----------
+
+    private bool _loadingLanguage;
+
+    /// <summary>Fills the language drop-down (each language shows its own name; "" shows localized "follow the system") and selects the saved one.</summary>
+    private void InitLanguage()
+    {
+        _loadingLanguage = true;
+        var languages = AnvilLOD.Core.Localization.Locale.Languages;
+        for (int i = 0; i < languages.Length; i++)
+            LanguageBox.Items.Add(new ComboBoxItem { Content = i == 0 ? L.T("Language_System") : languages[i].Name, Tag = languages[i].Code });
+        var index = Array.FindIndex(languages, l => l.Code == _settings.Language);
+        LanguageBox.SelectedIndex = index < 0 ? 0 : index;
+        _loadingLanguage = false;
+    }
+
+    private void Language_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingLanguage || LanguageBox.SelectedItem is not ComboBoxItem { Tag: string code }) return;
+        _settings.Language = code;
+        _settings.Save();
+        ApplyLanguage();
+    }
+
+    /// <summary>Switches the language live: the {loc:Loc} bindings refresh themselves, everything set from code is redone here.</summary>
+    private void ApplyLanguage()
+    {
+        AnvilLOD.Core.Localization.Locale.Set(_settings.Language);
+        LocSource.Refresh();
+        RefreshDynamicTexts();
+    }
+
+    /// <summary>Rebuilds the texts that are composed in code rather than bound, in the new language.</summary>
+    private void RefreshDynamicTexts()
+    {
+        if (LanguageBox.SelectedIndex >= 0)
+        {
+            _loadingLanguage = true;
+            var item = (ComboBoxItem)LanguageBox.Items[LanguageBox.SelectedIndex];
+            item.Content = item.Tag as string == "" ? L.T("Language_System") : item.Content;   // "Follow system" is the only localized entry
+            _loadingLanguage = false;
+        }
+        if (AuthorWarningText.Text.Length > 0) AuthorWarningText.Text = L.T("Warning_Generated");
+        if (MakerWarningText.Text.Length > 0) MakerWarningText.Text = L.T("Warning_Generated");
+        SourceMode_Changed(this, new RoutedEventArgs());
+        UpdateEstimate();
+        MakerBudget_Changed(this, new RoutedEventArgs());
+        UpdateLocationsButton();
+        if (_categories is not null && ResultsTabs is not null)
+        {
+            var shown = _categories.FirstOrDefault(c => c.Value.Panel.Visibility == Visibility.Visible).Key;
+            if (shown is not null) OptionsTitle.Text = L.T(_categories[shown].Title);
+        }
     }
 
     // ---------- settings <-> controls ----------
@@ -173,18 +231,16 @@ public partial class MainWindow : Window
         DataPanel.Visibility = mo2 ? Visibility.Collapsed : Visibility.Visible;
         if (VortexPanel is null || DataInfoText is null) return;
         VortexPanel.Visibility = vortex ? Visibility.Visible : Visibility.Collapsed;
-        DataInfoText.Text = vortex
-            ? "Vortex deploys mods into the game's Data folder: leave Data folder empty to auto-detect, and plugins.txt empty for Vortex's load order. Deploy in Vortex before generating."
-            : "For a plain (non-MO2) install.";
+        DataInfoText.Text = vortex ? L.T("Data_InfoVortex") : L.T("Data_InfoPlain");
         if (vortex)
         {
             var staging = VortexInstall.StagingFolder();
             VortexOutputButton.IsEnabled = staging is not null;
             VortexInfoText.Text = staging is not null
-                ? $"Staging folder: {staging}. After Generate, refresh Vortex (or restart it), enable \"{VortexInstall.OutputModName}\" and Deploy."
+                ? L.F("Vortex_StagingFmt", staging, VortexInstall.OutputModName)
                 : VortexInstall.IsInstalled()
-                    ? "Vortex's Skyrim SE staging folder wasn't found at the default place (%APPDATA%\\Vortex\\skyrimse\\mods). Pick an output folder, then install it in Vortex as a mod."
-                    : "Vortex doesn't seem to be installed for this user.";
+                    ? L.T("Vortex_NotFound")
+                    : L.T("Vortex_NotInstalled");
         }
     }
 
@@ -198,7 +254,7 @@ public partial class MainWindow : Window
 
     private void BrowseMo2_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select the MO2 instance folder (contains ModOrganizer.ini)" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectMo2") };
         if (Directory.Exists(Mo2Box.Text)) d.InitialDirectory = Mo2Box.Text;
         if (d.ShowDialog(this) != true) return;
         Mo2Box.Text = d.FolderName;
@@ -231,7 +287,7 @@ public partial class MainWindow : Window
         var folder = Blank(Mo2Box.Text);
         if (folder is null)
         {
-            Mo2InfoText.Text = "Reads your mods directly. No need to launch AnvilLOD from MO2.";
+            Mo2InfoText.Text = L.T("Mo2_InfoDefault");
             return;
         }
         try
@@ -260,7 +316,7 @@ public partial class MainWindow : Window
 
     private void BrowseData_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select the Skyrim Data folder" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectData") };
         if (Directory.Exists(DataBox.Text)) d.InitialDirectory = DataBox.Text;
         if (d.ShowDialog(this) == true) DataBox.Text = d.FolderName;
     }
@@ -269,8 +325,8 @@ public partial class MainWindow : Window
     {
         var d = new OpenFileDialog
         {
-            Title = "Select plugins.txt",
-            Filter = "plugins.txt|plugins.txt|Text files (*.txt)|*.txt|All files|*.*",
+            Title = L.T("Dlg_SelectPluginsTxt"),
+            Filter = "plugins.txt|plugins.txt|" + L.T("Filter_TextFiles") + "|*.txt|" + L.T("Filter_AllFiles") + "|*.*",
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Skyrim Special Edition"),
         };
         if (d.ShowDialog(this) == true) PluginsBox.Text = d.FileName;
@@ -278,7 +334,7 @@ public partial class MainWindow : Window
 
     private void BrowseOutput_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select the output folder for generated LOD" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectOutput") };
         if (Directory.Exists(OutputBox.Text)) d.InitialDirectory = OutputBox.Text;
         if (d.ShowDialog(this) == true) OutputBox.Text = d.FolderName;
     }
@@ -304,7 +360,7 @@ public partial class MainWindow : Window
 
     private void BrowseCustomRules_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFileDialog { Title = "Select your LOD rules file", Filter = "Rule files (*.ini)|*.ini|All files (*.*)|*.*", CheckFileExists = true };
+        var d = new OpenFileDialog { Title = L.T("Dlg_SelectRules"), Filter = L.T("Filter_RuleFiles") + "|*.ini|" + L.T("Filter_AllFilesStar") + "|*.*", CheckFileExists = true };
         if (File.Exists(CustomRulesBox.Text) && Path.GetDirectoryName(CustomRulesBox.Text) is { } dir) d.InitialDirectory = dir;
         if (d.ShowDialog(this) != true) return;
         CustomRulesBox.Text = d.FileName;
@@ -313,7 +369,7 @@ public partial class MainWindow : Window
 
     private void BrowseDynDolod_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select your DynDOLOD folder (the one with DynDOLODx64.exe)" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectDynDolod") };
         if (Directory.Exists(DynDolodBox.Text)) d.InitialDirectory = DynDolodBox.Text;
         if (d.ShowDialog(this) == true) DynDolodBox.Text = d.FolderName;
     }
@@ -351,13 +407,13 @@ public partial class MainWindow : Window
 
         if (_settings.UseMo2 && (_settings.Mo2Instance is null || _settings.Mo2Profile is null))
         {
-            MessageBox.Show(this, "Choose your MO2 instance folder and a profile.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_ChooseMo2"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         if (!_settings.UseMo2 && _settings.PluginsTxt is not null && _settings.DataFolder is null)
         {
-            MessageBox.Show(this, "A plugins.txt needs a Data folder too.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_PluginsNeedsData"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -368,7 +424,7 @@ public partial class MainWindow : Window
         if (_settings.Lod32) levels.Add(LodLevel.Lod32);
         if (levels.Count == 0)
         {
-            MessageBox.Show(this, "Pick at least one LOD level.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_PickLevel"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -433,22 +489,22 @@ public partial class MainWindow : Window
             ShowResults(summary, _lastTotal);
             if (generate) RecordSizeCalibration(summary, req.OutputFolder);
             StatusText.Text = generate
-                ? $"LOD generated in {_lastTotal.TotalSeconds:F1}s"
-                : $"Scan finished in {_lastTotal.TotalSeconds:F1}s";
-            ProgressText.Text = "Done";
+                ? L.F("Status_GeneratedFmt", _lastTotal.TotalSeconds)
+                : L.F("Status_ScanFmt", _lastTotal.TotalSeconds);
+            ProgressText.Text = L.T("Status_Done");
             Progress.Value = 100;
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Cancelled";
-            ProgressText.Text = "Cancelled";
+            StatusText.Text = L.T("Status_Cancelled");
+            ProgressText.Text = L.T("Status_Cancelled");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Failed — see Log";
+            StatusText.Text = L.T("Status_FailedLog");
             ProgressText.Text = ex.Message;
             LogBox.AppendText(Environment.NewLine + "ERROR: " + ex + Environment.NewLine);
-            MessageBox.Show(this, ex.Message, "Scan failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, L.T("Msg_ScanFailed"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -461,7 +517,7 @@ public partial class MainWindow : Window
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         _cts?.Cancel();
-        ProgressText.Text = "Cancelling…";
+        ProgressText.Text = L.T("Status_Cancelling");
     }
 
     // ---------- mod author tools ----------
@@ -476,7 +532,7 @@ public partial class MainWindow : Window
 
     private void AuthorTab_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (AuthorWarningText.Text.Length == 0) AuthorWarningText.Text = AnvilLOD.Plugins.Authoring.ModAuthorTool.Warning;
+        if (AuthorWarningText.Text.Length == 0) AuthorWarningText.Text = L.T("Warning_Generated");
         if (AuthorPluginBox.Items.Count > 0) return;
         try
         {
@@ -490,7 +546,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            AuthorSummaryText.Text = "Couldn't list plugins (type the name instead): " + ex.Message;
+            AuthorSummaryText.Text = L.F("Author_ListFailedFmt", ex.Message);
         }
     }
 
@@ -512,7 +568,7 @@ public partial class MainWindow : Window
 
     private void BrowseAuthorOut_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select an empty folder for the generated files (a new MO2 mod)" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectAuthorOut") };
         if (Directory.Exists(AuthorOutBox.Text)) d.InitialDirectory = AuthorOutBox.Text;
         if (d.ShowDialog(this) == true) AuthorOutBox.Text = d.FolderName;
     }
@@ -535,12 +591,12 @@ public partial class MainWindow : Window
         var output = Blank(AuthorOutBox.Text);
         if (plugin is null || output is null)
         {
-            MessageBox.Show(this, "Choose a plugin and an output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_ChoosePluginOutput"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (_settings.OutputFolder is { } lodOut && Path.GetFullPath(output).TrimEnd('\\').Equals(Path.GetFullPath(lodOut).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Use a separate folder, not your LOD output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_SeparateFolder"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         float Num(TextBox b, float def) => float.TryParse(b.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0 ? v : def;
@@ -580,24 +636,23 @@ public partial class MainWindow : Window
                 .ThenByDescending(i => i.Size).ToList();
             int missing = r.Items.Count(i => i.Status.StartsWith("Missing", StringComparison.Ordinal));
             int broken = r.Items.Count(i => i.Status.Contains("missing", StringComparison.Ordinal) && !i.Status.StartsWith("Missing", StringComparison.Ordinal) || i.Status.StartsWith("Model", StringComparison.Ordinal));
-            AuthorSummaryText.Text = $"{r.Items.Count} placed objects/trees checked: {missing} missing LOD or billboards, {broken} with broken files. "
-                + (generate ? $"Generated {r.MeshesWritten} LOD meshes and {r.BillboardsWritten} billboards{(r.RuleFile is null ? "" : " plus a rule file")}. " : "")
-                + $"Report: {r.ReportFile}";
+            AuthorSummaryText.Text = L.F("Author_CheckedFmt", r.Items.Count, missing, broken)
+                + (generate ? L.F("Author_GeneratedFmt", r.MeshesWritten, r.BillboardsWritten, r.RuleFile is null ? "" : L.T("Author_PlusRules")) : "")
+                + L.F("Author_ReportFmt", r.ReportFile);
             AuthorOpenButton.IsEnabled = true;
-            StatusText.Text = $"Mod author check finished in {r.Elapsed.TotalSeconds:F0}s";
-            ProgressText.Text = "Done";
-        }
-        catch (OperationCanceledException)
+            StatusText.Text = L.F("Author_DoneFmt", r.Elapsed.TotalSeconds);
+            ProgressText.Text = L.T("Status_Done");
+        }        catch (OperationCanceledException)
         {
-            StatusText.Text = "Cancelled";
-            ProgressText.Text = "Cancelled";
+            StatusText.Text = L.T("Status_Cancelled");
+            ProgressText.Text = L.T("Status_Cancelled");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Failed — see Log";
+            StatusText.Text = L.T("Status_FailedLog");
             AuthorSummaryText.Text = ex.Message;
             LogBox.AppendText(Environment.NewLine + "ERROR: " + ex + Environment.NewLine);
-            MessageBox.Show(this, ex.Message, "Mod author tools", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, L.T("Msg_AuthorTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -618,7 +673,7 @@ public partial class MainWindow : Window
 
     private void MakerTab_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (MakerWarningText.Text.Length == 0) MakerWarningText.Text = AnvilLOD.Plugins.Authoring.LodMeshMaker.Warning;
+        if (MakerWarningText.Text.Length == 0) MakerWarningText.Text = L.T("Warning_Generated");
     }
 
     private void MakerBudget_Changed(object sender, RoutedEventArgs e)
@@ -628,10 +683,9 @@ public partial class MainWindow : Window
         MakerBudget0Box.IsEnabled = MakerBudget1Box.IsEnabled = MakerBudget2Box.IsEnabled = custom;
         MakerBudgetHint.Text = MakerBudgetBox.SelectedIndex switch
         {
-            0 => "Most triangles at LOD 0 / 1 / 2, by the model's largest dimension: " + AnvilLOD.Meshes.Authoring.LodBudgets.Describe()
-                 + ". Based on the " + AnvilLOD.Meshes.Authoring.LodBudgets.Basis + ".",
-            1 => "Your own maximums per level; 0 means no limit for that level. A farther level never gets more triangles than a nearer one.",
-            _ => "No budget: only the Detail setting limits the triangles, so very dense models stay heavy.",
+            0 => L.F("Maker_HintRecommended", AnvilLOD.Meshes.Authoring.LodBudgets.Describe(), AnvilLOD.Meshes.Authoring.LodBudgets.Basis),
+            1 => L.T("Maker_HintCustom"),
+            _ => L.T("Maker_HintOff"),
         };
     }
 
@@ -651,14 +705,14 @@ public partial class MainWindow : Window
 
     private void MakerAddFiles_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFileDialog { Title = "Select full models", Filter = "Models (*.nif)|*.nif", Multiselect = true };
+        var d = new OpenFileDialog { Title = L.T("Dlg_SelectModels"), Filter = L.T("Filter_Models") + "|*.nif", Multiselect = true };
         if (d.ShowDialog(this) != true) return;
         foreach (var f in d.FileNames) AppendMakerInput(f);
     }
 
     private void MakerAddFolder_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select a mod folder, a meshes folder or a folder of models", Multiselect = true };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectModFolder"), Multiselect = true };
         if (d.ShowDialog(this) != true) return;
         foreach (var f in d.FolderNames) AppendMakerInput(f);
     }
@@ -667,7 +721,7 @@ public partial class MainWindow : Window
 
     private void BrowseMakerOut_Click(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Select a folder for the LOD meshes (a new or existing mod folder)" };
+        var d = new OpenFolderDialog { Title = L.T("Dlg_SelectMakerOut") };
         if (Directory.Exists(MakerOutBox.Text)) d.InitialDirectory = MakerOutBox.Text;
         if (d.ShowDialog(this) == true) MakerOutBox.Text = d.FolderName;
     }
@@ -694,7 +748,7 @@ public partial class MainWindow : Window
         var inputs = MakerInputBox.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (inputs.Length == 0)
         {
-            MessageBox.Show(this, "Add the models (or folders of models) to make LOD meshes from.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_AddModels"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -703,7 +757,7 @@ public partial class MainWindow : Window
         {
             if (Blank(MakerOutBox.Text) is not { } typed)
             {
-                MessageBox.Show(this, "Choose the output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.T("Msg_ChooseOutput"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             output = typed;
@@ -712,12 +766,12 @@ public partial class MainWindow : Window
         {
             if (Blank(MakerModNameBox.Text) is not { } name || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
             {
-                MessageBox.Show(this, "Give the new mod a name (no \\ / : * ? \" < > |).", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.T("Msg_ModNameInvalid"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (!_settings.UseMo2 || _settings.Mo2Instance is null)
             {
-                MessageBox.Show(this, "A new mod needs MO2 instance mode (to find your mods folder). Choose \"A folder I choose\" instead, or switch the source to MO2 instance.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, L.T("Msg_NewModNeedsMo2"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             try
@@ -732,7 +786,7 @@ public partial class MainWindow : Window
         }
         if (_settings.OutputFolder is { } lodOut && Path.GetFullPath(output).TrimEnd('\\').Equals(Path.GetFullPath(lodOut).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Use a separate folder, not your LOD output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_SeparateFolder"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -742,7 +796,7 @@ public partial class MainWindow : Window
         if (MakerLod2Check.IsChecked == true) levels.Add(2);
         if (levels.Count == 0)
         {
-            MessageBox.Show(this, "Choose at least one LOD level.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("Msg_PickLevel"), "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         float detail = MakerDetailBox.SelectedIndex switch { 0 => 0.5f, 2 => 2f, 3 => 4f, _ => 1f };
@@ -776,25 +830,25 @@ public partial class MainWindow : Window
             var r = await Task.Run(() => AnvilLOD.Plugins.Authoring.LodMeshMaker.Run(req, progress, ct), ct);
             MakerGrid.ItemsSource = r.Items.OrderBy(i => i.Status == "Done" ? 1 : 0).ThenByDescending(i => i.Size).ToList();
             int skipped = r.Items.Count - r.ModelsDone;
-            MakerSummaryText.Text = $"{r.ModelsDone} models done, {r.MeshesWritten} LOD meshes written"
-                + (skipped > 0 ? $", {skipped} skipped (see the table)" : "") + (r.RuleFile is null ? "" : ", rule file written")
-                + $". Output: {output}. Report: {r.ReportFile}";
+            MakerSummaryText.Text = L.F("Maker_SummaryFmt", r.ModelsDone, r.MeshesWritten,
+                skipped > 0 ? L.F("Maker_SkippedFmt", skipped) : "", r.RuleFile is null ? "" : L.T("Maker_RulesWritten"),
+                output, r.ReportFile);
             _makerOutput = output;
             MakerOpenButton.IsEnabled = true;
-            StatusText.Text = $"LOD Mesh Maker finished in {r.Elapsed.TotalSeconds:F0}s";
-            ProgressText.Text = "Done";
+            StatusText.Text = L.F("Maker_DoneFmt", r.Elapsed.TotalSeconds);
+            ProgressText.Text = L.T("Status_Done");
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Cancelled";
-            ProgressText.Text = "Cancelled";
+            StatusText.Text = L.T("Status_Cancelled");
+            ProgressText.Text = L.T("Status_Cancelled");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Failed — see Log";
+            StatusText.Text = L.T("Status_FailedLog");
             MakerSummaryText.Text = ex.Message;
             LogBox.AppendText(Environment.NewLine + "ERROR: " + ex + Environment.NewLine);
-            MessageBox.Show(this, ex.Message, "LOD Mesh Maker", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, L.T("Msg_LodMakerTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -842,7 +896,11 @@ public partial class MainWindow : Window
     private void InitPresets()
     {
         _settings.EnsurePresets();
-        for (int i = 0; i < AppSettings.PresetCount; i++) PresetTab(i).Content = _settings.Presets[i].Name;
+        for (int i = 0; i < AppSettings.PresetCount; i++)
+        {
+            PresetTab(i).Content = _settings.Presets[i].Name;
+            PresetTab(i).ToolTip = L.F("Tip_PresetFmt", i + 1);
+        }
         _shownPreset = _settings.ActivePreset;
         _presetsReady = false;
         PresetTab(_shownPreset).IsChecked = true;
@@ -1000,20 +1058,20 @@ public partial class MainWindow : Window
 
     /// <summary>The button shows a dot when any location is typed, so an override can't hide.</summary>
     private void UpdateLocationsButton() =>
-        Mo2LocationsButton.Content = Mo2LocationsFromBoxes() is null ? "Locations ▾" : "Locations ● ▾";
+        Mo2LocationsButton.Content = Mo2LocationsFromBoxes() is null ? L.T("Locations_Button") : L.T("Locations_ButtonOverride");
 
     // ---------- results ----------
 
     private void ShowResults(ScanSummary s, TimeSpan total)
     {
         OverviewHint.Text = s.Grids.Count == 0
-            ? "No worldspace with a .lod settings file matched. Check the worldspace names and that LODSettings files are present."
-            : $"Scanned {string.Join(", ", s.Grids.Keys)}.";
+            ? L.T("Overview_NoneFmt")
+            : L.F("Overview_ScannedFmt", string.Join(", ", s.Grids.Keys));
 
         TilePlugins.Text = s.PluginsLoaded.ToString("N0");
         TilePluginsLabel.Text = s.MissingPlugins.Count == 0
-            ? "Plugins"
-            : $"Plugins found (of {s.Stats.PluginsInLoadOrder:N0} listed)";
+            ? L.T("Tile_Plugins")
+            : L.F("Tile_PluginsFoundFmt", s.Stats.PluginsInLoadOrder);
 
         WarningList.ItemsSource = s.Warnings;
         WarningBox.Visibility = s.Warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -1023,12 +1081,14 @@ public partial class MainWindow : Window
         if (s.Generation is { } g)
         {
             TileRebuild.Text = g.BlocksWritten.ToString("N0");
-            TileRebuildLabel.Text = g.BlocksFailed > 0 ? $"Blocks written ({g.BlocksFailed} failed)" : $"Blocks written ({s.Plan.Unchanged.Count:N0} unchanged)";
+            TileRebuildLabel.Text = g.BlocksFailed > 0
+                ? L.F("Tile_WrittenFailedFmt", g.BlocksFailed)
+                : L.F("Tile_WrittenUnchangedFmt", s.Plan.Unchanged.Count);
         }
         else
         {
             TileRebuild.Text = s.Plan.Rebuild.Count.ToString("N0");
-            TileRebuildLabel.Text = "Blocks to rebuild";
+            TileRebuildLabel.Text = L.T("Tile_Rebuild");
         }
         TileTime.Text = $"{total.TotalSeconds:F1}s";
 
@@ -1044,17 +1104,17 @@ public partial class MainWindow : Window
             .ToList();
 
         TimingText.Text =
-            $"BSA index     {s.IndexTime.TotalSeconds,8:F2}s   ({s.ArchivedFiles:N0} files in {s.ArchivesIndexed} archives)\n" +
-            $"Plugin scan   {s.Stats.Elapsed.TotalSeconds,8:F2}s\n" +
-            $"Bucket+hash   {s.BucketAndHashTime.TotalSeconds,8:F2}s\n" +
-            $"Total         {total.TotalSeconds,8:F2}s\n\n" +
-            $"Skipped: {s.Stats.SkippedDisabled:N0} disabled, {s.Stats.SkippedMissingMesh:N0} without usable mesh, {s.SkippedOutsideGrid:N0} outside LOD grid\n\n" +
-            $"Dynamic LOD: {s.DynamicRefs:N0} switchable references (shown by the SKSE plugin)\n" +
-            $"Grass LOD: {s.GrassCells:N0} cached cells" + (s.MissingGrassBillboards is { Count: > 0 } mg ? $", {mg.Count} grass types without billboard" : "") + "\n" +
-            $"Trees: {s.TreeReferences:N0} with billboards, {s.MissingBillboards?.Values.Sum() ?? 0:N0} without ({s.MissingBillboards?.Count ?? 0:N0} tree types, "
-                + $"{s.MissingBillboards?.Keys.Count(k => s.SkippedByTexGen?.Contains(k) == true) ?? 0:N0} of them small plants TexGen skips)" +
+            L.F("Timing_BsaFmt", s.IndexTime.TotalSeconds, s.ArchivedFiles, s.ArchivesIndexed) + "\n" +
+            L.F("Timing_PluginFmt", s.Stats.Elapsed.TotalSeconds) + "\n" +
+            L.F("Timing_BucketFmt", s.BucketAndHashTime.TotalSeconds) + "\n" +
+            L.F("Timing_TotalFmt", total.TotalSeconds) + "\n\n" +
+            L.F("Timing_SkippedFmt", s.Stats.SkippedDisabled, s.Stats.SkippedMissingMesh, s.SkippedOutsideGrid) + "\n\n" +
+            L.F("Timing_DynamicFmt", s.DynamicRefs) + "\n" +
+            L.F("Timing_GrassFmt", s.GrassCells, s.MissingGrassBillboards is { Count: > 0 } mg ? L.F("Timing_GrassMissingFmt", mg.Count) : "") + "\n" +
+            L.F("Timing_TreesFmt", s.TreeReferences, s.MissingBillboards?.Values.Sum() ?? 0, s.MissingBillboards?.Count ?? 0,
+                s.MissingBillboards?.Keys.Count(k => s.SkippedByTexGen?.Contains(k) == true) ?? 0) +
             (s.Trees is { } treeStats
-                ? $"\nTree LOD: {treeStats.Instances:N0} trees, {treeStats.TreeTypes} types, {treeStats.Blocks:N0} blocks ({treeStats.EmptyBlocks:N0} vanilla blocks emptied), {treeStats.Elapsed.TotalSeconds:F1}s"
+                ? "\n" + L.F("Timing_TreeLodFmt", treeStats.Instances, treeStats.TreeTypes, treeStats.Blocks, treeStats.EmptyBlocks, treeStats.Elapsed.TotalSeconds)
                 : "");
 
         var rebuild = s.Plan.Rebuild.ToHashSet();
@@ -1062,27 +1122,27 @@ public partial class MainWindow : Window
             .OrderBy(kv => kv.Key.Worldspace).ThenBy(kv => kv.Key.Level).ThenBy(kv => kv.Key.X).ThenBy(kv => kv.Key.Y)
             .Select(kv => new BlockRow(kv.Key.FileName, (int)kv.Key.Level, kv.Key.X, kv.Key.Y, kv.Value.Count,
                 s.Generation is { } gen
-                    ? gen.BlockErrors.ContainsKey(kv.Key) ? "Failed" : rebuild.Contains(kv.Key) ? "Written" : "Unchanged"
-                    : rebuild.Contains(kv.Key) ? "Rebuild" : "Unchanged"))
+                    ? gen.BlockErrors.ContainsKey(kv.Key) ? L.T("Row_Failed") : rebuild.Contains(kv.Key) ? L.T("Row_Written") : L.T("Row_Unchanged")
+                    : rebuild.Contains(kv.Key) ? L.T("Row_Rebuild") : L.T("Row_Unchanged")))
             .ToList();
         ApplyBlockFilter();
 
         var missing = s.Stats.MissingMeshes
             .OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key)
-            .Select(kv => new MissingRow(kv.Key, $"not installed ({kv.Value} base objects)"));
+            .Select(kv => new MissingRow(kv.Key, L.F("Missing_NotInstalledFmt", kv.Value)));
         var broken = (s.Generation?.MeshErrors ?? new Dictionary<string, string>())
             .OrderBy(kv => kv.Key)
             .Select(kv => new MissingRow(kv.Key, kv.Value));
         var noBillboard = (s.MissingBillboards ?? new Dictionary<string, long>())
             .OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key)
             .Select(kv => new MissingRow(kv.Key, s.SkippedByTexGen?.Contains(kv.Key) == true
-                ? $"small plant, TexGen skips it, no LOD (same as DynDOLOD) ({kv.Value} placed)"
-                : $"no tree billboard ({kv.Value} placed trees) - run TexGen"));
+                ? L.F("Missing_SmallPlantFmt", kv.Value)
+                : L.F("Missing_NoBillboardFmt", kv.Value)));
         var noGrassBillboard = (s.MissingGrassBillboards ?? new Dictionary<string, long>())
             .OrderBy(kv => kv.Key)
             .Select(kv => new MissingRow(kv.Key, s.SkippedByTexGen?.Contains(kv.Key) == true
-                ? "small grass, TexGen skips it, no grass LOD"
-                : "no grass billboard - run TexGen with grass billboards"));
+                ? L.T("Missing_SmallGrass")
+                : L.T("Missing_NoGrassBillboard")));
         MissingGrid.ItemsSource = missing.Concat(broken).Concat(noBillboard).Concat(noGrassBillboard).ToList();
         int realBillboards = (s.MissingBillboards?.Keys ?? []).Concat(s.MissingGrassBillboards?.Keys ?? [])
             .Count(k => s.SkippedByTexGen?.Contains(k) != true);
@@ -1109,15 +1169,15 @@ public partial class MainWindow : Window
         if (_lastScan is null) return;
         var d = new SaveFileDialog
         {
-            Title = "Save scan report",
-            Filter = "JSON (*.json)|*.json",
+            Title = L.T("Dlg_SaveScan"),
+            Filter = L.T("Filter_Json"),
             FileName = $"AnvilLOD.scan.{DateTime.Now:yyyyMMdd-HHmm}.json",
         };
         if (_settings.OutputFolder is { } o && Directory.Exists(o)) d.InitialDirectory = o;
         if (d.ShowDialog(this) != true) return;
 
         ScanReport.Write(d.FileName, _lastScan, _lastTotal);
-        StatusText.Text = "Report saved";
+        StatusText.Text = L.T("Status_ReportSaved");
     }
 
     // Brightness dropdowns: 11 entries, 10% .. 110% in 10% steps.

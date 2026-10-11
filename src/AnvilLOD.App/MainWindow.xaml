@@ -1,6 +1,7 @@
 <Window x:Class="AnvilLOD.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:AnvilLOD.App.Localization"
         Title="AnvilLOD" Icon="pack://application:,,,/anvillod.ico" Width="1280" Height="900" MinWidth="980" MinHeight="640"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
         FontFamily="Segoe UI" FontSize="13"
@@ -18,17 +19,21 @@
                         <TextBlock Text="LOD" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Accent}" />
                         <TextBlock x:Name="VersionText" Text="v0.1" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,0,0,2" VerticalAlignment="Bottom" />
                     </StackPanel>
-                    <TextBlock x:Name="StatusText" Text="Ready" Foreground="{StaticResource Muted}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusText" Text="{loc:Loc Status_Ready}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:Loc Language_Label}" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" Margin="24,0,6,0" />
+                        <ComboBox x:Name="LanguageBox" Width="150" Height="24" FontSize="12" SelectionChanged="Language_Changed" />
+                    </StackPanel>
                 </DockPanel>
 
                 <Border Margin="0,10,0,0" Background="{StaticResource Bg}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" Padding="14,8,14,10">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Left" Margin="0,0,26,0">
-                            <TextBlock Text="GAME" Style="{StaticResource SectionHeader}" Margin="0,0,0,8" />
+                            <TextBlock Text="{loc:Loc Section_Game}" Style="{StaticResource SectionHeader}" Margin="0,0,0,8" />
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="Mo2Radio" Content="MO2 instance" GroupName="Source" Margin="0,0,18,0" Checked="SourceMode_Changed" />
+                                <RadioButton x:Name="Mo2Radio" Content="{loc:Loc Source_Mo2}" GroupName="Source" Margin="0,0,18,0" Checked="SourceMode_Changed" />
                                 <RadioButton x:Name="VortexRadio" Content="Vortex" GroupName="Source" Margin="0,0,18,0" Checked="SourceMode_Changed" />
-                                <RadioButton x:Name="DataRadio" Content="Data folder" GroupName="Source" Checked="SourceMode_Changed" />
+                                <RadioButton x:Name="DataRadio" Content="{loc:Loc Source_DataFolder}" GroupName="Source" Checked="SourceMode_Changed" />
                             </StackPanel>
                         </StackPanel>
 
@@ -36,24 +41,24 @@
                             <StackPanel x:Name="Mo2Panel">
                                 <WrapPanel>
                                     <StackPanel Margin="0,0,14,0">
-                                        <TextBlock Text="Instance folder" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
+                                        <TextBlock Text="{loc:Loc Mo2_InstanceFolder}" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
                                         <DockPanel Width="340">
                                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseMo2_Click" />
-                                            <TextBox x:Name="Mo2Box" ToolTip="Folder containing ModOrganizer.ini (e.g. D:\Modlists\MyList)" LostFocus="Mo2Box_LostFocus" />
+                                            <TextBox x:Name="Mo2Box" ToolTip="{loc:Loc Tip_Mo2Box}" LostFocus="Mo2Box_LostFocus" />
                                         </DockPanel>
                                     </StackPanel>
                                     <StackPanel Margin="0,0,14,0">
-                                        <TextBlock Text="Profile" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
+                                        <TextBlock Text="{loc:Loc Mo2_Profile}" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
                                         <ComboBox x:Name="ProfileBox" Width="200" />
                                     </StackPanel>
                                     <StackPanel>
                                         <TextBlock Text=" " Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
-                                        <Button x:Name="Mo2LocationsButton" Content="Locations ▾" Padding="12,4" Click="Mo2Locations_Click"
-                                                ToolTip="Auto-detect reads the game, mods, profiles and overwrite folders from ModOrganizer.ini. Type a folder here only if it is wrong, or your game, mods or profiles are on another drive. Leave a box empty to keep the auto-detect for it. With the game, mods and profiles folders typed, ModOrganizer.ini isn't needed." />
+                                        <Button x:Name="Mo2LocationsButton" Content="{loc:Loc Locations_Button}" Padding="12,4" Click="Mo2Locations_Click"
+                                                ToolTip="{loc:Loc Tip_Locations}" />
                                     </StackPanel>
                                 </WrapPanel>
                                 <TextBlock x:Name="Mo2InfoText" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0" TextTrimming="CharacterEllipsis"
-                                           Text="Reads your mods directly. No need to launch AnvilLOD from MO2." />
+                                           Text="{loc:Loc Mo2_InfoDefault}" />
                                 <Popup x:Name="Mo2LocationsPopup" PlacementTarget="{Binding ElementName=Mo2LocationsButton}" Placement="Bottom" StaysOpen="False"
                                        AllowsTransparency="True" PopupAnimation="Fade" VerticalOffset="4">
                                     <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="8" Padding="14,10,14,14" Width="400" Margin="10">
@@ -61,17 +66,17 @@
                                             <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.6" />
                                         </Border.Effect>
                                         <StackPanel>
-                                            <TextBlock Text="LOCATIONS (OPTIONAL)" Style="{StaticResource SectionHeader}" Margin="0,0,0,2" />
+                                            <TextBlock Text="{loc:Loc Locations_Section}" Style="{StaticResource SectionHeader}" Margin="0,0,0,2" />
                                             <TextBlock Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"
-                                                       Text="Type a folder to override what ModOrganizer.ini says; a box left empty keeps the auto-detect. Needed when the game, mods or profiles are on another drive, or the ini is wrong." />
-                                            <TextBlock Text="Game folder (the one with SkyrimSE.exe)" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="Mo2GameBox" ToolTip="Empty = gamePath from ModOrganizer.ini. Example: F:\Games\Stock Game" LostFocus="Mo2Box_LostFocus" />
-                                            <TextBlock Text="Mods folder" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="Mo2ModsBox" ToolTip="Empty = the ini's mod_directory (usually &lt;instance&gt;\mods)" LostFocus="Mo2Box_LostFocus" />
-                                            <TextBlock Text="Profiles folder" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="Mo2ProfilesBox" ToolTip="Empty = the ini's profiles_directory (usually &lt;instance&gt;\profiles)" LostFocus="Mo2Box_LostFocus" />
-                                            <TextBlock Text="Overwrite folder" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="Mo2OverwriteBox" ToolTip="Empty = the ini's overwrite_directory (usually &lt;instance&gt;\overwrite)" LostFocus="Mo2Box_LostFocus" />
+                                                       Text="{loc:Loc Locations_PopupHint}" />
+                                            <TextBlock Text="{loc:Loc Locations_GameFolder}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="Mo2GameBox" ToolTip="{loc:Loc Tip_Mo2GameBox}" LostFocus="Mo2Box_LostFocus" />
+                                            <TextBlock Text="{loc:Loc Locations_ModsFolder}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="Mo2ModsBox" ToolTip="{loc:Loc Tip_Mo2ModsBox}" LostFocus="Mo2Box_LostFocus" />
+                                            <TextBlock Text="{loc:Loc Locations_ProfilesFolder}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="Mo2ProfilesBox" ToolTip="{loc:Loc Tip_Mo2ProfilesBox}" LostFocus="Mo2Box_LostFocus" />
+                                            <TextBlock Text="{loc:Loc Locations_OverwriteFolder}" Style="{StaticResource FieldLabel}" />
+                                            <TextBox x:Name="Mo2OverwriteBox" ToolTip="{loc:Loc Tip_Mo2OverwriteBox}" LostFocus="Mo2Box_LostFocus" />
                                         </StackPanel>
                                     </Border>
                                 </Popup>
@@ -80,23 +85,23 @@
                             <StackPanel x:Name="DataPanel" Visibility="Collapsed">
                                 <WrapPanel>
                                     <StackPanel Margin="0,0,14,0">
-                                        <TextBlock Text="Data folder" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
+                                        <TextBlock Text="{loc:Loc Source_DataFolder}" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
                                         <DockPanel Width="340">
                                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseData_Click" />
-                                            <TextBox x:Name="DataBox" ToolTip="Leave empty to auto-detect" />
+                                            <TextBox x:Name="DataBox" ToolTip="{loc:Loc Tip_DataBox}" />
                                         </DockPanel>
                                     </StackPanel>
                                     <StackPanel>
-                                        <TextBlock Text="plugins.txt (optional)" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
+                                        <TextBlock Text="{loc:Loc Data_PluginsTxt}" Style="{StaticResource FieldLabel}" Margin="0,0,0,3" />
                                         <DockPanel Width="340">
                                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowsePlugins_Click" />
-                                            <TextBox x:Name="PluginsBox" ToolTip="Use a specific load order. Requires the Data folder." />
+                                            <TextBox x:Name="PluginsBox" ToolTip="{loc:Loc Tip_PluginsBox}" />
                                         </DockPanel>
                                     </StackPanel>
                                 </WrapPanel>
-                                <TextBlock x:Name="DataInfoText" Text="For a plain (non-MO2) install." Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="DataInfoText" Text="{loc:Loc Data_InfoPlain}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
                                 <StackPanel x:Name="VortexPanel" Visibility="Collapsed" Margin="0,6,0,0">
-                                    <Button x:Name="VortexOutputButton" Content="Output to Vortex staging (AnvilLOD Output)" Padding="8,4" HorizontalAlignment="Left" Click="VortexOutput_Click" />
+                                    <Button x:Name="VortexOutputButton" Content="{loc:Loc Vortex_OutputToStaging}" Padding="8,4" HorizontalAlignment="Left" Click="VortexOutput_Click" />
                                     <TextBlock x:Name="VortexInfoText" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </StackPanel>
@@ -110,15 +115,15 @@
         <Border DockPanel.Dock="Bottom" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="18,10">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button x:Name="ExportButton" Content="Export report…" Margin="0,0,8,0" IsEnabled="False" Click="Export_Click" />
-                    <Button x:Name="CancelButton" Content="Cancel" Margin="0,0,8,0" IsEnabled="False" Click="Cancel_Click" />
-                    <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="Scan_Click" />
-                    <Button x:Name="GenerateButton" Content="Generate LOD" Style="{StaticResource PrimaryButton}" Click="Generate_Click"
-                            ToolTip="Scan, then write the changed LOD blocks (.bto) into the output folder" />
+                    <Button x:Name="ExportButton" Content="{loc:Loc Btn_Export}" Margin="0,0,8,0" IsEnabled="False" Click="Export_Click" />
+                    <Button x:Name="CancelButton" Content="{loc:Loc Btn_Cancel}" Margin="0,0,8,0" IsEnabled="False" Click="Cancel_Click" />
+                    <Button x:Name="ScanButton" Content="{loc:Loc Btn_Scan}" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="Scan_Click" />
+                    <Button x:Name="GenerateButton" Content="{loc:Loc Btn_Generate}" Style="{StaticResource PrimaryButton}" Click="Generate_Click"
+                            ToolTip="{loc:Loc Tip_Generate}" />
                 </StackPanel>
                 <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
                     <ProgressBar x:Name="Progress" IsIndeterminate="False" Value="0" />
-                    <TextBlock x:Name="ProgressText" Text="Idle" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="ProgressText" Text="{loc:Loc Status_Idle}" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="EstimateText" Text="" Foreground="{StaticResource Accent}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </DockPanel>
@@ -135,16 +140,16 @@
             <Border x:Name="NavBorder" Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" ClipToBounds="True">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="12,14,12,14" Width="198">
-                        <TextBlock Text="SETTINGS" Style="{StaticResource SectionHeader}" Margin="8,0,0,8" />
-                        <RadioButton x:Name="NavOutput" GroupName="Nav" Tag="Output" Style="{StaticResource NavButton}" Content="Output and worlds" IsChecked="True" Checked="Nav_Checked" />
-                        <RadioButton x:Name="NavRules" GroupName="Nav" Tag="Rules" Style="{StaticResource NavButton}" Content="LOD rules" Checked="Nav_Checked" />
-                        <RadioButton x:Name="NavObjects" GroupName="Nav" Tag="Objects" Style="{StaticResource NavButton}" Content="Objects and terrain" Checked="Nav_Checked" />
-                        <RadioButton x:Name="NavTrees" GroupName="Nav" Tag="Trees" Style="{StaticResource NavButton}" Content="Trees" Checked="Nav_Checked" />
-                        <RadioButton x:Name="NavGrass" GroupName="Nav" Tag="Grass" Style="{StaticResource NavButton}" Content="Grass and size" Checked="Nav_Checked" />
-                        <RadioButton x:Name="NavDynamic" GroupName="Nav" Tag="Dynamic" Style="{StaticResource NavButton}" Content="Seasons, water, dynamic" Checked="Nav_Checked" />
-                        <TextBlock Text="MOD AUTHOR TOOLS" Style="{StaticResource SectionHeader}" Margin="8,22,0,8" />
-                        <RadioButton x:Name="NavFinder" GroupName="Nav" Tag="Finder" Style="{StaticResource NavButton}" Content="Missing LOD finder" Checked="Nav_Checked" ToolTip="Finds the objects and trees of one plugin that are seen from afar but have no LOD, and makes what is missing." />
-                        <RadioButton x:Name="NavMaker" GroupName="Nav" Tag="Maker" Style="{StaticResource NavButton}" Content="LOD Mesh Maker" Checked="Nav_Checked" ToolTip="Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick." />
+                        <TextBlock Text="{loc:Loc Nav_Settings}" Style="{StaticResource SectionHeader}" Margin="8,0,0,8" />
+                        <RadioButton x:Name="NavOutput" GroupName="Nav" Tag="Output" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Output}" IsChecked="True" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavRules" GroupName="Nav" Tag="Rules" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Rules}" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavObjects" GroupName="Nav" Tag="Objects" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Objects}" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavTrees" GroupName="Nav" Tag="Trees" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Trees}" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavGrass" GroupName="Nav" Tag="Grass" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Grass}" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavDynamic" GroupName="Nav" Tag="Dynamic" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Dynamic}" Checked="Nav_Checked" />
+                        <TextBlock Text="{loc:Loc Nav_AuthorTools}" Style="{StaticResource SectionHeader}" Margin="8,22,0,8" />
+                        <RadioButton x:Name="NavFinder" GroupName="Nav" Tag="Finder" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Finder}" Checked="Nav_Checked" ToolTip="{loc:Loc Tip_Nav_Finder}" />
+                        <RadioButton x:Name="NavMaker" GroupName="Nav" Tag="Maker" Style="{StaticResource NavButton}" Content="{loc:Loc Nav_Maker}" Checked="Nav_Checked" ToolTip="{loc:Loc Tip_Nav_Maker}" />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -163,10 +168,10 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.14" IsHitTestVisible="False"
                                RenderOptions.BitmapScalingMode="HighQuality" />
                         <TabControl x:Name="ResultsTabs" Margin="12,6,12,10" Background="Transparent">
-<TabItem Header="Overview">
+<TabItem Header="{loc:Loc Tab_Overview}" Tag="Overview">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <TextBlock x:Name="OverviewHint" Text="Set your paths on the left and press Scan to analyse the load order."
+                            <TextBlock x:Name="OverviewHint" Text="{loc:Loc Overview_Hint}"
                                        Foreground="{StaticResource Muted}" Margin="0,6,0,14" TextWrapping="Wrap" />
                             <Border x:Name="WarningBox" Visibility="Collapsed" Background="#2E2418" BorderBrush="{StaticResource Accent}"
                                     BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,10,14">
@@ -179,19 +184,19 @@
                                 </ItemsControl>
                             </Border>
                             <WrapPanel x:Name="Tiles">
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TilePlugins" Text="—" Style="{StaticResource TileValue}" /><TextBlock x:Name="TilePluginsLabel" Text="Plugins" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileVisited" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="References scanned" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileLodRefs" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="LOD references" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileBlocks" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="LOD blocks" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileRebuild" Text="—" Style="{StaticResource TileValue}" /><TextBlock x:Name="TileRebuildLabel" Text="Blocks to rebuild" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileMissing" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="Missing LOD meshes" Style="{StaticResource TileLabel}" /></StackPanel></Border>
-                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileTime" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="Total time" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TilePlugins" Text="—" Style="{StaticResource TileValue}" /><TextBlock x:Name="TilePluginsLabel" Text="{loc:Loc Tile_Plugins}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileVisited" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="{loc:Loc Tile_Visited}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileLodRefs" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="{loc:Loc Tile_LodRefs}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileBlocks" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="{loc:Loc Tile_Blocks}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileRebuild" Text="—" Style="{StaticResource TileValue}" /><TextBlock x:Name="TileRebuildLabel" Text="{loc:Loc Tile_Rebuild}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileMissing" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="{loc:Loc Tile_Missing}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
+                                <Border Style="{StaticResource Tile}"><StackPanel><TextBlock x:Name="TileTime" Text="—" Style="{StaticResource TileValue}" /><TextBlock Text="{loc:Loc Tile_Time}" Style="{StaticResource TileLabel}" /></StackPanel></Border>
                             </WrapPanel>
 
-                            <TextBlock Text="BLOCKS PER LEVEL" Style="{StaticResource SectionHeader}" />
+                            <TextBlock Text="{loc:Loc Section_BlocksPerLevel}" Style="{StaticResource SectionHeader}" />
                             <DataGrid x:Name="LevelGrid" Height="150" HorizontalAlignment="Left" Width="520">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Worldspace" Binding="{Binding Worldspace}" Width="*" />
+                                    <DataGridTextColumn Header="{loc:Loc Header_Worldspace}" Binding="{Binding Worldspace}" Width="*" />
                                     <DataGridTextColumn Header="LOD 4" Binding="{Binding Lod4, StringFormat=N0}" Width="70" />
                                     <DataGridTextColumn Header="LOD 8" Binding="{Binding Lod8, StringFormat=N0}" Width="70" />
                                     <DataGridTextColumn Header="LOD 16" Binding="{Binding Lod16, StringFormat=N0}" Width="70" />
@@ -199,42 +204,42 @@
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                            <TextBlock Text="TIMING" Style="{StaticResource SectionHeader}" />
+                            <TextBlock Text="{loc:Loc Section_Timing}" Style="{StaticResource SectionHeader}" />
                             <TextBlock x:Name="TimingText" Text="—" Foreground="{StaticResource Muted}" FontFamily="Consolas" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-<TabItem Header="Blocks">
+<TabItem Header="{loc:Loc Tab_Blocks}" Tag="Blocks">
                     <DockPanel>
                         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                             <TextBlock x:Name="BlockCountText" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                            <TextBox x:Name="BlockFilterBox" TextChanged="BlockFilter_Changed" ToolTip="Filter by file name, e.g. Tamriel.4." />
+                            <TextBox x:Name="BlockFilterBox" TextChanged="BlockFilter_Changed" ToolTip="{loc:Loc Tip_BlockFilter}" />
                         </DockPanel>
                         <DataGrid x:Name="BlockGrid">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="File" Binding="{Binding File}" Width="*" />
-                                <DataGridTextColumn Header="Level" Binding="{Binding Level}" Width="60" />
+                                <DataGridTextColumn Header="{loc:Loc Header_File}" Binding="{Binding File}" Width="*" />
+                                <DataGridTextColumn Header="{loc:Loc Header_Level}" Binding="{Binding Level}" Width="60" />
                                 <DataGridTextColumn Header="X" Binding="{Binding X}" Width="60" />
                                 <DataGridTextColumn Header="Y" Binding="{Binding Y}" Width="60" />
-                                <DataGridTextColumn Header="Refs" Binding="{Binding Refs, StringFormat=N0}" Width="70" />
-                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
+                                <DataGridTextColumn Header="{loc:Loc Header_Refs}" Binding="{Binding Refs, StringFormat=N0}" Width="70" />
+                                <DataGridTextColumn Header="{loc:Loc Header_Status}" Binding="{Binding Status}" Width="90" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
                 </TabItem>
-<TabItem Header="Missing meshes">
+<TabItem Header="{loc:Loc Tab_Missing}" Tag="Missing">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
-                                   Text="LOD meshes that are missing (named in a STAT's MNAM but not installed) or that couldn't be used when generating. Objects using them are left out of LOD at that level." />
+                                   Text="{loc:Loc Missing_Description}" />
                         <DataGrid x:Name="MissingGrid">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Mesh path" Binding="{Binding Path}" Width="2*" />
-                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" Width="3*" />
+                                <DataGridTextColumn Header="{loc:Loc Header_MeshPath}" Binding="{Binding Path}" Width="2*" />
+                                <DataGridTextColumn Header="{loc:Loc Header_Problem}" Binding="{Binding Problem}" Width="3*" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
                 </TabItem>
-<TabItem Header="Log">
+<TabItem Header="{loc:Loc Tab_Log}" Tag="Log">
                     <TextBox x:Name="LogBox" IsReadOnly="True" FontFamily="Consolas" FontSize="12"
                              Background="#111317" Foreground="#C9D1C9" BorderThickness="1"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
@@ -242,10 +247,10 @@
                 </TabItem>
                         </TabControl>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,9,14,0">
-                            <Button x:Name="PrintButton" Content="Print to file…" Padding="10,3" Margin="0,0,6,0" Click="PrintResults_Click"
-                                    ToolTip="Saves what this tab shows to a file (Overview and Log as text, Blocks and Missing meshes as CSV) so you can read it later." />
-                            <Button x:Name="ExpandButton" Content="⤢  Expand" Padding="10,3" Click="ExpandResults_Click"
-                                    ToolTip="Fills the window with this box. Press again (or Esc) to bring the options back." />
+                            <Button x:Name="PrintButton" Content="{loc:Loc Btn_Print}" Padding="10,3" Margin="0,0,6,0" Click="PrintResults_Click"
+                                    ToolTip="{loc:Loc Tip_Print}" />
+                            <Button x:Name="ExpandButton" Content="{loc:Loc Btn_Expand}" Padding="10,3" Click="ExpandResults_Click"
+                                    ToolTip="{loc:Loc Tip_Expand}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -262,7 +267,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="OptionsTitle" Grid.Column="0" Text="Output and worlds" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="18,10,12,0" />
+                            <TextBlock x:Name="OptionsTitle" Grid.Column="0" Text="{loc:Loc Nav_Output}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="18,10,12,0" />
                             <StackPanel Grid.Column="1" Width="372">
 <Border x:Name="PresetBar" Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1" Padding="12,10,12,0">
                         <Grid x:Name="PresetGrid" Height="38" SizeChanged="PresetGrid_SizeChanged">
@@ -271,12 +276,9 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <RadioButton x:Name="PresetTab0" Grid.Column="0" GroupName="PresetTabs" Tag="0" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 1. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
-                            <RadioButton x:Name="PresetTab1" Grid.Column="1" GroupName="PresetTabs" Tag="1" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 2. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
-                            <RadioButton x:Name="PresetTab2" Grid.Column="2" GroupName="PresetTabs" Tag="2" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick"
-                                         ToolTip="Preset 3. Each preset remembers every setting in this column. Click to switch, double-click to rename." />
+                            <RadioButton x:Name="PresetTab0" Grid.Column="0" GroupName="PresetTabs" Tag="0" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick" />
+                            <RadioButton x:Name="PresetTab1" Grid.Column="1" GroupName="PresetTabs" Tag="1" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick" />
+                            <RadioButton x:Name="PresetTab2" Grid.Column="2" GroupName="PresetTabs" Tag="2" Style="{StaticResource PresetTab}" Checked="PresetTab_Checked" MouseDoubleClick="PresetTab_DoubleClick" />
                             <TextBox x:Name="PresetRenameBox" Grid.Column="0" Visibility="Collapsed" Margin="3,4,3,5" Padding="6,2" VerticalContentAlignment="Center" MaxLength="18"
                                      KeyDown="PresetRename_KeyDown" LostFocus="PresetRename_LostFocus" />
                             <Border x:Name="PresetIndicator" Grid.ColumnSpan="3" Height="3" VerticalAlignment="Bottom" HorizontalAlignment="Left" CornerRadius="2"
@@ -300,19 +302,19 @@
                             <StackPanel>
                                 <StackPanel x:Name="SettingsPanel" MaxWidth="860" HorizontalAlignment="Left">
                         <StackPanel x:Name="CatOutput" Visibility="Visible">
-                            <TextBlock Text="Where the LOD goes, which worldspaces and which LOD levels to build." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<TextBlock Text="OUTPUT" Style="{StaticResource SectionHeader}" />
-<TextBlock Text="Output folder" Style="{StaticResource FieldLabel}" />
+                            <TextBlock Text="{loc:Loc CatOutput_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<TextBlock Text="{loc:Loc Section_Output}" Style="{StaticResource SectionHeader}" />
+<TextBlock Text="{loc:Loc Output_Folder}" Style="{StaticResource FieldLabel}" />
 <DockPanel>
                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOutput_Click" />
-                            <TextBox x:Name="OutputBox" ToolTip="Where LOD files go. Leave it empty to use 'AnvilLOD Output' (a new mod folder in the MO2 mods folder, Vortex's staging folder, or Documents). The folder is created if it doesn't exist." />
+                            <TextBox x:Name="OutputBox" ToolTip="{loc:Loc Tip_OutputBox}" />
                         </DockPanel>
-<CheckBox x:Name="CleanOutputCheck" Content="Empty the output folder before generating" IsChecked="True" Margin="0,6,0,0"
-                                  ToolTip="Deletes what the last run left in the output folder first, so old files never mix with the new ones. Only done in an empty folder or one AnvilLOD wrote (it has AnvilLOD.manifest.json or AnvilLOD.log); any other folder is left alone and the log says so. MO2's meta.ini is kept. Every block is written again each run; untick to update the folder in place and only rewrite what changed." />
-<TextBlock Text="WORLDSPACES" Style="{StaticResource SectionHeader}" />
-<CheckBox x:Name="AllWorldspacesCheck" Content="All worldspaces with a .lod file" Checked="AllWorldspaces_Changed" Unchecked="AllWorldspaces_Changed" />
-<TextBox x:Name="WorldspaceBox" Text="Tamriel" Margin="0,4,0,0" ToolTip="Comma separated EditorIDs, e.g. Tamriel, DLC2SolstheimWorld" />
-<TextBlock Text="LOD LEVELS" Style="{StaticResource SectionHeader}" />
+<CheckBox x:Name="CleanOutputCheck" Content="{loc:Loc Opt_CleanOutput}" IsChecked="True" Margin="0,6,0,0"
+                                  ToolTip="{loc:Loc Tip_CleanOutput}" />
+<TextBlock Text="{loc:Loc Section_Worldspaces}" Style="{StaticResource SectionHeader}" />
+<CheckBox x:Name="AllWorldspacesCheck" Content="{loc:Loc Opt_AllWorldspaces}" Checked="AllWorldspaces_Changed" Unchecked="AllWorldspaces_Changed" />
+<TextBox x:Name="WorldspaceBox" Text="Tamriel" Margin="0,4,0,0" ToolTip="{loc:Loc Tip_WorldspaceBox}" />
+<TextBlock Text="{loc:Loc Section_LodLevels}" Style="{StaticResource SectionHeader}" />
 <WrapPanel>
                             <CheckBox x:Name="Lod4Check" Content="LOD 4" IsChecked="True" Margin="0,3,16,3" />
                             <CheckBox x:Name="Lod8Check" Content="LOD 8" IsChecked="True" Margin="0,3,16,3" />
@@ -321,48 +323,48 @@
                         </WrapPanel>
                         </StackPanel>
                         <StackPanel x:Name="CatRules" Visibility="Collapsed">
-                            <TextBlock Text="Which LOD model or billboard each kind of object uses at each LOD level. AnvilLOD reuses DynDOLOD rule files." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<TextBlock Text="LOD RULES" Style="{StaticResource SectionHeader}" />
-<TextBlock Text="DynDOLOD folder (optional, reuses its rules)" Style="{StaticResource FieldLabel}" />
+                            <TextBlock Text="{loc:Loc CatRules_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<TextBlock Text="{loc:Loc Section_LodRules}" Style="{StaticResource SectionHeader}" />
+<TextBlock Text="{loc:Loc Rules_DynDolodFolder}" Style="{StaticResource FieldLabel}" />
 <DockPanel>
                             <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseDynDolod_Click" />
-                            <TextBox x:Name="DynDolodBox" ToolTip="Folder with DynDOLODx64.exe. Its rule files plus the ones mods ship in Data\DynDOLOD decide which LOD mesh each object uses." />
+                            <TextBox x:Name="DynDolodBox" ToolTip="{loc:Loc Tip_DynDolodBox}" />
                         </DockPanel>
-<TextBlock Text="DynDOLOD rule preset" Style="{StaticResource FieldLabel}" />
+<TextBlock Text="{loc:Loc Rules_Preset}" Style="{StaticResource FieldLabel}" />
 <DockPanel>
-                            <Button x:Name="EditRulesButton" DockPanel.Dock="Right" Content="Edit rules…" Padding="12,4" Margin="6,0,0,0" Click="EditRules_Click"
-                                    ToolTip="Look at and change the LOD rules of this preset: which LOD model or billboard each kind of object uses at each LOD level. Your changes are saved as your own rule file." />
+                            <Button x:Name="EditRulesButton" DockPanel.Dock="Right" Content="{loc:Loc Btn_EditRules}" Padding="12,4" Margin="6,0,0,0" Click="EditRules_Click"
+                                    ToolTip="{loc:Loc Tip_EditRules}" />
                             <ComboBox x:Name="PresetBox" SelectedIndex="2">
-                                <ComboBoxItem Content="Low" />
-                                <ComboBoxItem Content="Medium" />
-                                <ComboBoxItem Content="High" />
+                                <ComboBoxItem Content="{loc:Loc Preset_Low}" />
+                                <ComboBoxItem Content="{loc:Loc Preset_Medium}" />
+                                <ComboBoxItem Content="{loc:Loc Preset_High}" />
                             </ComboBox>
                         </DockPanel>
 <WrapPanel Margin="0,6,0,0">
-                            <CheckBox x:Name="CandlesCheck" Content="Candles" Margin="0,2,18,2"
-                                      ToolTip="Also load DynDOLOD's Candles rules for this preset: candles, lanterns and sconces get Far LOD, so their light shows in the distance. Needs the DynDOLOD folder." />
-                            <CheckBox x:Name="FxGlowCheck" Content="FXGlow" Margin="0,2,0,2"
-                                      ToolTip="Also load DynDOLOD's FXGlow rules for this preset: the glow cards of fires and lights get Far LOD. Needs the DynDOLOD folder." />
+                            <CheckBox x:Name="CandlesCheck" Content="{loc:Loc Opt_Candles}" Margin="0,2,18,2"
+                                      ToolTip="{loc:Loc Tip_Candles}" />
+                            <CheckBox x:Name="FxGlowCheck" Content="{loc:Loc Opt_FxGlow}" Margin="0,2,0,2"
+                                      ToolTip="{loc:Loc Tip_FxGlow}" />
                         </WrapPanel>
-<TextBlock Text="Custom rules file (optional)" Style="{StaticResource FieldLabel}" />
+<TextBlock Text="{loc:Loc Rules_CustomFile}" Style="{StaticResource FieldLabel}" />
 <DockPanel>
                             <CheckBox x:Name="CustomRulesCheck" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,8,0"
-                                      ToolTip="Use this rule file. Its rules come before DynDOLOD's own and win. Unticked: only DynDOLOD's own rule files are used." />
+                                      ToolTip="{loc:Loc Tip_CustomRulesCheck}" />
                             <Button x:Name="BrowseCustomRulesButton" DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseCustomRules_Click" />
                             <TextBox x:Name="CustomRulesBox" IsEnabled="{Binding IsChecked, ElementName=CustomRulesCheck}"
-                                     ToolTip="A rule file in DynDOLOD's format: one saved from Edit rules, or a DynDOLOD preset or rule file you have. Tick the box to use it." />
+                                     ToolTip="{loc:Loc Tip_CustomRulesBox}" />
                         </DockPanel>
                         </StackPanel>
                         <StackPanel x:Name="CatObjects" Visibility="Collapsed">
-                            <TextBlock Text="Object LOD, PBR, brightness, terrain underside, large references and which references count." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"
-                                  ToolTip="Drops LOD triangles that are completely underground. Big savings on mountains and rocks." />
-<CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
-                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block." />
-<TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />
+                            <TextBlock Text="{loc:Loc CatObjects_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="RemoveBuriedCheck" Content="{loc:Loc Opt_RemoveBuried}" IsChecked="True"
+                                  ToolTip="{loc:Loc Tip_RemoveBuried}" />
+<CheckBox x:Name="PbrLodCheck" Content="{loc:Loc Opt_PbrLod}"
+                                  ToolTip="{loc:Loc Tip_PbrLod}" />
+<TextBlock Text="{loc:Loc Opt_PbrBrightness}" Margin="20,2,0,2" />
 <ComboBox x:Name="PbrLodBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
                                   IsEnabled="{Binding IsChecked, ElementName=PbrLodCheck}"
-                                  ToolTip="Brightness of the converted PBR copies, as a share of DynDOLOD's default PBR scale. Lower it if the LOD looks brighter than the real objects.">
+                                  ToolTip="{loc:Loc Tip_PbrBrightness}">
                             <ComboBoxItem Content="10%" />
                             <ComboBoxItem Content="20%" />
                             <ComboBoxItem Content="30%" />
@@ -372,21 +374,21 @@
                             <ComboBoxItem Content="70%" />
                             <ComboBoxItem Content="80%" />
                             <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="{loc:Loc Item_DefaultPercent}" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
-<CheckBox x:Name="LargeRefsCheck" Content="Large references (writes AnvilLOD.esm)"
-                                  ToolTip="The engine's large reference grid (uLargeRefLODGridSize in SkyrimPrefs.ini) shows the full models of listed references beyond the loaded cells. Skyrim.esm and the DLCs list theirs; this lists the qualifying references from your other ESM-flagged plugins that nobody lists yet, in AnvilLOD.esm, flagged ESL (no plugin slot). Enable it after your other ESMs. References that a plugin outside the ESMs overrides or that start disabled are left out, because those make large references flicker. The report says what was listed and what was left out." />
-<CheckBox x:Name="LargeRefsEslCheck" Content="Flag AnvilLOD.esm as ESL (saves a plugin slot)" IsChecked="True" Margin="20,2,0,0"
+<CheckBox x:Name="LargeRefsCheck" Content="{loc:Loc Opt_LargeRefs}"
+                                  ToolTip="{loc:Loc Tip_LargeRefs}" />
+<CheckBox x:Name="LargeRefsEslCheck" Content="{loc:Loc Opt_LargeRefsEsl}" IsChecked="True" Margin="20,2,0,0"
                                   IsEnabled="{Binding IsChecked, ElementName=LargeRefsCheck}"
-                                  ToolTip="On: the plugin is flagged ESL and takes no plugin slot. Off: it is a normal ESM that uses a slot. If large references flicker at a distance, you can untick this to rule the ESL flag out, at the cost of one slot." />
+                                  ToolTip="{loc:Loc Tip_LargeRefsEsl}" />
 <TextBlock x:Name="LargeRefsEslNote" Margin="38,2,0,6" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
-                                   Text="Flagging it ESL saves a plugin slot. If large references flicker at a distance, untick it to use a normal ESM slot instead." />
-<CheckBox x:Name="UndersideCheck" Content="Terrain underside (for volumetric lighting mods)" Margin="0,2,0,6"
-                                  ToolTip="Builds a low-resolution, downward-facing copy of the terrain (meshes\Terrain\&lt;worldspace&gt;\&lt;worldspace&gt;_Underside.nif) and AnvilLOD.esp, flagged ESL, that places it 500 units below the world. DVLaSS, EVLaS and Community Shaders' sky sync use it to stop sun rays and shadows leaking through the landscape. Enable the plugin in your mod manager and load it after plugins that edit worldspaces. Do not use it together with DynDOLOD's own underside." />
-<TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
+                                   Text="{loc:Loc Opt_LargeRefsEslNote}" />
+<CheckBox x:Name="UndersideCheck" Content="{loc:Loc Opt_Underside}" Margin="0,2,0,6"
+                                  ToolTip="{loc:Loc Tip_Underside}" />
+<TextBlock Text="{loc:Loc Opt_ObjectBrightness}" Margin="0,2,0,2" />
 <ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
-                                  ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">
+                                  ToolTip="{loc:Loc Tip_ObjectBrightness}">
                             <ComboBoxItem Content="10%" />
                             <ComboBoxItem Content="20%" />
                             <ComboBoxItem Content="30%" />
@@ -396,19 +398,19 @@
                             <ComboBoxItem Content="70%" />
                             <ComboBoxItem Content="80%" />
                             <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="{loc:Loc Item_DefaultPercent}" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
-<CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
-<CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
+<CheckBox x:Name="IncludeDisabledCheck" Content="{loc:Loc Opt_IncludeDisabled}" />
+<CheckBox x:Name="IncludeEnableParentCheck" Content="{loc:Loc Opt_IncludeEnableParent}" IsChecked="True" ToolTip="{loc:Loc Tip_IncludeEnableParent}" />
                         </StackPanel>
                         <StackPanel x:Name="CatTrees" Visibility="Collapsed">
-                            <TextBlock Text="Billboard tree LOD and 3D tree LOD models." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<CheckBox x:Name="TreeLodCheck" Content="Tree LOD (billboards from TexGen output)" IsChecked="True"
-                                  ToolTip="Builds the engine's billboard tree LOD (.lst, .btt and the tree atlas) from textures\terrain\LODGen billboards, e.g. TexGen output." />
-<TextBlock Text="Tree LOD brightness" Margin="20,2,0,2" />
+                            <TextBlock Text="{loc:Loc CatTrees_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="TreeLodCheck" Content="{loc:Loc Opt_TreeLod}" IsChecked="True"
+                                  ToolTip="{loc:Loc Tip_TreeLod}" />
+<TextBlock Text="{loc:Loc Opt_TreeBrightness}" Margin="20,2,0,2" />
 <ComboBox x:Name="TreeBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
-                                  ToolTip="Darkens or brightens the distant tree billboards to match your lighting/ENB.">
+                                  ToolTip="{loc:Loc Tip_TreeBrightness}">
                             <ComboBoxItem Content="10%" />
                             <ComboBoxItem Content="20%" />
                             <ComboBoxItem Content="30%" />
@@ -418,68 +420,68 @@
                             <ComboBoxItem Content="70%" />
                             <ComboBoxItem Content="80%" />
                             <ComboBoxItem Content="90%" />
-                            <ComboBoxItem Content="100% (default)" />
+                            <ComboBoxItem Content="{loc:Loc Item_DefaultPercent}" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
-<CheckBox x:Name="Tree3DCheck" Content="3D tree LOD (use 3D models where found)"
-                                  ToolTip="Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders." />
-<CheckBox x:Name="Tree3DLod8Check" Content="Also use the 3D models at LOD8" Margin="20,2,0,0"
+<CheckBox x:Name="Tree3DCheck" Content="{loc:Loc Opt_Tree3D}"
+                                  ToolTip="{loc:Loc Tip_Tree3D}" />
+<CheckBox x:Name="Tree3DLod8Check" Content="{loc:Loc Opt_Tree3DLod8}" Margin="20,2,0,0"
                                   IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
-                                  ToolTip="Nicer mid-distance trees, but much bigger LOD files. Off: 3D at LOD4 only, cards from LOD8." />
-<CheckBox x:Name="Tree3DNameCheck" Content="Accept models by tree name (DynDOLOD's default)" Margin="20,2,0,6"
+                                  ToolTip="{loc:Loc Tip_Tree3DLod8}" />
+<CheckBox x:Name="Tree3DNameCheck" Content="{loc:Loc Opt_Tree3DByName}" Margin="20,2,0,6"
                                   IsEnabled="{Binding IsChecked, ElementName=Tree3DCheck}"
-                                  ToolTip="DynDOLOD Resources ships almost all 3D tree models under the plain tree name; a CRC32 in the name is only for name collisions, and DynDOLOD itself matches by name. On (default): a model stored under the plain tree name is used when no CRC32-named one exists. Off: only exact CRC32 matches are used, which finds none with DynDOLOD Resources. A model made for another version of a tree mesh (before a mod or PGPatcher changed it) can look slightly off." />
+                                  ToolTip="{loc:Loc Tip_Tree3DByName}" />
                         </StackPanel>
                         <StackPanel x:Name="CatGrass" Visibility="Collapsed">
-                            <TextBlock Text="Distant grass from your grass cache. This is the biggest choice for file size, disk space and graphics load." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<CheckBox x:Name="GrassLodCheck" Content="Grass LOD (from the grass cache)" IsChecked="True"
-                                  ToolTip="Adds distant grass to the LOD4 blocks from your NGIO/FasterNGIO grass cache, textured with TexGen grass billboards." />
-<TextBlock Text="Grass LOD density" Margin="20,2,0,2" />
+                            <TextBlock Text="{loc:Loc CatGrass_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="GrassLodCheck" Content="{loc:Loc Opt_GrassLod}" IsChecked="True"
+                                  ToolTip="{loc:Loc Tip_GrassLod}" />
+<TextBlock Text="{loc:Loc Opt_GrassDensity}" Margin="20,2,0,2" />
 <ComboBox x:Name="GrassDensityBox" SelectedIndex="1" Margin="20,0,0,6"
-                                  ToolTip="Share of the cached grass kept as LOD tufts, spread evenly over the ground. More is fuller and closer to the real grass, but makes bigger files and more triangles to draw. The sizes listed are for a large load order's Tamriel (object LOD, normal grass cache). Seasons of Skyrim adds a full set per season, and summer's grass cache is much denser than winter's, so seasonal output is several times bigger.">
-                            <ComboBoxItem Content="Low (4%): 15M triangles, 0.7 GB" />
-                            <ComboBoxItem Content="Medium (8%): 20M triangles, 1.1 GB" />
-                            <ComboBoxItem Content="High (15%): 29M triangles, 1.7 GB" />
-                            <ComboBoxItem Content="Higher (25%): 43M triangles, 2.7 GB" />
-                            <ComboBoxItem Content="Very high (40%): 60M triangles, 3.9 GB" />
-                            <ComboBoxItem Content="Ultra (60%): 92M triangles, 6.1 GB, strong GPU" />
-                            <ComboBoxItem Content="Full (100%): 162M triangles, 11 GB, every blade" />
+                                  ToolTip="{loc:Loc Tip_GrassDensity}">
+                            <ComboBoxItem Content="{loc:Loc Item_Density_Low}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_Medium}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_High}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_Higher}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_VeryHigh}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_Ultra}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Density_Full}" />
                         </ComboBox>
-<TextBlock Text="Grass LOD brightness: top of the tufts / roots" Margin="20,2,0,2" />
+<TextBlock Text="{loc:Loc Opt_GrassBrightness}" Margin="20,2,0,2" />
 <StackPanel Orientation="Horizontal" Margin="20,0,0,6">
                             <ComboBox x:Name="GrassTopBox" Width="90"
-                                      ToolTip="How bright the top of each grass tuft is (like DynDOLOD's GrassBrightnessTop). Lower it if distant grass looks brighter than the real grass. Changing it rebuilds the grass blocks." />
+                                      ToolTip="{loc:Loc Tip_GrassTop}" />
                             <ComboBox x:Name="GrassBottomBox" Width="90" Margin="8,0,0,0"
-                                      ToolTip="How bright the roots are (like DynDOLOD's GrassBrightnessBottom). A darker root fakes the shadow inside the grass. Changing it rebuilds the grass blocks." />
+                                      ToolTip="{loc:Loc Tip_GrassBottom}" />
                         </StackPanel>
                         <Border x:Name="EstimateBox" Margin="0,14,0,0" Background="#2A2E37" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="6" Padding="12,9">
                             <StackPanel>
-                                <TextBlock Text="ESTIMATED OUTPUT SIZE" Style="{StaticResource SectionHeader}" Margin="0,0,0,4" />
+                                <TextBlock Text="{loc:Loc Section_Estimate}" Style="{StaticResource SectionHeader}" Margin="0,0,0,4" />
                                 <TextBlock x:Name="EstimateDetail" TextWrapping="Wrap" Foreground="{StaticResource Text}"
-                                           Text="Generate once and AnvilLOD can estimate the size of your next generation from your own list." />
+                                           Text="{loc:Loc Estimate_Default}" />
                             </StackPanel>
                         </Border>
                         <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12"
-                                   Text="Tip: set this to the most your PC can really run, not the maximum on offer. Grass, trees and seasons multiply each other, so a higher setting than your graphics card or memory can use only costs disk space, load time and frame rate. If in doubt, generate at a lower density first: the in-game Quality Layers menu can lower the load later, but cannot make a file smaller." />
+                                   Text="{loc:Loc Estimate_Tip}" />
                         </StackPanel>
                         <StackPanel x:Name="CatDynamic" Visibility="Collapsed">
-                            <TextBlock Text="Seasons of Skyrim LOD, the SKSE plugin, quest-switched references, water and animated objects." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
-<CheckBox x:Name="DynamicLodCheck" Content="Dynamic LOD for switchable references (SKSE)" IsChecked="True"
-                                  ToolTip="References that quests enable or disable (Helgen Reborn's destroyed/rebuilt town, for example) get no static LOD. The AnvilLOD SKSE plugin shows their LOD only while they're enabled." />
-<CheckBox x:Name="GridObjectsCheck" Content="Water and animated distant objects (SKSE)" IsChecked="True"
-                                  ToolTip="Water planes, waterfalls, creeks, fires, windmills and ships (DynDOLOD 'grid' objects, from the rules' Grid column) are drawn beyond the loaded cells by the AnvilLOD SKSE plugin, with their animations. Uses DynDOLOD's _dyndolod_lod meshes when a mod ships them." />
-<CheckBox x:Name="WaterStandInsCheck" Content="Stream, creek and pond water stand-ins"
-                                  ToolTip="Stream, creek and pond water planes (Water1024Creek, the tundra stream pieces and the like) use a real water shader, which draws black beyond the loaded cells. This writes a lit, semi-transparent 'fake water' copy of each into the output (meshes\anvillod\water) and has the SKSE plugin draw that instead, the way CS Water Mod's own stream twins look. The sea and big lakes come from terrain LOD (xLODGen) and are not affected. Needs 'Water and animated distant objects' ticked. The original meshes are not changed." />
-<CheckBox x:Name="SeasonsCheck" Content="Seasons of Skyrim LOD"
-                                  ToolTip="For powerof3's Seasons of Skyrim: writes seasonal object LOD (*.WIN.bto, *.SUM.bto, ...) for every season that has form-swap INIs in Data\Seasons. Swapped objects use their swap's LOD; unchanged blocks are hard links, so little extra disk space. Tree and terrain LOD stay the same in every season." />
-<TextBlock Text="SKSE plugin (AnvilLOD.dll) in the output" Margin="0,4,0,2"
-                                   ToolTip="Puts the AnvilLOD SKSE plugin into the output folder so the LOD output is a single install. Auto-detect reads the version of SkyrimSE.exe (or SkyrimVR.exe). Pick 'Installed separately' if you use the AnvilLOD SKSE Plugin FOMOD instead (don't have both)." />
+                            <TextBlock Text="{loc:Loc CatDynamic_Desc}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+<CheckBox x:Name="DynamicLodCheck" Content="{loc:Loc Opt_DynamicLod}" IsChecked="True"
+                                  ToolTip="{loc:Loc Tip_DynamicLod}" />
+<CheckBox x:Name="GridObjectsCheck" Content="{loc:Loc Opt_GridObjects}" IsChecked="True"
+                                  ToolTip="{loc:Loc Tip_GridObjects}" />
+<CheckBox x:Name="WaterStandInsCheck" Content="{loc:Loc Opt_WaterStandIns}"
+                                  ToolTip="{loc:Loc Tip_WaterStandIns}" />
+<CheckBox x:Name="SeasonsCheck" Content="{loc:Loc Opt_Seasons}"
+                                  ToolTip="{loc:Loc Tip_Seasons}" />
+<TextBlock Text="{loc:Loc Opt_SkseDll}" Margin="0,4,0,2"
+                                   ToolTip="{loc:Loc Tip_SkseDll}" />
 <ComboBox x:Name="SkseDllBox" SelectedIndex="0" Margin="0,0,0,6">
-                            <ComboBoxItem Content="Auto-detect game version" />
-                            <ComboBoxItem Content="SE 1.5.97 - AE 1.6.1170" />
-                            <ComboBoxItem Content="Newer than 1.6.1170 (1.7.x)" />
-                            <ComboBoxItem Content="Installed separately (FOMOD)" />
-                            <ComboBoxItem Content="Skyrim VR 1.4.15" />
+                            <ComboBoxItem Content="{loc:Loc Item_Skse_Auto}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Skse_1170}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Skse_Newer}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Skse_Separate}" />
+                            <ComboBoxItem Content="{loc:Loc Item_Skse_Vr}" />
                         </ComboBox>
                         </StackPanel>
                                 </StackPanel>
@@ -487,57 +489,57 @@
 <StackPanel Margin="0,6,10,10">
                             <Border Background="#2E2418" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="⚠  Missing LOD finder (mod author tool)" FontWeight="Bold" Foreground="#F2C08F" />
+                                    <TextBlock Text="{loc:Loc Finder_WarningTitle}" FontWeight="Bold" Foreground="#F2C08F" />
                                     <TextBlock x:Name="AuthorWarningText" TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,4,0,8" />
                                     <TextBlock TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,0,0,8"
-                                               Text="Finds the objects and trees of one plugin that are seen from afar but have no LOD (no LOD mesh, a broken MNAM path, missing LOD textures, no tree billboard) and can generate them: simplified name_lod_0/1/2.nif, TexGen-style billboards and a DynDOLOD-format rule file. Everything goes into its own folder, never into your LOD output." />
-                                    <CheckBox x:Name="AuthorAgreeCheck" Content="I understand. Generated files are a starting point that I check before using, and I only share them with the mod author's permission."
+                                               Text="{loc:Loc Finder_Description}" />
+                                    <CheckBox x:Name="AuthorAgreeCheck" Content="{loc:Loc Agree_Text}"
                                               Checked="AuthorAgree_Changed" Unchecked="AuthorAgree_Changed" />
                                 </StackPanel>
                             </Border>
 
                             <StackPanel x:Name="AuthorPanel" IsEnabled="False">
-                                <TextBlock Text="Plugin" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Finder_Plugin}" Style="{StaticResource FieldLabel}" />
                                 <ComboBox x:Name="AuthorPluginBox" IsEditable="True" IsTextSearchEnabled="True" Width="420" HorizontalAlignment="Left"
-                                          ToolTip="The plugin to check, e.g. The Archwood.esp" SelectionChanged="AuthorPlugin_Changed" LostFocus="AuthorPlugin_LostFocus" />
+                                          ToolTip="{loc:Loc Tip_AuthorPlugin}" SelectionChanged="AuthorPlugin_Changed" LostFocus="AuthorPlugin_LostFocus" />
 
-                                <TextBlock Text="Output folder (a new, separate mod)" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Finder_OutputFolder}" Style="{StaticResource FieldLabel}" />
                                 <DockPanel Width="560" HorizontalAlignment="Left">
                                     <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseAuthorOut_Click" />
-                                    <TextBox x:Name="AuthorOutBox" ToolTip="Defaults to mods\AnvilLOD Author - &lt;plugin&gt; in your MO2 instance" />
+                                    <TextBox x:Name="AuthorOutBox" ToolTip="{loc:Loc Tip_AuthorOut}" />
                                 </DockPanel>
 
-                                <TextBlock Text="Generate" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Section_Generate}" Style="{StaticResource FieldLabel}" />
                                 <WrapPanel>
-                                    <CheckBox x:Name="AuthorMeshesCheck" Content="LOD meshes" IsChecked="True" Margin="0,3,16,3" ToolTip="Simplified name_lod_0/1/2.nif for big objects without LOD" />
-                                    <CheckBox x:Name="AuthorBillboardsCheck" Content="Tree billboards" IsChecked="True" Margin="0,3,16,3" ToolTip="TexGen-style billboards (.dds + .txt) for trees and big plants without one" />
-                                    <CheckBox x:Name="AuthorRulesCheck" Content="Rule file" IsChecked="True" Margin="0,3,16,3" ToolTip="DynDOLOD\DynDOLOD_SSE_&lt;plugin&gt;.ini for the generated meshes (works with AnvilLOD and DynDOLOD)" />
-                                    <CheckBox x:Name="AuthorOverwriteCheck" Content="Overwrite existing files" Margin="0,3,16,3" ToolTip="Off: files already in the output folder (maybe hand-edited) are kept" />
-                                    <CheckBox x:Name="AuthorBudgetCheck" Content="Triangle budget (recommended)" IsChecked="True" Margin="0,3,16,3" ToolTip="Keeps each generated LOD mesh within the triangles that SE/AE LOD meshes of the same size use (measured from DynDOLOD Resources SE and LOD Model Library). Off: only the simplifier's error limit applies, so dense models stay heavy." />
+                                    <CheckBox x:Name="AuthorMeshesCheck" Content="{loc:Loc Finder_Meshes}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_AuthorMeshes}" />
+                                    <CheckBox x:Name="AuthorBillboardsCheck" Content="{loc:Loc Finder_Billboards}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_AuthorBillboards}" />
+                                    <CheckBox x:Name="AuthorRulesCheck" Content="{loc:Loc Finder_Rules}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_AuthorRules}" />
+                                    <CheckBox x:Name="AuthorOverwriteCheck" Content="{loc:Loc Opt_Overwrite}" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_Overwrite}" />
+                                    <CheckBox x:Name="AuthorBudgetCheck" Content="{loc:Loc Finder_Budget}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_AuthorBudget}" />
                                 </WrapPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Objects need LOD from" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc Finder_FromSize}" VerticalAlignment="Center" />
                                     <TextBox x:Name="AuthorMinSizeBox" Text="400" Width="60" Margin="8,0,4,0" />
-                                    <TextBlock Text="units;  trees need a billboard from" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc Finder_TreesFrom}" VerticalAlignment="Center" />
                                     <TextBox x:Name="AuthorMinTreeBox" Text="256" Width="60" Margin="8,0,4,0" />
-                                    <TextBlock Text="units tall" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc Finder_UnitsTall}" VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
-                                    <Button x:Name="AuthorCheckButton" Content="Check plugin" Margin="0,0,8,0" Click="AuthorCheck_Click" ToolTip="Report only, nothing is written except the report" />
-                                    <Button x:Name="AuthorGenerateButton" Content="Generate missing LOD" Style="{StaticResource PrimaryButton}" Click="AuthorGenerate_Click" />
-                                    <Button x:Name="AuthorOpenButton" Content="Open output folder" Margin="8,0,0,0" IsEnabled="False" Click="AuthorOpen_Click" />
+                                    <Button x:Name="AuthorCheckButton" Content="{loc:Loc Btn_AuthorCheck}" Margin="0,0,8,0" Click="AuthorCheck_Click" ToolTip="{loc:Loc Tip_AuthorCheck}" />
+                                    <Button x:Name="AuthorGenerateButton" Content="{loc:Loc Btn_AuthorGenerate}" Style="{StaticResource PrimaryButton}" Click="AuthorGenerate_Click" />
+                                    <Button x:Name="AuthorOpenButton" Content="{loc:Loc Btn_OpenOutput}" Margin="8,0,0,0" IsEnabled="False" Click="AuthorOpen_Click" />
                                 </StackPanel>
                                 <TextBlock x:Name="AuthorSummaryText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <DataGrid x:Name="AuthorGrid" Height="360">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="60" />
-                                        <DataGridTextColumn Header="Editor ID" Binding="{Binding EditorId}" Width="170" />
-                                        <DataGridTextColumn Header="Placed" Binding="{Binding Placed, StringFormat=N0}" Width="60" />
-                                        <DataGridTextColumn Header="Size" Binding="{Binding Size, StringFormat=N0}" Width="60" />
-                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="260" />
-                                        <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="*" />
-                                        <DataGridTextColumn Header="Model" Binding="{Binding Model}" Width="220" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Kind}" Binding="{Binding Kind}" Width="60" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_EditorId}" Binding="{Binding EditorId}" Width="170" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Placed}" Binding="{Binding Placed, StringFormat=N0}" Width="60" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Size}" Binding="{Binding Size, StringFormat=N0}" Width="60" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Status}" Binding="{Binding Status}" Width="260" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Action}" Binding="{Binding Action}" Width="*" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Model}" Binding="{Binding Model}" Width="220" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </StackPanel>
@@ -547,95 +549,95 @@
 <StackPanel Margin="0,6,10,10">
                             <Border Background="#2E2418" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="⚠  LOD Mesh Maker" FontWeight="Bold" Foreground="#F2C08F" />
+                                    <TextBlock Text="{loc:Loc Maker_WarningTitle}" FontWeight="Bold" Foreground="#F2C08F" />
                                     <TextBlock x:Name="MakerWarningText" TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,4,0,8" />
                                     <TextBlock TextWrapping="Wrap" Foreground="#F2C08F" Margin="0,0,0,8"
-                                               Text="Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick: small parts are dropped, the rest is simplified, the model's own textures are kept and collision is not copied. A DynDOLOD-format rule file makes AnvilLOD and DynDOLOD use them. It only reads the model files, so it needs no load order." />
-                                    <CheckBox x:Name="MakerAgreeCheck" Content="I understand. Generated files are a starting point that I check before using, and I only share them with the mod author's permission."
+                                               Text="{loc:Loc Maker_Description}" />
+                                    <CheckBox x:Name="MakerAgreeCheck" Content="{loc:Loc Agree_Text}"
                                               Checked="MakerAgree_Changed" Unchecked="MakerAgree_Changed" />
                                 </StackPanel>
                             </Border>
 
                             <StackPanel x:Name="MakerPanel" IsEnabled="False">
-                                <TextBlock Text="Models (one per line: a .nif, a mod folder, its meshes folder, or any folder of models)" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Maker_Models}" Style="{StaticResource FieldLabel}" />
                                 <DockPanel Width="620" HorizontalAlignment="Left">
                                     <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0">
-                                        <Button Content="Add files…" Padding="8,3" Margin="0,0,0,4" Click="MakerAddFiles_Click" />
-                                        <Button Content="Add folder…" Padding="8,3" Margin="0,0,0,4" Click="MakerAddFolder_Click" />
-                                        <Button Content="Clear" Padding="8,3" Click="MakerClear_Click" />
+                                        <Button Content="{loc:Loc Btn_AddFiles}" Padding="8,3" Margin="0,0,0,4" Click="MakerAddFiles_Click" />
+                                        <Button Content="{loc:Loc Btn_AddFolder}" Padding="8,3" Margin="0,0,0,4" Click="MakerAddFolder_Click" />
+                                        <Button Content="{loc:Loc Btn_Clear}" Padding="8,3" Click="MakerClear_Click" />
                                     </StackPanel>
                                     <TextBox x:Name="MakerInputBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="84" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                             ToolTip="Folders are searched for .nif files (inside their meshes folder if they have one). Models that are already LOD meshes are skipped." />
+                                             ToolTip="{loc:Loc Tip_MakerInput}" />
                                 </DockPanel>
 
-                                <TextBlock Text="Put the LOD meshes in" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Maker_OutputTo}" Style="{StaticResource FieldLabel}" />
                                 <StackPanel>
                                     <RadioButton x:Name="MakerNewModRadio" GroupName="MakerOut" IsChecked="True" Margin="0,2,0,2" Checked="MakerOutMode_Changed"
-                                                 Content="A new mod in my MO2 mods folder (needs MO2 instance mode above)" />
+                                                 Content="{loc:Loc Maker_NewMod}" />
                                     <DockPanel Width="560" HorizontalAlignment="Left" Margin="22,0,0,4">
-                                        <TextBlock Text="Mod name" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                        <TextBox x:Name="MakerModNameBox" Text="AnvilLOD LOD Meshes" ToolTip="Becomes mods\&lt;name&gt; in your MO2 instance. Run it again with the same name to add more models to it." />
+                                        <TextBlock Text="{loc:Loc Maker_ModName}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBox x:Name="MakerModNameBox" Text="AnvilLOD LOD Meshes" ToolTip="{loc:Loc Tip_MakerModName}" />
                                     </DockPanel>
                                     <RadioButton x:Name="MakerFolderRadio" GroupName="MakerOut" Margin="0,2,0,2" Checked="MakerOutMode_Changed"
-                                                 Content="A folder I choose (new or existing)" />
+                                                 Content="{loc:Loc Maker_ChooseFolder}" />
                                     <DockPanel Width="560" HorizontalAlignment="Left" Margin="22,0,0,0">
                                         <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseMakerOut_Click" />
-                                        <TextBox x:Name="MakerOutBox" IsEnabled="False" ToolTip="Use a separate folder, not your LOD output folder" />
+                                        <TextBox x:Name="MakerOutBox" IsEnabled="False" ToolTip="{loc:Loc Tip_MakerOut}" />
                                     </DockPanel>
                                 </StackPanel>
 
-                                <TextBlock Text="LOD levels" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Maker_Levels}" Style="{StaticResource FieldLabel}" />
                                 <WrapPanel>
-                                    <CheckBox x:Name="MakerLod0Check" Content="LOD 0 (LOD4)" IsChecked="True" Margin="0,3,16,3" ToolTip="Closest: the most detail" />
-                                    <CheckBox x:Name="MakerLod1Check" Content="LOD 1 (LOD8)" IsChecked="True" Margin="0,3,16,3" />
-                                    <CheckBox x:Name="MakerLod2Check" Content="LOD 2 (LOD16, also used for LOD32)" IsChecked="True" Margin="0,3,16,3" ToolTip="Farthest: the least detail" />
+                                    <CheckBox x:Name="MakerLod0Check" Content="{loc:Loc Maker_Lod0}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_MakerLod0}" />
+                                    <CheckBox x:Name="MakerLod1Check" Content="{loc:Loc Maker_Lod1}" IsChecked="True" Margin="0,3,16,3" />
+                                    <CheckBox x:Name="MakerLod2Check" Content="{loc:Loc Maker_Lod2}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_MakerLod2}" />
                                 </WrapPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                    <TextBlock Text="Detail" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc Maker_Detail}" VerticalAlignment="Center" />
                                     <ComboBox x:Name="MakerDetailBox" SelectedIndex="1" Width="190" Margin="8,0,16,0"
-                                              ToolTip="How much is removed. A finer setting keeps more triangles. Very dense models stay heavy at the normal setting: use a coarser one.">
-                                        <ComboBoxItem Content="Finer (keeps more)" />
-                                        <ComboBoxItem Content="Normal (default)" />
-                                        <ComboBoxItem Content="Coarser" />
-                                        <ComboBoxItem Content="Much coarser" />
+                                              ToolTip="{loc:Loc Tip_MakerDetail}">
+                                        <ComboBoxItem Content="{loc:Loc Item_Detail_Finer}" />
+                                        <ComboBoxItem Content="{loc:Loc Item_Detail_Normal}" />
+                                        <ComboBoxItem Content="{loc:Loc Item_Detail_Coarser}" />
+                                        <ComboBoxItem Content="{loc:Loc Item_Detail_Much}" />
                                     </ComboBox>
-                                    <TextBlock Text="Skip models smaller than" VerticalAlignment="Center" />
-                                    <TextBox x:Name="MakerMinSizeBox" Text="0" Width="60" Margin="8,0,4,0" ToolTip="Largest dimension in game units. 0 = make LOD for every model you picked." />
-                                    <TextBlock Text="units" VerticalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc Maker_SkipSmaller}" VerticalAlignment="Center" />
+                                    <TextBox x:Name="MakerMinSizeBox" Text="0" Width="60" Margin="8,0,4,0" ToolTip="{loc:Loc Tip_MakerMinSize}" />
+                                    <TextBlock Text="{loc:Loc Maker_Units}" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBlock Text="Triangle budget per model" Style="{StaticResource FieldLabel}" />
+                                <TextBlock Text="{loc:Loc Maker_Budget}" Style="{StaticResource FieldLabel}" />
                                 <StackPanel Orientation="Horizontal">
                                     <ComboBox x:Name="MakerBudgetBox" SelectedIndex="0" Width="230" SelectionChanged="MakerBudget_Changed"
-                                              ToolTip="Recommended: a budget for each level that grows with the model's size, taken from the LOD meshes SE/AE lists already use. Custom: your own maximums. Off: only the Detail setting limits the triangles.">
-                                        <ComboBoxItem Content="Recommended (by model size)" />
-                                        <ComboBoxItem Content="Custom" />
-                                        <ComboBoxItem Content="Off" />
+                                              ToolTip="{loc:Loc Tip_MakerBudget}">
+                                        <ComboBoxItem Content="{loc:Loc Item_Budget_Recommended}" />
+                                        <ComboBoxItem Content="{loc:Loc Item_Budget_Custom}" />
+                                        <ComboBoxItem Content="{loc:Loc Item_Budget_Off}" />
                                     </ComboBox>
                                     <TextBlock Text="LOD 0" VerticalAlignment="Center" Margin="14,0,4,0" />
-                                    <TextBox x:Name="MakerBudget0Box" Text="1000" Width="60" IsEnabled="False" ToolTip="Most triangles at LOD 0 (0 = no limit)" />
+                                    <TextBox x:Name="MakerBudget0Box" Text="1000" Width="60" IsEnabled="False" ToolTip="{loc:Loc Tip_MakerBudget0}" />
                                     <TextBlock Text="LOD 1" VerticalAlignment="Center" Margin="10,0,4,0" />
-                                    <TextBox x:Name="MakerBudget1Box" Text="600" Width="60" IsEnabled="False" ToolTip="Most triangles at LOD 1 (0 = no limit)" />
+                                    <TextBox x:Name="MakerBudget1Box" Text="600" Width="60" IsEnabled="False" ToolTip="{loc:Loc Tip_MakerBudget1}" />
                                     <TextBlock Text="LOD 2" VerticalAlignment="Center" Margin="10,0,4,0" />
-                                    <TextBox x:Name="MakerBudget2Box" Text="300" Width="60" IsEnabled="False" ToolTip="Most triangles at LOD 2 (0 = no limit)" />
+                                    <TextBox x:Name="MakerBudget2Box" Text="300" Width="60" IsEnabled="False" ToolTip="{loc:Loc Tip_MakerBudget2}" />
                                 </StackPanel>
                                 <TextBlock x:Name="MakerBudgetHint" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <WrapPanel Margin="0,6,0,0">
-                                    <CheckBox x:Name="MakerRulesCheck" Content="Rule file" IsChecked="True" Margin="0,3,16,3" ToolTip="DynDOLOD\DynDOLOD_SSE_&lt;name&gt;.ini so the meshes are used for the models they were made from. An existing file only gets lines for new models." />
-                                    <CheckBox x:Name="MakerOverwriteCheck" Content="Overwrite existing files" Margin="0,3,16,3" ToolTip="Off: files already in the output folder (maybe hand-edited) are kept" />
+                                    <CheckBox x:Name="MakerRulesCheck" Content="{loc:Loc Finder_Rules}" IsChecked="True" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_MakerRules}" />
+                                    <CheckBox x:Name="MakerOverwriteCheck" Content="{loc:Loc Opt_Overwrite}" Margin="0,3,16,3" ToolTip="{loc:Loc Tip_Overwrite}" />
                                 </WrapPanel>
 
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
-                                    <Button x:Name="MakerGenerateButton" Content="Make LOD meshes" Style="{StaticResource PrimaryButton}" Click="MakerGenerate_Click" />
-                                    <Button x:Name="MakerOpenButton" Content="Open output folder" Margin="8,0,0,0" IsEnabled="False" Click="MakerOpen_Click" />
+                                    <Button x:Name="MakerGenerateButton" Content="{loc:Loc Btn_MakeLod}" Style="{StaticResource PrimaryButton}" Click="MakerGenerate_Click" />
+                                    <Button x:Name="MakerOpenButton" Content="{loc:Loc Btn_OpenOutput}" Margin="8,0,0,0" IsEnabled="False" Click="MakerOpen_Click" />
                                 </StackPanel>
                                 <TextBlock x:Name="MakerSummaryText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                                 <DataGrid x:Name="MakerGrid" Height="300">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="260" />
-                                        <DataGridTextColumn Header="Size" Binding="{Binding Size, StringFormat=N0}" Width="60" />
-                                        <DataGridTextColumn Header="Source tris" Binding="{Binding SourceTriangles, StringFormat=N0}" Width="90" />
-                                        <DataGridTextColumn Header="Result" Binding="{Binding Action}" Width="*" />
-                                        <DataGridTextColumn Header="Model" Binding="{Binding Model}" Width="320" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Status}" Binding="{Binding Status}" Width="260" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Size}" Binding="{Binding Size, StringFormat=N0}" Width="60" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_SourceTris}" Binding="{Binding SourceTriangles, StringFormat=N0}" Width="90" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Result}" Binding="{Binding Action}" Width="*" />
+                                        <DataGridTextColumn Header="{loc:Loc Header_Model}" Binding="{Binding Model}" Width="320" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </StackPanel>

@@ -59,6 +59,12 @@ The **LOD Mesh Maker** (also under "Mod author tools" on the left; or `AnvilLOD 
 
 As with the other author tools, the generated files are a starting point to check in NifSkope and in game, and are only shared with the model author's permission.
 
+## Languages
+
+The desktop app and the command line are in English and Simplified Chinese (简体中文). The app follows the system language by default and has a language picker in the top right; the choice is saved to settings.json and applied without a restart. The command line takes `--lang en` / `--lang zh-CN` anywhere on the line (default: follow the system).
+
+To add a language: copy `Strings.resx` in `src\AnvilLOD.App\Localization` (and `src\AnvilLOD.Cli\Localization`) to `Strings.<code>.resx`, translate the values, and add the code and its name to `Locale.Languages` in AnvilLOD.Core. Strings that come from the scan itself (progress lines, the mod-author status column) are English only for now.
+
 ## Build
 
 ```powershell

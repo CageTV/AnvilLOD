@@ -14,6 +14,8 @@
     <CETCompat>false</CETCompat>
     <!-- One version for the tool and the SKSE plugin: the VERSION file at the repo root (bump.ps1 raises the last number). -->
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
+    <!-- Only the languages that ship: English (neutral) and Simplified Chinese, so no other culture folders appear next to the exe. -->
+    <SatelliteResourceLanguages>en;zh-CN</SatelliteResourceLanguages>
     <Authors>CageTV</Authors>
     <Product>AnvilLOD</Product>
     <!-- Normalizes the source paths baked into the .pdb files and the .dll debug directory to "/_/..." instead of the

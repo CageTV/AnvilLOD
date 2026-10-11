@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Usage" xml:space="preserve"><value>AnvilLOD — fast object LOD generator for Skyrim SE/AE
+
+Usage:
+  AnvilLOD scan [options]        analyse the load order and show what would be built
+  AnvilLOD generate [options]    scan, then write the changed LOD blocks (.bto) to --output
+  AnvilLOD author --plugin &lt;file&gt; --author-out &lt;folder&gt; [options]
+                                         Mod author tools: report the plugin's objects and trees that have no
+                                         LOD, and generate LOD meshes, tree billboards and a rule file for them
+                                         into their own folder. Options: --no-meshes --no-billboards --no-rules
+                                         --min-size &lt;units, default 400&gt; --min-tree-height &lt;units, default 256&gt;
+                                         --overwrite (replace files already in --author-out)
+                                         --budget recommended|off|&lt;LOD0,LOD1,LOD2&gt; triangle budget for the LOD meshes (default
+                                         recommended, by model size; see lodmaker)
+
+  AnvilLOD lodmaker --input &lt;file|folder&gt; [--input ...] (--output &lt;folder&gt; | --mo2 &lt;instance&gt; --new-mod &lt;name&gt;) [options]
+                                         LOD Mesh Maker: make LOD meshes (name_lod_0/1/2.nif, simplified, no collision, the
+                                         model's own textures) from full models, plus a DynDOLOD-format rule file.
+                                         --input is a .nif, a mod folder, its meshes folder or any folder of models.
+                                         --new-mod &lt;name&gt; creates the mod folder in the MO2 mods folder (needs --mo2).
+                                         Options: --group &lt;name&gt; (meshes\lod\&lt;name&gt;, default the output folder's name)
+                                         --levels 0,1,2 (LOD4, LOD8, LOD16; default all) --detail &lt;0.1-10, default 1;
+                                         lower keeps more detail&gt; --min-size &lt;units&gt; --no-rules --overwrite
+                                         --budget recommended|off|&lt;LOD0,LOD1,LOD2&gt;  triangle budget per model: the default,
+                                         "recommended", scales with the model's size (from real SE/AE LOD meshes);
+                                         "off" has none; three numbers set the maximums (0 = no limit), e.g. 800,500,300
+
+Options:
+  --lang &lt;code&gt;          Language of these messages: en, zh-CN (default: follow the system)
+  --mo2 &lt;path&gt;           MO2 instance folder (with ModOrganizer.ini) — reads mods directly, no need to launch from MO2
+  --profile &lt;name&gt;       MO2 profile (default: the instance's selected profile)
+  --data &lt;path&gt;          Skyrim Data folder (default: auto-detect / MO2 VFS)
+  --plugins &lt;path&gt;       plugins.txt to use (requires --data)
+  --worldspace &lt;edid&gt;    Limit to a worldspace; repeatable (default: all with a .lod file)
+  --output &lt;path&gt;        Output folder (default for generate: "AnvilLOD Output" in the MO2 mods folder, Vortex's staging
+                         folder or Documents). It is created if missing and, if it is AnvilLOD's own (empty, or holds its
+                         manifest or log), emptied before every generate so old files never mix with new ones
+  --keep-output          Don't empty the output folder first: update it in place (only changed blocks are rewritten)
+  --report &lt;file.json&gt;   Write a JSON report (default: AnvilLOD.scan.json next to the exe)
+  --dyndolod &lt;path&gt;      DynDOLOD install folder: reuse its LOD rule files (optional)
+  --preset &lt;name&gt;        low | medium | high (default high): which rule preset to use
+  --candles              Also load DynDOLOD's Candles rules (candles, lanterns and sconces get Far LOD); needs --dyndolod
+  --fxglow               Also load DynDOLOD's FXGlow rules (fire and light glow cards get Far LOD); needs --dyndolod
+  --rules &lt;file&gt;         Your own LOD rule file (DynDOLOD rule format, e.g. saved by the app's rule editor). Its rules come
+                         before all others; without it only DynDOLOD's own rule files are used
+  --keep-buried          Don't remove LOD triangles buried under the terrain
+  --include-disabled     Include initially-disabled references
+  --no-child-worlds      Don't copy walled cities (Whiterun, Solitude, ...) into Tamriel's LOD
+  --no-dynamic           Keep switchable references (quest-toggled) in static LOD instead of
+                         handing them to the AnvilLOD SKSE plugin
+  --seasons              Seasonal object and grass LOD for Seasons of Skyrim (Data\Seasons\*_WIN.ini ...)
+  --skse-dll &lt;which&gt;     SKSE plugin put in the output: auto (default, reads SkyrimSE.exe),
+                         1170 (SE 1.5.97 - AE 1.6.1170), 17 (newer, 1.7.x), none (installed separately)
+  --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD
+                         "grid" objects) to the AnvilLOD SKSE plugin
+  --no-grass             Don't build grass LOD from the grass cache
+  --water-standins       Stream/creek/pond water planes (grid objects) that use a real water shader, which
+                         draws black beyond the loaded cells, get a lit fake-water stand-in mesh in the output
+  --grass-density &lt;pct&gt;  Share of cached grass kept as LOD, 1-100 (default 8; 15 is high, 100 keeps every blade)
+  --grass-top &lt;pct&gt;      Grass LOD brightness at the top of a tuft, 20-120 (default 85), like DynDOLOD's GrassBrightnessTop
+  --grass-bottom &lt;pct&gt;   Grass LOD brightness at the roots, 10-120 (default 50), like GrassBrightnessBottom
+  --tree-brightness &lt;pct&gt; Tree LOD billboard brightness, 10-110 (default 100)
+  --object-brightness &lt;pct&gt; Object LOD brightness, 10-110 (default 100)
+  --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
+  --tree-3d              Use 3D tree LOD models (DynDOLOD passthru_lod.nif, matched by the CRC32 of the
+                         tree's mesh) in object LOD: 3D at LOD4, billboard cards from LOD8 on.
+                         Trees without a model keep billboard tree LOD.
+  --tree-3d-lod8         With --tree-3d: use the 3D model at LOD8 too (bigger files)
+  --tree-3d-crc-only     With --tree-3d: only use models whose file name carries the tree mesh's CRC32.
+                         Default: when none matches, the model stored under the plain tree name is used
+                         (how DynDOLOD Resources ships almost all of its models, and how DynDOLOD matches)
+  --mo2-game &lt;dir&gt;       With --mo2: the game folder (SkyrimSE.exe), instead of the gamePath in ModOrganizer.ini
+  --mo2-mods &lt;dir&gt;       With --mo2: the mods folder, instead of the ini's (for lists on another drive)
+  --mo2-profiles &lt;dir&gt;   With --mo2: the profiles folder, instead of the ini's
+  --mo2-overwrite &lt;dir&gt;  With --mo2: the overwrite folder, instead of the ini's
+                         (Give the game, mods and profiles folders and ModOrganizer.ini isn't needed.)
+  --large-refs           List the references that qualify for the engine's large reference grid but that no plugin
+                         lists yet in AnvilLOD.esm (flagged ESL). Enable it after your other ESMs
+  --large-refs-no-esl    With --large-refs: don't flag AnvilLOD.esm as ESL; it is then a normal ESM that uses a
+                         plugin slot (try it if large references flicker and you want to rule the ESL flag out)
+  --pbr-lod              Make object LOD textures match PBR full models: use TexGen's pbr_lod twins and
+                         convert PBR albedo copies (textures\anvillod\pbr) for LOD meshes that use a texture
+                         the full model replaces with textures\pbr\...
+  --pbr-lod-brightness &lt;pct&gt; Brightness of the converted copies, 10-150 (default 100 = DynDOLOD's PBR scale 0.65)
+  --pbr-lod-size &lt;px&gt;    Largest side of a converted copy: 256, 512 (default), 1024 or 2048
+  --underside            Build the terrain underside for volumetric lighting mods (DVLaSS, EVLaS, Community
+                         Shaders sky sync): meshes\Terrain\&lt;ws&gt;\&lt;ws&gt;_Underside.nif plus AnvilLOD.esp
+                         (flagged ESL, no plugin slot). Enable the ESM; load it after plugins that edit worldspaces
+  --underside-detail &lt;n&gt; LAND vertices per underside quad: 4, 8, 16 (default), 32, 64 or 128. Smaller is finer and heavier
+  --no-enable-parented   Exclude every reference with an enable parent (by default only
+                         parented refs that start disabled are left out)
+
+Example: AnvilLOD scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel</value></data>
+
+  <data name="Err_UnknownCommandFmt" xml:space="preserve"><value>Unknown command '{0}'.</value></data>
+  <data name="Err_UnexpectedArgFmt" xml:space="preserve"><value>Unexpected argument '{0}'.</value></data>
+  <data name="Err_UnknownOptionFmt" xml:space="preserve"><value>Unknown option '{0}'.</value></data>
+  <data name="Err_OptionNeedsValueFmt" xml:space="preserve"><value>Option '{0}' needs a value.</value></data>
+  <data name="Err_Mo2Locations" xml:space="preserve"><value>--mo2-game, --mo2-mods, --mo2-profiles and --mo2-overwrite only apply together with --mo2 &lt;instance folder&gt;.</value></data>
+  <data name="Err_LargeRefsNoEsl" xml:space="preserve"><value>--large-refs-no-esl only applies together with --large-refs.</value></data>
+  <data name="Err_PbrLodSizeOnly" xml:space="preserve"><value>--pbr-lod-size only applies together with --pbr-lod.</value></data>
+  <data name="Err_PbrLodSizeFmt" xml:space="preserve"><value>--pbr-lod-size must be 256, 512, 1024 or 2048 (got '{0}').</value></data>
+  <data name="Err_UndersideDetailOnly" xml:space="preserve"><value>--underside-detail only applies together with --underside.</value></data>
+  <data name="Err_UndersideDetailFmt" xml:space="preserve"><value>--underside-detail must be 4, 8, 16, 32, 64 or 128 (got '{0}').</value></data>
+  <data name="Err_Tree3dOnly" xml:space="preserve"><value>--tree-3d-lod8, --tree-3d-by-name and --tree-3d-crc-only only apply together with --tree-3d.</value></data>
+  <data name="Err_SkseDllFmt" xml:space="preserve"><value>--skse-dll must be auto, 1170, 17, vr or none (got '{0}').</value></data>
+  <data name="Err_BudgetFmt" xml:space="preserve"><value>--budget must be recommended, off, or up to three numbers LOD0,LOD1,LOD2 (got '{0}').</value></data>
+  <data name="Err_LevelsFmt" xml:space="preserve"><value>--levels must be a list of 0, 1 and 2 (got '{0}').</value></data>
+  <data name="Err_Detail" xml:space="preserve"><value>--detail must be between 0.1 and 10.</value></data>
+  <data name="Err_NewModNeedsMo2" xml:space="preserve"><value>--new-mod needs --mo2 &lt;instance folder&gt;, to find the mods folder.</value></data>
+  <data name="Err_OutputOrNewMod" xml:space="preserve"><value>Use either --output or --new-mod, not both.</value></data>
+  <data name="Err_LodmakerInput" xml:space="preserve"><value>lodmaker needs at least one --input &lt;file or folder&gt;.</value></data>
+  <data name="Err_LodmakerOutput" xml:space="preserve"><value>lodmaker needs --output &lt;folder&gt; (or --mo2 &lt;instance&gt; --new-mod &lt;name&gt;).</value></data>
+  <data name="Err_AuthorPlugin" xml:space="preserve"><value>author needs --plugin &lt;file name&gt;, e.g. --plugin "The Archwood.esp".</value></data>
+  <data name="Err_AuthorOut" xml:space="preserve"><value>author needs --author-out &lt;folder&gt; (a new, separate mod folder).</value></data>
+  <data name="Err_PresetFmt" xml:space="preserve"><value>Unknown preset '{0}' (use low, medium or high).</value></data>
+
+  <data name="Out_NoOutputFmt" xml:space="preserve"><value>No --output given: using {0}</value></data>
+  <data name="Sum_Header" xml:space="preserve"><value>=== Scan summary ===</value></data>
+  <data name="Sum_PluginsFmt" xml:space="preserve"><value>Plugins:              {0:N0} found of {1:N0} listed</value></data>
+  <data name="Sum_WorldspacesFmt" xml:space="preserve"><value>Worldspaces w/ .lod:  {0} ({1}{2})</value></data>
+  <data name="Sum_More" xml:space="preserve"><value>, ...</value></data>
+  <data name="Sum_REFRsFmt" xml:space="preserve"><value>REFRs visited:        {0:N0}</value></data>
+  <data name="Sum_LodRefsFmt" xml:space="preserve"><value>LOD references:       {0:N0}</value></data>
+  <data name="Sum_SkippedDisabledFmt" xml:space="preserve"><value>Skipped (disabled):   {0:N0}</value></data>
+  <data name="Sum_SkippedNoMeshFmt" xml:space="preserve"><value>Skipped (no mesh):    {0:N0}</value></data>
+  <data name="Sum_OutsideGridFmt" xml:space="preserve"><value>Outside LOD grid:     {0:N0}</value></data>
+  <data name="Sum_MissingMeshesFmt" xml:space="preserve"><value>Missing LOD meshes:   {0:N0} unique paths</value></data>
+  <data name="Sum_DynamicFmt" xml:space="preserve"><value>Dynamic LOD refs:     {0:N0}</value></data>
+  <data name="Sum_GrassCellsFmt" xml:space="preserve"><value>Grass cache cells:    {0:N0}{1}</value></data>
+  <data name="Sum_GrassMissingFmt" xml:space="preserve"><value> ({0} grass types without billboard)</value></data>
+  <data name="Sum_TreesFmt" xml:space="preserve"><value>Trees with billboard: {0:N0} ({1:N0} tree types without one)</value></data>
+  <data name="Sum_LodBlockFmt" xml:space="preserve"><value>  LOD{0,-2} blocks:        {1:N0}</value></data>
+  <data name="Sum_PlanFmt" xml:space="preserve"><value>Build plan:           {0:N0} rebuild, {1:N0} unchanged, {2:N0} stale</value></data>
+  <data name="Sum_TimingFmt" xml:space="preserve"><value>Timing: index {0:F1}s | scan {1:F1}s | bucket+hash {2:F2}s | total {3:F1}s</value></data>
+  <data name="Sum_GeneratedFmt" xml:space="preserve"><value>Generated:            {0:N0} blocks, {1:N0} triangles ({2:N0} buried removed), {3:N0} meshes, {4:F1}s</value></data>
+  <data name="Sum_StaleFmt" xml:space="preserve"><value>Removed stale:        {0:N0} blocks</value></data>
+  <data name="Sum_TreeLodFmt" xml:space="preserve"><value>Tree LOD:             {0:N0} trees, {1} types, {2:N0} blocks, {3:N0} vanilla blocks emptied, {4:F1}s</value></data>
+  <data name="Sum_MeshProblemFmt" xml:space="preserve"><value>  mesh problem: {0}: {1}</value></data>
+  <data name="Sum_ReportFmt" xml:space="preserve"><value>Report: {0}</value></data>
+  <data name="Author_GeneratedFmt" xml:space="preserve"><value>Generated {0} LOD meshes, {1} billboards{2}</value></data>
+  <data name="Author_RulesFileFmt" xml:space="preserve"><value>, rule file {0}</value></data>
+  <data name="Maker_SummaryFmt" xml:space="preserve"><value>{0} models, {1} LOD meshes{2}</value></data>
+  <data name="Maker_RulesFileFmt" xml:space="preserve"><value>, rule file {0}</value></data>
+  <data name="Maker_OutputFmt" xml:space="preserve"><value>Output: {0}</value></data>
+</root>

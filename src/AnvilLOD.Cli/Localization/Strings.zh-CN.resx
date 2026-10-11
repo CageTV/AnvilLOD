@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Usage" xml:space="preserve"><value>AnvilLOD —— Skyrim SE/AE 快速物件 LOD 生成器
+
+用法：
+  AnvilLOD scan [选项]           分析加载顺序，显示将要构建的内容
+  AnvilLOD generate [选项]       扫描，然后把发生变化的 LOD 块（.bto）写入 --output
+  AnvilLOD author --plugin &lt;文件&gt; --author-out &lt;文件夹&gt; [选项]
+                                         Mod 作者工具：报告该插件中没有 LOD 的物件和树木，
+                                         并为其生成 LOD 网格、树木广告牌和规则文件，写入
+                                         独立文件夹。选项：--no-meshes --no-billboards --no-rules
+                                         --min-size &lt;单位，默认 400&gt; --min-tree-height &lt;单位，默认 256&gt;
+                                         --overwrite（替换 --author-out 中已有的文件）
+                                         --budget recommended|off|&lt;LOD0,LOD1,LOD2&gt; LOD 网格的三角面预算（默认
+                                         recommended，按模型大小；见 lodmaker）
+
+  AnvilLOD lodmaker --input &lt;文件|文件夹&gt; [--input ...] (--output &lt;文件夹&gt; | --mo2 &lt;实例&gt; --new-mod &lt;名称&gt;) [选项]
+                                         LOD 网格制作器：从完整模型制作 LOD 网格（name_lod_0/1/2.nif，已简化，无碰撞，
+                                         使用模型自带纹理），并附带 DynDOLOD 格式规则文件。
+                                         --input 可以是 .nif 文件、MOD 文件夹、其 meshes 文件夹或任意模型文件夹。
+                                         --new-mod &lt;名称&gt; 会在 MO2 的 mods 文件夹里创建 MOD 文件夹（需要 --mo2）。
+                                         选项：--group &lt;名称&gt;（meshes\lod\&lt;名称&gt;，默认取输出文件夹的名称）
+                                         --levels 0,1,2（LOD4、LOD8、LOD16；默认全部）--detail &lt;0.1-10，默认 1；
+                                         越低保留越多细节&gt; --min-size &lt;单位&gt; --no-rules --overwrite
+                                         --budget recommended|off|&lt;LOD0,LOD1,LOD2&gt;  每个模型的三角面预算：默认
+                                         “recommended”按模型大小缩放（来自真实的 SE/AE LOD 网格）；
+                                         “off”不限制；三个数字设定各层级上限（0 = 不限制），如 800,500,300
+
+选项：
+  --lang &lt;代码&gt;          这些消息的语言：en、zh-CN（默认：跟随系统）
+  --mo2 &lt;路径&gt;           MO2 实例文件夹（含 ModOrganizer.ini）——直接读取 MOD，无需从 MO2 启动
+  --profile &lt;名称&gt;       MO2 配置档（默认：实例当前选中的配置档）
+  --data &lt;路径&gt;          Skyrim Data 文件夹（默认：自动检测 / MO2 VFS）
+  --plugins &lt;路径&gt;       要使用的 plugins.txt（需要 --data）
+  --worldspace &lt;edid&gt;    限定某个世界空间；可重复（默认：所有带 .lod 文件的）
+  --output &lt;路径&gt;        输出文件夹（generate 默认：MO2 的 mods 文件夹、Vortex 暂存文件夹或文档中的
+                         “AnvilLOD Output”）。文件夹缺失会自动创建；若是 AnvilLOD 自己的（空文件夹，或
+                         含其 manifest 或 log），每次 generate 前都会先清空，避免新旧文件混杂
+  --keep-output          不先清空输出文件夹：就地更新（只重写发生变化的块）
+  --report &lt;文件.json&gt;   写出 JSON 报告（默认：exe 旁边的 AnvilLOD.scan.json）
+  --dyndolod &lt;路径&gt;      DynDOLOD 安装文件夹：复用其 LOD 规则文件（可选）
+  --preset &lt;名称&gt;        low | medium | high（默认 high）：使用哪个规则预设
+  --candles              同时加载 DynDOLOD 的 Candles 规则（蜡烛、灯笼和壁装烛台获得远景 LOD）；需要 --dyndolod
+  --fxglow               同时加载 DynDOLOD 的 FXGlow 规则（火焰和光源辉光卡片获得远景 LOD）；需要 --dyndolod
+  --rules &lt;文件&gt;         你自己的 LOD 规则文件（DynDOLOD 规则格式，如应用的规则编辑器保存的）。其规则
+                         优先于其他所有规则；不提供时只使用 DynDOLOD 自己的规则文件
+  --keep-buried          不移除埋入地形的 LOD 三角面
+  --include-disabled     包含初始禁用的引用
+  --no-child-worlds      不把有城墙的城市（Whiterun、Solitude 等）复制进 Tamriel 的 LOD
+  --no-dynamic           把可切换引用（任务切换的）保留在静态 LOD 中，而不是交给
+                         AnvilLOD SKSE 插件
+  --seasons              Seasons of Skyrim 的季节性物件和草地 LOD（Data\Seasons\*_WIN.ini ...）
+  --skse-dll &lt;which&gt;     输出中放入 SKSE 插件：auto（默认，读取 SkyrimSE.exe）、
+                         1170（SE 1.5.97 - AE 1.6.1170）、17（更新，1.7.x）、none（单独安装）
+  --no-grid-objects      不把水面、瀑布、火焰和风车（DynDOLOD 的
+                         “grid”物件）交给 AnvilLOD SKSE 插件
+  --no-grass             不从草地缓存构建草地 LOD
+  --water-standins       使用真实水着色器（在加载单元之外渲染成黑色）的溪流/池塘水面（grid 物件），
+                         会在输出中得到一个受光照的假水替身网格
+  --grass-density &lt;pct&gt;  缓存草地保留为 LOD 的比例，1-100（默认 8；15 为高，100 保留每根草）
+  --grass-top &lt;pct&gt;      草地 LOD 草丛顶部亮度，20-120（默认 85），类似 DynDOLOD 的 GrassBrightnessTop
+  --grass-bottom &lt;pct&gt;   草地 LOD 草根亮度，10-120（默认 50），类似 GrassBrightnessBottom
+  --tree-brightness &lt;pct&gt; 树 LOD 广告牌亮度，10-110（默认 100）
+  --object-brightness &lt;pct&gt; 物件 LOD 亮度，10-110（默认 100）
+  --no-trees             不构建广告牌树 LOD（.lst/.btt + 图集）
+  --tree-3d              在物件 LOD 中使用 3D 树 LOD 模型（DynDOLOD passthru_lod.nif，按树木
+                         网格的 CRC32 匹配）：LOD4 用 3D，LOD8 起用广告牌卡片。
+                         没有模型的树木保持广告牌树 LOD。
+  --tree-3d-lod8         配合 --tree-3d：LOD8 也使用 3D 模型（文件更大）
+  --tree-3d-crc-only     配合 --tree-3d：只使用文件名带有树木网格 CRC32 的模型。
+                         默认：没有精确匹配时使用以树木纯名称存放的模型
+                         （DynDOLOD Resources 几乎所有模型都这样存放，DynDOLOD 也这样匹配）
+  --mo2-game &lt;目录&gt;      配合 --mo2：游戏文件夹（SkyrimSE.exe），代替 ModOrganizer.ini 里的 gamePath
+  --mo2-mods &lt;目录&gt;      配合 --mo2：mods 文件夹，代替 ini 里的（列表在其他盘上时使用）
+  --mo2-profiles &lt;目录&gt;  配合 --mo2：配置档文件夹，代替 ini 里的
+  --mo2-overwrite &lt;目录&gt; 配合 --mo2：overwrite 文件夹，代替 ini 里的
+                         （给出游戏、mods 和配置档文件夹后，就不再需要 ModOrganizer.ini。）
+  --large-refs           把符合引擎大型引用网格条件但尚无插件列出的引用写入 AnvilLOD.esm
+                         （标记 ESL）。请排在你其他 ESM 之后启用
+  --large-refs-no-esl    配合 --large-refs：不把 AnvilLOD.esm 标记为 ESL；它就是占用
+                         插件槽位的普通 ESM（如果大型引用闪烁且你想排除 ESL 标记的嫌疑，可试它）
+  --pbr-lod              让物件 LOD 纹理匹配 PBR 完整模型：使用 TexGen 的 pbr_lod 孪生纹理，并为
+                         LOD 网格使用的、被完整模型以 textures\pbr\... 替换的纹理
+                         转换 PBR albedo 副本（textures\anvillod\pbr）
+  --pbr-lod-brightness &lt;pct&gt; 转换副本的亮度，10-150（默认 100 = DynDOLOD 的 PBR 缩放 0.65）
+  --pbr-lod-size &lt;px&gt;    转换副本的最大边长：256、512（默认）、1024 或 2048
+  --underside            为体积光照 MOD（DVLaSS、EVLaS、Community Shaders 天空同步）构建地形底面：
+                         meshes\Terrain\&lt;世界空间&gt;\&lt;世界空间&gt;_Underside.nif 加上 AnvilLOD.esp
+                         （标记 ESL，不占插件槽位）。启用该 ESM；排在编辑世界空间的插件之后
+  --underside-detail &lt;n&gt; 每个 underside 四边形的 LAND 顶点数：4、8、16（默认）、32、64 或 128。越小越精细也越重
+  --no-enable-parented   排除所有带启用父级的引用（默认只排除
+                         初始禁用的有父级引用）
+
+示例：AnvilLOD scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel</value></data>
+
+  <data name="Err_UnknownCommandFmt" xml:space="preserve"><value>未知命令“{0}”。</value></data>
+  <data name="Err_UnexpectedArgFmt" xml:space="preserve"><value>意外的参数“{0}”。</value></data>
+  <data name="Err_UnknownOptionFmt" xml:space="preserve"><value>未知选项“{0}”。</value></data>
+  <data name="Err_OptionNeedsValueFmt" xml:space="preserve"><value>选项“{0}”需要一个值。</value></data>
+  <data name="Err_Mo2Locations" xml:space="preserve"><value>--mo2-game、--mo2-mods、--mo2-profiles 和 --mo2-overwrite 只能与 --mo2 &lt;实例文件夹&gt; 一起使用。</value></data>
+  <data name="Err_LargeRefsNoEsl" xml:space="preserve"><value>--large-refs-no-esl 只能与 --large-refs 一起使用。</value></data>
+  <data name="Err_PbrLodSizeOnly" xml:space="preserve"><value>--pbr-lod-size 只能与 --pbr-lod 一起使用。</value></data>
+  <data name="Err_PbrLodSizeFmt" xml:space="preserve"><value>--pbr-lod-size 必须是 256、512、1024 或 2048（收到“{0}”）。</value></data>
+  <data name="Err_UndersideDetailOnly" xml:space="preserve"><value>--underside-detail 只能与 --underside 一起使用。</value></data>
+  <data name="Err_UndersideDetailFmt" xml:space="preserve"><value>--underside-detail 必须是 4、8、16、32、64 或 128（收到“{0}”）。</value></data>
+  <data name="Err_Tree3dOnly" xml:space="preserve"><value>--tree-3d-lod8、--tree-3d-by-name 和 --tree-3d-crc-only 只能与 --tree-3d 一起使用。</value></data>
+  <data name="Err_SkseDllFmt" xml:space="preserve"><value>--skse-dll 必须是 auto、1170、17、vr 或 none（收到“{0}”）。</value></data>
+  <data name="Err_BudgetFmt" xml:space="preserve"><value>--budget 必须是 recommended、off，或最多三个数字 LOD0,LOD1,LOD2（收到“{0}”）。</value></data>
+  <data name="Err_LevelsFmt" xml:space="preserve"><value>--levels 必须是由 0、1、2 组成的列表（收到“{0}”）。</value></data>
+  <data name="Err_Detail" xml:space="preserve"><value>--detail 必须在 0.1 到 10 之间。</value></data>
+  <data name="Err_NewModNeedsMo2" xml:space="preserve"><value>--new-mod 需要 --mo2 &lt;实例文件夹&gt; 来定位 mods 文件夹。</value></data>
+  <data name="Err_OutputOrNewMod" xml:space="preserve"><value>--output 和 --new-mod 只能二选一。</value></data>
+  <data name="Err_LodmakerInput" xml:space="preserve"><value>lodmaker 至少需要一个 --input &lt;文件或文件夹&gt;。</value></data>
+  <data name="Err_LodmakerOutput" xml:space="preserve"><value>lodmaker 需要 --output &lt;文件夹&gt;（或 --mo2 &lt;实例&gt; --new-mod &lt;名称&gt;）。</value></data>
+  <data name="Err_AuthorPlugin" xml:space="preserve"><value>author 需要 --plugin &lt;文件名&gt;，例如 --plugin "The Archwood.esp"。</value></data>
+  <data name="Err_AuthorOut" xml:space="preserve"><value>author 需要 --author-out &lt;文件夹&gt;（一个新的独立 MOD 文件夹）。</value></data>
+  <data name="Err_PresetFmt" xml:space="preserve"><value>未知预设“{0}”（可用 low、medium 或 high）。</value></data>
+
+  <data name="Out_NoOutputFmt" xml:space="preserve"><value>未指定 --output：使用 {0}</value></data>
+  <data name="Sum_Header" xml:space="preserve"><value>=== 扫描摘要 ===</value></data>
+  <data name="Sum_PluginsFmt" xml:space="preserve"><value>插件：                共列出 {1:N0} 个，找到 {0:N0} 个</value></data>
+  <data name="Sum_WorldspacesFmt" xml:space="preserve"><value>带 .lod 的世界空间：  {0}（{1}{2}）</value></data>
+  <data name="Sum_More" xml:space="preserve"><value>，…</value></data>
+  <data name="Sum_REFRsFmt" xml:space="preserve"><value>已遍历 REFR：        {0:N0}</value></data>
+  <data name="Sum_LodRefsFmt" xml:space="preserve"><value>LOD 引用：       {0:N0}</value></data>
+  <data name="Sum_SkippedDisabledFmt" xml:space="preserve"><value>跳过（禁用）：   {0:N0}</value></data>
+  <data name="Sum_SkippedNoMeshFmt" xml:space="preserve"><value>跳过（无网格）：    {0:N0}</value></data>
+  <data name="Sum_OutsideGridFmt" xml:space="preserve"><value>LOD 网格之外：     {0:N0}</value></data>
+  <data name="Sum_MissingMeshesFmt" xml:space="preserve"><value>缺失 LOD 网格：   {0:N0} 个不同路径</value></data>
+  <data name="Sum_DynamicFmt" xml:space="preserve"><value>动态 LOD 引用：     {0:N0}</value></data>
+  <data name="Sum_GrassCellsFmt" xml:space="preserve"><value>草地缓存单元：    {0:N0}{1}</value></data>
+  <data name="Sum_GrassMissingFmt" xml:space="preserve"><value>（{0} 种草没有广告牌）</value></data>
+  <data name="Sum_TreesFmt" xml:space="preserve"><value>有广告牌的树木： {0:N0}（{1:N0} 种树没有广告牌）</value></data>
+  <data name="Sum_LodBlockFmt" xml:space="preserve"><value>  LOD{0,-2} 块：        {1:N0}</value></data>
+  <data name="Sum_PlanFmt" xml:space="preserve"><value>构建计划：           {0:N0} 个重建，{1:N0} 个无变化，{2:N0} 个过期</value></data>
+  <data name="Sum_TimingFmt" xml:space="preserve"><value>耗时：索引 {0:F1}s | 扫描 {1:F1}s | 分桶+哈希 {2:F2}s | 总计 {3:F1}s</value></data>
+  <data name="Sum_GeneratedFmt" xml:space="preserve"><value>已生成：            {0:N0} 个块，{1:N0} 个三角面（移除 {2:N0} 个地下三角面），{3:N0} 个网格，{4:F1}s</value></data>
+  <data name="Sum_StaleFmt" xml:space="preserve"><value>已移除过期：        {0:N0} 个块</value></data>
+  <data name="Sum_TreeLodFmt" xml:space="preserve"><value>树 LOD：             {0:N0} 棵树，{1} 种类型，{2:N0} 个块，清空 {3:N0} 个原版块，{4:F1}s</value></data>
+  <data name="Sum_MeshProblemFmt" xml:space="preserve"><value>  网格问题：{0}：{1}</value></data>
+  <data name="Sum_ReportFmt" xml:space="preserve"><value>报告：{0}</value></data>
+  <data name="Author_GeneratedFmt" xml:space="preserve"><value>生成了 {0} 个 LOD 网格、{1} 个广告牌{2}</value></data>
+  <data name="Author_RulesFileFmt" xml:space="preserve"><value>，规则文件 {0}</value></data>
+  <data name="Maker_SummaryFmt" xml:space="preserve"><value>{0} 个模型，{1} 个 LOD 网格{2}</value></data>
+  <data name="Maker_RulesFileFmt" xml:space="preserve"><value>，规则文件 {0}</value></data>
+  <data name="Maker_OutputFmt" xml:space="preserve"><value>输出：{0}</value></data>
+</root>

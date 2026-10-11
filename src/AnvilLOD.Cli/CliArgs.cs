@@ -6,7 +6,7 @@ public sealed class CliArgException(string message) : Exception(message);
 public sealed class CliArgs
 {
     private static readonly HashSet<string> Flags = ["include-disabled", "no-enable-parented", "keep-buried", "no-trees", "no-grass", "water-standins", "no-dynamic", "no-child-worlds", "no-grid-objects", "seasons", "tree-3d", "tree-3d-lod8", "tree-3d-by-name", "tree-3d-crc-only", "underside", "pbr-lod", "no-meshes", "no-billboards", "no-rules", "overwrite", "large-refs", "large-refs-no-esl", "candles", "fxglow", "keep-output"];
-    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "grass-top", "grass-bottom", "tree-brightness", "object-brightness", "skse-dll", "underside-detail", "pbr-lod-brightness", "pbr-lod-size", "mo2-game", "mo2-mods", "mo2-profiles", "mo2-overwrite", "plugin", "author-out", "min-size", "min-tree-height", "input", "group", "levels", "detail", "new-mod", "budget", "rules"];
+    private static readonly HashSet<string> Valued = ["data", "plugins", "mo2", "profile", "worldspace", "output", "report", "dyndolod", "preset", "grass-density", "grass-top", "grass-bottom", "tree-brightness", "object-brightness", "skse-dll", "underside-detail", "pbr-lod-brightness", "pbr-lod-size", "mo2-game", "mo2-mods", "mo2-profiles", "mo2-overwrite", "plugin", "author-out", "min-size", "min-tree-height", "input", "group", "levels", "detail", "new-mod", "budget", "rules", "lang"];
 
     private readonly Dictionary<string, List<string>> _values = new(StringComparer.OrdinalIgnoreCase);
 
@@ -16,12 +16,12 @@ public sealed class CliArgs
         for (int i = 0; i < args.Length; i++)
         {
             var a = args[i];
-            if (!a.StartsWith("--")) throw new CliArgException($"Unexpected argument '{a}'.");
+            if (!a.StartsWith("--")) throw new CliArgException(L.F("Err_UnexpectedArgFmt", a));
             var key = a[2..].ToLowerInvariant();
 
             if (Flags.Contains(key)) { r.Add(key, "true"); continue; }
-            if (!Valued.Contains(key)) throw new CliArgException($"Unknown option '{a}'.");
-            if (i + 1 >= args.Length) throw new CliArgException($"Option '{a}' needs a value.");
+            if (!Valued.Contains(key)) throw new CliArgException(L.F("Err_UnknownOptionFmt", a));
+            if (i + 1 >= args.Length) throw new CliArgException(L.F("Err_OptionNeedsValueFmt", a));
             r.Add(key, args[++i]);
         }
         return r;
