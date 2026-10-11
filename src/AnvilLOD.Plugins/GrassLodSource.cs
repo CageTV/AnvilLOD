@@ -214,9 +214,16 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         // No TexGen billboard (TexGen skips grass whose record has no bounds, e.g. Realistic Grass Field's main types):
         // use the grass model's own texture on the card, sized from the model.
         if (_fromModelCache.GetOrAdd(model, m => FromModel(m)) is { } fallback) return fallback;
+        if (record && !_assets.Exists(GamePath.Join("meshes", model)))
+            _modelsNotFound.AddOrUpdate(model.Replace('/', '\\').ToLowerInvariant(), 1, (_, n) => n + 1);
         if (record) _missing.AddOrUpdate(fk is { } k2 ? $"{k2.ModKey.FileName}\\{stem}_{k2.ID:x8}" : model, 1, (_, n) => n + 1);
         return null;
     }
+
+    private readonly ConcurrentDictionary<string, long> _modelsNotFound = new(StringComparer.Ordinal);
+
+    /// <summary>Grass models the cache names that no enabled mod or archive provides: the cache was made for another set of grass mods.</summary>
+    public IReadOnlyDictionary<string, long> ModelsNotFound => _modelsNotFound;
 
     private int _fromModel;
     private readonly ConcurrentDictionary<string, GrassBillboard?> _fromModelCache = new(StringComparer.Ordinal);

@@ -520,6 +520,9 @@ public static class ScanPipeline
                 if (grass.Atlas is { } atlas)
                     progress?.Report($"Grass LOD: {atlas.Tiles} billboards in one {atlas.Size}x{atlas.Size} atlas (tiles up to {(atlas.SizeCap == int.MaxValue ? "full size" : atlas.SizeCap + " px")}, {atlas.Reduced} scaled down), so each block needs one grass material.");
                 Classify(grass.MissingBillboards, "grass", "Re-run TexGen with grass billboards enabled.");
+                if (grass.ModelsNotFound.Count > 0)
+                    Warn($"The grass cache names {grass.ModelsNotFound.Count} grass models that no enabled mod provides ({string.Join(", ", grass.ModelsNotFound.OrderByDescending(kv => kv.Value).Take(4).Select(kv => Path.GetFileName(kv.Key)))}). "
+                         + "The cache was probably made with a different set of grass mods (or with one disabled since): rebuild the grass cache (NGIO / FasterNGIO) with the grass mods you use now, otherwise those areas get no grass LOD and no real grass either.");
             } 
             if (gen.MeshErrors.Count > 0) Warn($"{gen.MeshErrors.Count} LOD meshes could not be used; see the Missing meshes tab.");
         }
