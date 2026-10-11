@@ -89,10 +89,16 @@ public sealed class LodMeshResolver
         var full = LodMeshIndex.Normalize(modelPath);
         if (grid != DynamicGrid.FarFull && full.StartsWith("meshes\\", StringComparison.Ordinal) && full.EndsWith(".nif", StringComparison.Ordinal))
         {
-            var lod = "meshes\\dyndolod\\lod\\" + full["meshes\\".Length..^4] + "_dyndolod_lod.nif";
+            // PGPatcher gives meshes that need several shader variants copies under meshes\_pgpatcher_dups\<n>\ and points the
+            // base record at one of them. The dynamic LOD model is named after the original path, so look for that one.
+            var original = PgPatcherDups.Replace(full, "meshes\\");
+            var lod = "meshes\\dyndolod\\lod\\" + original["meshes\\".Length..^4] + "_dyndolod_lod.nif";
             if (exists(lod)) return lod;
         }
         return exists(full) ? full : null;
     }
+
+    private static readonly System.Text.RegularExpressions.Regex PgPatcherDups = new(@"^meshes\\_pgpatcher_dups\\\d+\\",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Compiled);
 
 }

@@ -56,7 +56,7 @@ public sealed class RuleEntry
             Lod4 = At(1),
             Lod8 = At(2),
             Lod16 = At(3),
-            Lod32 = hasLod32 ? At(4) : At(3), // as the generator reads it: LOD32 follows LOD16 in the 7-column format
+            Lod32 = hasLod32 ? At(4) : "",    // as the generator reads it (LodRules.ParseRule): a 7-column line has no LOD32, so none (DynDOLOD gives it none either)
             Grid = At(gridCol),
             Reference = At(gridCol + 1) is { Length: > 0 } r ? r : "Unchanged",
             Flags = flags,

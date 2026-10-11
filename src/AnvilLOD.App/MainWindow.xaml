@@ -228,8 +228,8 @@
                                    Text="LOD meshes that are missing (named in a STAT's MNAM but not installed) or that couldn't be used when generating. Objects using them are left out of LOD at that level." />
                         <DataGrid x:Name="MissingGrid">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Mesh path" Binding="{Binding Path}" Width="*" />
-                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" Width="260" />
+                                <DataGridTextColumn Header="Mesh path" Binding="{Binding Path}" Width="2*" />
+                                <DataGridTextColumn Header="Problem" Binding="{Binding Problem}" Width="3*" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
