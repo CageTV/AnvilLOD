@@ -407,15 +407,14 @@ namespace AnvilLOD
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
 		}
-		if (a_item.standIn && a_item.world != a_playerWorld) {
-			return false;  // the city worldspace has the real object
-		}
 		if (a_item.glow && (!settings.glowWindows || _glowFactor <= 0.001f)) {
 			return false;  // windows are dark by day: nothing to draw
 		}
 		// Inside the loaded cells the real object is (or would be) there. Not for an object of the parent worldspace seen from a child
 		// one (Whiterun's windmills and water planes while the player is in the city's worldspace): the child has no such reference.
-		if (a_item.world == a_playerWorld && std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half) {
+		// Except a stand-in the city has the real object for (ChildworldMatches): there the real one is in the loaded cells, and
+		// beyond them the stand-in is all there is.
+		if ((a_item.world == a_playerWorld || a_item.standIn) && std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half) {
 			return false;
 		}
 		const float dx = a_item.pos.x - a_player.x, dy = a_item.pos.y - a_player.y;

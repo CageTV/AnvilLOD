@@ -19,7 +19,7 @@ namespace AnvilLOD.Plugins;
 ///              4 = grid object: water / waterfall / fire / windmill, always dynamic and animated,
 ///              8 = near grid (drawn only near the loaded cells), 16 = never fade (drawn at any distance),
 ///              32 = window glow mesh: lit by the hour (night only) instead of always on,
-///              64 = city stand-in (ChildworldMatches): not drawn while the player is in a child worldspace of its worldspace)
+///              64 = city stand-in (ChildworldMatches): hidden inside the loaded cells even while the player is in the city's own worldspace, where the real object is)
 /// </code>
 /// </summary>
 public static class DynamicLodWriter
