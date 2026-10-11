@@ -108,7 +108,7 @@ public static class DynamicLodWriter
         ; How often enable states are checked, in milliseconds
         iUpdateIntervalMs=500
         ; Safety cap on how many dynamic LOD objects are drawn at once
-        iMaxShown=4000
+        iMaxShown=8000
         ; Window glow of farmhouses, inns and forts beyond the loaded cells, lit at night (needs "Window glow" ticked when generating)
         bGlowWindows=1
         fGlowIntensity=1.0

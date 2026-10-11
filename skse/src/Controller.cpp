@@ -700,26 +700,34 @@ namespace AnvilLOD
 			ApplyGlow();
 		}
 
-		// Show newly wanted ones.
+		// Show newly wanted ones, nearest first: when the cap is reached it is the farthest that are left out, never the ones next to the
+		// player (the list is in FormID order, so cutting it off in order dropped whole areas, the nearby water planes among them).
+		std::vector<std::pair<float, std::size_t>> wanted;
 		for (auto* list : lists) {
 			for (auto i : *list) {
 				auto& item = _items[i];
 				if (item.node || !WantShown(item, pos, pcx, pcy, half, playerWorld)) {
 					continue;
 				}
-				if (_shown.size() >= settings.maxShown) {
-					if (!_capWarned) {
-						logger::warn("Dynamic LOD: reached iMaxShown ({}), more objects are not drawn", settings.maxShown);
-						_capWarned = true;
-					}
-					return;
+				const float dx = item.pos.x - pos.x, dy = item.pos.y - pos.y;
+				wanted.emplace_back(dx * dx + dy * dy, i);
+			}
+		}
+		std::ranges::sort(wanted);
+		for (const auto& [distance, i] : wanted) {
+			auto& item = _items[i];
+			if (_shown.size() >= settings.maxShown) {
+				if (!_capWarned) {
+					logger::warn("Dynamic LOD: reached iMaxShown ({}), the {} farthest objects wanted are not drawn; raise it in the menu or AnvilLOD.ini", settings.maxShown, wanted.size());
+					_capWarned = true;
 				}
-				Show(item);
-				if (item.node) {
-					_shown.push_back(i);
-					if (settings.verboseLog) {
-						logger::info("show {:08X} {}", item.ref, _meshes[item.mesh]);
-					}
+				return;
+			}
+			Show(item);
+			if (item.node) {
+				_shown.push_back(i);
+				if (settings.verboseLog) {
+					logger::info("show {:08X} {}", item.ref, _meshes[item.mesh]);
 				}
 			}
 		}

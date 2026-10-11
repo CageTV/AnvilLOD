@@ -8,7 +8,7 @@ namespace AnvilLOD
 		bool          enabled{ true };
 		float         maxDistance{ 120000.0f };  // dynamic LOD is drawn up to this far from the player (game units)
 		std::uint32_t updateIntervalMs{ 500 };   // how often enable states and distances are checked
-		std::uint32_t maxShown{ 4000 };          // safety cap on dynamic LOD objects in the scene
+		std::uint32_t maxShown{ 8000 };          // safety cap on dynamic LOD objects in the scene
 		bool          verboseLog{ false };
 
 		// Grid objects: water planes, waterfalls, fires, windmills (DynDOLOD's Grid column), always drawn beyond the loaded cells
