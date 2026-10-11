@@ -280,6 +280,8 @@ namespace AnvilLOD
 			item.grid = (e.flags & DynamicEntry::kGridObject) != 0;
 			item.nearGrid = (e.flags & DynamicEntry::kNearGrid) != 0;
 			item.neverFade = (e.flags & DynamicEntry::kNeverFade) != 0;
+			item.glow = (e.flags & DynamicEntry::kGlow) != 0;
+			_glowCount += item.glow ? 1 : 0;
 			item.water = item.grid && IsWaterMesh(_meshes[e.mesh]);
 			_gridCount += item.grid ? 1 : 0;
 			_byWorld[item.world].push_back(_items.size());
@@ -403,6 +405,9 @@ namespace AnvilLOD
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
 		}
+		if (a_item.glow && (!settings.glowWindows || _glowFactor <= 0.001f)) {
+			return false;  // windows are dark by day: nothing to draw
+		}
 		// Inside the loaded cells the real object is (or would be) there.
 		if (std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half) {
 			return false;
@@ -480,9 +485,96 @@ namespace AnvilLOD
 			}
 		}
 
+		a_item.node = RE::NiPointer<RE::NiAVObject>(node);
+		if (a_item.glow) {
+			PrepareGlow(a_item);
+		}
+
 		RE::NiUpdateData update{ animate ? Seconds() : 0.0f, RE::NiUpdateData::Flag::kNone };
 		node->Update(update);
-		a_item.node = RE::NiPointer<RE::NiAVObject>(node);
+	}
+
+	namespace
+	{
+		RE::BSLightingShaderProperty* LightingProperty(RE::BSGeometry* a_geom)
+		{
+#if ANVILLOD_RUNTIME_LINE == 17 || ANVILLOD_RUNTIME_LINE == 14
+			auto* prop = a_geom->GetGeometryRuntimeData().shaderProperty.get();
+#else
+			auto* prop = a_geom->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get();
+#endif
+			return prop ? netimmerse_cast<RE::BSLightingShaderProperty*>(prop) : nullptr;
+		}
+
+		void CollectLightingProperties(RE::NiAVObject* a_object, std::vector<RE::BSLightingShaderProperty*>& a_out, int a_depth = 0)
+		{
+			if (!a_object || a_depth > 64) {
+				return;
+			}
+			if (auto* geom = a_object->AsGeometry()) {
+				if (auto* prop = LightingProperty(geom)) {
+					a_out.push_back(prop);
+				}
+			}
+			if (auto* node = a_object->AsNode()) {
+				for (auto& child : node->GetChildren()) {
+					CollectLightingProperties(child.get(), a_out, a_depth + 1);
+				}
+			}
+		}
+
+		/// 0 by day, 1 at night: fades in from dusk start to dusk end, stays on past midnight, fades out from dawn start to dawn end.
+		float GlowAmount(float a_hour, const Settings& a_s)
+		{
+			const auto ramp = [](float x, float a, float b) { return b <= a ? (x >= b ? 1.0f : 0.0f) : std::clamp((x - a) / (b - a), 0.0f, 1.0f); };
+			if (a_hour >= a_s.glowDuskStart) {
+				return ramp(a_hour, a_s.glowDuskStart, a_s.glowDuskEnd);
+			}
+			if (a_hour <= a_s.glowDawnEnd) {
+				return 1.0f - ramp(a_hour, a_s.glowDawnStart, a_s.glowDawnEnd);
+			}
+			return 0.0f;
+		}
+	}
+
+	/// The glow meshes carry the External_Emittance shader flag: the engine then takes their glow from the reference's emittance region, which
+	/// a model we attach has none of, so it would stay dark. Switch it to the mesh's own emissive and drive the multiple by the hour ourselves.
+	void Controller::PrepareGlow(Item& a_item)
+	{
+		a_item.glowProps.clear();
+		std::vector<RE::BSLightingShaderProperty*> props;
+		CollectLightingProperties(a_item.node.get(), props);
+		// The mesh's own emissive multiples, read once: a clone may share its shader properties with the template, and ours scale them.
+		auto& bases = _glowBases[a_item.mesh];
+		if (bases.size() != props.size()) {
+			bases.clear();
+			for (auto* prop : props) {
+				bases.push_back(prop->emissiveMult > 0.0f ? prop->emissiveMult : 3.0f);
+			}
+		}
+		for (std::size_t i = 0; i < props.size(); ++i) {
+			props[i]->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kExternalEmittance, false);
+			props[i]->SetFlags(RE::BSShaderProperty::EShaderPropertyFlag8::kOwnEmit, true);
+			a_item.glowProps.emplace_back(props[i], bases[i]);
+		}
+		const float scale = _glowFactor * Settings::Get().glowIntensity;
+		for (auto& [prop, base] : a_item.glowProps) {
+			prop->emissiveMult = base * scale;
+		}
+	}
+
+	void Controller::ApplyGlow()
+	{
+		const float scale = _glowFactor * Settings::Get().glowIntensity;
+		for (auto i : _shown) {
+			auto& item = _items[i];
+			if (!item.glow || !item.node) {
+				continue;
+			}
+			for (auto& [prop, base] : item.glowProps) {
+				prop->emissiveMult = base * scale;
+			}
+		}
 	}
 
 	float Controller::Seconds() const
@@ -521,6 +613,7 @@ namespace AnvilLOD
 				--_animatedShown;
 			}
 		}
+		a_item.glowProps.clear();
 		if (a_item.node) {
 			if (a_item.node->parent) {
 				a_item.node->parent->DetachChild(a_item.node.get());
@@ -537,6 +630,11 @@ namespace AnvilLOD
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
 		auto*       world = player ? player->GetWorldspace() : nullptr;
+		if (_glowCount > 0) {
+			if (auto* calendar = RE::Calendar::GetSingleton()) {
+				_glowFactor = GlowAmount(calendar->GetHour(), settings);
+			}
+		}
 
 		// Which entries can be visible: the current worldspace, plus its parent's when it uses the parent's LOD
 		// (Whiterun's city space shows Tamriel's LOD, so Tamriel's dynamic LOD belongs there too).
@@ -577,6 +675,9 @@ namespace AnvilLOD
 			}
 		}
 		_shown = std::move(stillShown);
+		if (_glowCount > 0) {
+			ApplyGlow();
+		}
 
 		// Show newly wanted ones.
 		for (auto* list : lists) {

@@ -201,6 +201,14 @@ Object LOD textures follow the full model, the way DynDOLOD does: a base record'
 
 The game puts its snow and ash LOD shader on object LOD shapes by the shape's name in the `.bto` (`objSnow`, `objSnowHD`, `objAsh`, `objAshHD`). Like DynDOLOD, AnvilLOD names an object's shapes that way when its base record's Material has "snow" or "Ash" in its EditorID (for example `SnowMaterialMountain1P`), and uses the HD name for shapes that use full textures instead of LOD textures. Without it, mountains in LOD have no snow until the real model loads. Run Generate again to get it (existing LOD is rewritten once). Snow intensity (vertex alpha) and the Majestic Mountains `_lod_0l`/`_lod_0h` variants are not handled yet.
 
+## Window glow (experimental)
+
+DynDOLOD's resource packs ship glowing-window meshes next to the LOD meshes: `<model>glow_lod_N.nif` (`farmhouse05glow_lod_0.nif`, `castleexttower01glow_lod_1.nif`, ...). Tick **Window glow** (`--glow-windows`) and Generate adds every reference whose model has one to `AnvilLOD.dyn`; the SKSE plugin draws the glow mesh beyond the loaded cells and lights it by the game hour: dark by day, fading in from 18:00 to 20:30, full through the night, fading out from 4:30 to 6:30. The mesh's number picks the grid, as in DynDOLOD: `_0` the near grid, `_1` the far grid, `_2` never fades (distances: `fNearGridDistance`, `fFarGridDistance`).
+
+- The meshes use the `External_Emittance` shader flag, which makes the engine take the glow from the reference's emittance region; a model the plugin attaches has none, so the plugin switches it to the mesh's own emissive and drives the multiple itself.
+- `bGlowWindows`, `fGlowIntensity` (and `fGlowDuskStart`, `fGlowDuskEnd`, `fGlowDawnStart`, `fGlowDawnEnd`) are in `AnvilLOD.ini`; the in-game menu (Dynamic LOD page) has the switch and the intensity.
+- Not yet: windows of forts and other objects DynDOLOD writes into the static LOD, and a darker glow in rain or fog (the hour is all it follows). Needs the glow meshes from DynDOLOD Resources (or another pack that ships them).
+
 ## Parent > Child copies (experimental)
 
 The walled cities (Whiterun, Solitude, Windhelm, Riften, and Dragonsreach's porch) are worldspaces of their own that deliberately leave out the objects outside the walls, so the view over the wall is empty. DynDOLOD fixes it with its **Parent > Child** option: it copies Tamriel's trees, rocks, roads, fences and mountains around the city into the city's worldspace, about 20,000 references in a plugin. AnvilLOD does it without a plugin: tick **Parent > Child copies** (`--parent-copies`; needs `--dyndolod`, because the rules come from DynDOLOD's `childworld_*.ini` files) and Generate writes `SKSE\Plugins\AnvilLOD\AnvilLOD.copies`. The SKSE plugin draws each model while you are in that city's worldspace and the object is inside the loaded cells (beyond them Tamriel's LOD shows it).

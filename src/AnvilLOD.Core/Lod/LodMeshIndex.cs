@@ -95,6 +95,22 @@ public sealed class LodMeshIndex
         return result.Any(p => p is not null) ? result : null;
     }
 
+    /// <summary>
+    /// The glow LOD mesh of a full model: <c>house.nif</c> → <c>houseglow_lod_N.nif</c> (DynDOLOD's window glow meshes). The lowest N that
+    /// exists decides the grid it is drawn in: 0 = near grid (LOD4), 1 = far grid (LOD8), 2 = never fades. Null if there is none.
+    /// </summary>
+    public (string Path, int Level)? GlowFor(string fullModelPath)
+    {
+        var path = Normalize(fullModelPath);
+        int slash = path.LastIndexOf('\\');
+        var name = path[(slash + 1)..];
+        if (name.EndsWith(".nif", StringComparison.Ordinal)) name = name[..^4];
+        if (!_byBase.TryGetValue(name + "glow", out var e)) return null;
+        for (int l = 0; l <= 2; l++)
+            if (e.Paths[l] is { } p) return (p, l);
+        return null;
+    }
+
     public static string Normalize(string p)
     {
         var s = p.Replace('/', '\\').TrimStart('\\').ToLowerInvariant();

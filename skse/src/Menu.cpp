@@ -191,6 +191,17 @@ namespace AnvilLOD::Menu
 			} else {
 				Smf::Text("Copies: %zu references", c.CopyCount());
 			}
+			Smf::Separator();
+			Smf::TextWrapped("Window glow: the glowing windows of farmhouses, inns and forts beyond the loaded cells, lit from dusk to dawn. "
+							 "Generate with \"Window glow\" ticked.");
+			if (c.GlowCount() == 0) {
+				Smf::TextDisabled("No window glow in AnvilLOD.dyn.");
+			} else {
+				Smf::Text("Glow windows: %zu references, glow now %.0f%%", c.GlowCount(), c.GlowFactor() * 100.0f);
+			}
+			Smf::Checkbox("Window glow at night", &s.glowWindows);
+			Smf::SliderFloat("Glow intensity", &s.glowIntensity, 0.0f, 3.0f, "%.2f");
+			Smf::Separator();
 			Smf::Checkbox("Draw Parent > Child copies", &s.parentCopies);
 			Smf::Checkbox("Also where the city worldspace has no cell (experimental)", &s.parentCopyAllCells);
 			Smf::Separator();

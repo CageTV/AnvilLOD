@@ -79,6 +79,18 @@ namespace AnvilLOD
 					animationFps = std::min<std::uint32_t>(120, static_cast<std::uint32_t>(std::stoul(value)));
 				} else if (EqualsNoCase(key, "bUndersides")) {
 					undersides = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "bGlowWindows")) {
+					glowWindows = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "fGlowIntensity")) {
+					glowIntensity = std::clamp(std::stof(value), 0.0f, 10.0f);
+				} else if (EqualsNoCase(key, "fGlowDuskStart")) {
+					glowDuskStart = std::stof(value);
+				} else if (EqualsNoCase(key, "fGlowDuskEnd")) {
+					glowDuskEnd = std::stof(value);
+				} else if (EqualsNoCase(key, "fGlowDawnStart")) {
+					glowDawnStart = std::stof(value);
+				} else if (EqualsNoCase(key, "fGlowDawnEnd")) {
+					glowDawnEnd = std::stof(value);
 				} else if (EqualsNoCase(key, "bParentCopies")) {
 					parentCopies = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bParentCopyAllCells")) {
@@ -108,6 +120,8 @@ namespace AnvilLOD
 			{ "bAnimateExperimental", animate ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
 			{ "bUndersides", undersides ? "1" : "0" },
+			{ "bGlowWindows", glowWindows ? "1" : "0" },
+			{ "fGlowIntensity", std::format("{:.2f}", glowIntensity) },
 			{ "bParentCopies", parentCopies ? "1" : "0" },
 			{ "bParentCopyAllCells", parentCopyAllCells ? "1" : "0" },
 			{ "bVerboseLog", verboseLog ? "1" : "0" },

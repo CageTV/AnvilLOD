@@ -27,6 +27,8 @@ namespace AnvilLOD
 		std::size_t WorldCount() const { return _byWorld.size(); }
 		std::size_t GridCount() const { return _gridCount; }
 		std::size_t CopyCount() const { return _copyCount; }
+		std::size_t GlowCount() const { return _glowCount; }
+		float       GlowFactor() const { return _glowFactor; }
 		std::size_t AnimatedCount() const { return _animatedShown; }
 		/// Drops every drawn object so the next update redraws with current settings.
 		void Refresh() { _refresh = true; }
@@ -52,6 +54,8 @@ namespace AnvilLOD
 			bool                           underside{ false };  // a child worldspace's terrain underside: drawn whenever the player is in `world`
 			bool                           copy{ false };       // a Parent > Child copy (AnvilLOD.copies): drawn while the player is in `world`, inside the loaded cells
 			bool                           childCell{ false };  // ... and the child worldspace has a cell here
+			bool                           glow{ false };       // a window glow mesh: its emissive multiple follows the hour
+			std::vector<std::pair<RE::BSLightingShaderProperty*, float>> glowProps;  // shader properties of the drawn clone and their own emissive multiple
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held
 		};
@@ -59,6 +63,8 @@ namespace AnvilLOD
 		void LoadDynamic();
 		void LoadUndersides();
 		void LoadCopies();
+		void PrepareGlow(Item& a_item);
+		void ApplyGlow();
 		void Update();
 		void Animate();
 		float Seconds() const;
@@ -85,6 +91,9 @@ namespace AnvilLOD
 		std::atomic<bool>                                           _refresh{ false };
 		std::size_t                                                 _gridCount{ 0 };
 		std::size_t                                                 _copyCount{ 0 };
+		std::size_t                                                 _glowCount{ 0 };
+		float                                                       _glowFactor{ 0.0f };  // 0 by day, 1 at night, from the game hour
+		std::unordered_map<std::uint32_t, std::vector<float>>       _glowBases;           // per mesh: the emissive multiple of each of its shaders, as the file has it
 		std::atomic<std::size_t>                                    _animatedShown{ 0 };
 		std::chrono::steady_clock::time_point                       _epoch{ std::chrono::steady_clock::now() };
 	};

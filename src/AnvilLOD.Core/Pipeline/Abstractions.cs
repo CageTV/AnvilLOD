@@ -31,7 +31,8 @@ public sealed record ScanOptions(
     bool GridObjects = true,                           // DynDOLOD grid objects (water, waterfalls, fires, windmills): drawn animated by the SKSE plugin
     Tree3DSettings? Tree3D = null,                     // 3D tree LOD models in object LOD (null / Enabled = false: billboards only)
     bool MatchTextures = true,                         // LOD mesh textures follow the full model (alternate textures, snow variants), like DynDOLOD
-    bool ParentCopies = false);                        // DynDOLOD's Parent > Child copies around walled cities, drawn by the SKSE plugin
+    bool ParentCopies = false,                         // DynDOLOD's Parent > Child copies around walled cities, drawn by the SKSE plugin
+    bool GlowWindows = false);                         // DynDOLOD's window glow meshes (<model>glow_lod_N.nif), drawn by the SKSE plugin and lit at night
 
 public sealed record ScanResult(
     IReadOnlyDictionary<string, LodGrid> Grids,
@@ -80,7 +81,8 @@ public sealed record DynamicLodReference(
     string? ParentPlugin = null, uint ParentLocalId = 0,   // enable parent (persistent, so the game can always look it up)
     bool ParentOpposite = false,
     bool InitiallyDisabled = false,
-    DynamicGrid Grid = DynamicGrid.None)                   // set for grid objects (always-dynamic, animated), None for switchable refs
+    DynamicGrid Grid = DynamicGrid.None,                   // set for grid objects (always-dynamic, animated), None for switchable refs
+    bool Glow = false)                                     // a window glow mesh: the SKSE plugin lights it by the hour instead of leaving it on
 {
     public bool IsGridObject => Grid != DynamicGrid.None;
 }

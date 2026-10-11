@@ -24,6 +24,13 @@ public sealed class LodMeshResolver
         _lookup = meshLookup ?? new Dictionary<string, string>();
     }
 
+    /// <summary>The glow LOD mesh for a full model (see <see cref="LodMeshIndex.GlowFor"/>), honouring the mesh lookup file.</summary>
+    public (string Path, int Level)? GlowMeshFor(string modelPath)
+    {
+        var key = LodMeshIndex.Normalize(modelPath);
+        return _index.GlowFor(_lookup.TryGetValue(key, out var other) ? other : modelPath);
+    }
+
     /// <summary>Parses "full\path.nif=other\path.nif" lines ("//" comments) into normalized "meshes\…" keys.</summary>
     public static Dictionary<string, string> ParseMeshLookup(string content)
     {

@@ -23,6 +23,7 @@ namespace AnvilLOD
 		static constexpr std::uint32_t kGridObject = 4;   // water / waterfall / fire / windmill: always dynamic, animated
 		static constexpr std::uint32_t kNearGrid = 8;     // "Near LOD": drawn only near the loaded cells
 		static constexpr std::uint32_t kNeverFade = 16;   // "Never Fade LOD": drawn at any distance
+		static constexpr std::uint32_t kGlow = 32;        // window glow mesh: lit by the hour (night only), not always on
 	};
 
 	/// One Parent > Child copy from AnvilLOD.copies: a parent worldspace reference around a walled city, drawn while the player is

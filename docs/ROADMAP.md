@@ -23,7 +23,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Size estimate before generating | Scaled from the last generation of the same preset (grass density, 3D trees, LOD8, seasons); size breakdown per level, layer and season in the log | ✅ |
 | Texture audit | Every texture a LOD mesh names is checked after generating; missing ones are listed (DynDOLOD's "File Not Found Textures") | ✅ |
 | Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | 🧪 experimental |
-| Glow windows | SKSE plugin | planned |
+| Glow windows (`<model>glow_lod_N.nif`) | `--glow-windows`: drawn by the SKSE plugin beyond the loaded cells and lit by the game hour; near/far/never-fade grid from the mesh number. Static-LOD glow (forts) not yet | 🧪 experimental (in-game check pending) |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |
 | Enable parents (quest-built places, e.g. Helgen Reborn) | Initial state resolved through the parent chain; start-disabled refs left out of static LOD | ✅ |
 | Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪). Stream, creek and pond water planes: lit fake-water stand-ins instead of black water (opt-in) |

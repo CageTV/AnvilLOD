@@ -92,6 +92,7 @@ public partial class MainWindow : Window
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
         ParentCopiesCheck.IsChecked = _settings.ParentCopies;
+        GlowWindowsCheck.IsChecked = _settings.GlowWindows;
         SeasonsCheck.IsChecked = _settings.Seasons;
         WaterStandInsCheck.IsChecked = _settings.WaterStandIns;
         SkseDllBox.SelectedIndex = Math.Clamp(_settings.SkseDll, 0, 4);
@@ -144,6 +145,7 @@ public partial class MainWindow : Window
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
         _settings.ParentCopies = ParentCopiesCheck.IsChecked == true;
+        _settings.GlowWindows = GlowWindowsCheck.IsChecked == true;
         _settings.Seasons = SeasonsCheck.IsChecked == true;
         _settings.WaterStandIns = WaterStandInsCheck.IsChecked == true;
         _settings.SkseDll = Math.Max(0, SkseDllBox.SelectedIndex);
@@ -390,6 +392,7 @@ public partial class MainWindow : Window
                 DynamicLod: _settings.DynamicLod,
                 GridObjects: _settings.GridObjects,
                 ParentCopies: _settings.ParentCopies,
+                GlowWindows: _settings.GlowWindows,
                 Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,

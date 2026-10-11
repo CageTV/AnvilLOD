@@ -210,6 +210,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var parentOf = new Dictionary<LodReference, FormKey>(ReferenceEqualityComparer.Instance);
         var dynamicCandidates = new Dictionary<LodReference, DynamicLodReference>(ReferenceEqualityComparer.Instance);
         var gridObjects = new List<DynamicLodReference>();
+        var glowWindows = new List<DynamicLodReference>();
         var gridMeshes = new ConcurrentDictionary<(FormKey, DynamicGrid), string?>();
         var initiallyDisabled = new HashSet<LodReference>(ReferenceEqualityComparer.Instance);
         var trees = new List<TreeReference>(capacity: 200_000);
@@ -494,6 +495,22 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 if (copy is not null && (flags.HasFlag(LodReferenceFlags.HasEnableParent) || flags.HasFlag(LodReferenceFlags.InitiallyDisabled)))
                 { childCopyIgnored++; return; }
 
+                // Window glow: the model's <name>glow_lod_N.nif is drawn by the SKSE plugin beyond the loaded cells, lit at night.
+                if (options.GlowWindows && copy is null && p.Position.Z > -29000f && _resolver?.GlowMeshFor(info.ModelPath) is { } glow)
+                {
+                    var glowGrid = glow.Level switch { 0 => DynamicGrid.Near, 1 => DynamicGrid.Far, _ => DynamicGrid.NeverFade };
+                    var glowRef = new LodReference(r.FormKey.ToString(), baseKey.Value.ToString(), info.EditorId, wsId, ctx.ModKey.ToString(),
+                        new Vector3(p.Position.X, p.Position.Y, p.Position.Z), new Vector3(p.Rotation.X, p.Rotation.Y, p.Rotation.Z),
+                        r.Scale ?? 1f, new LodMeshSet(glow.Path, null, null, null), flags);
+                    var glowParent = r.EnableParent is { } gpe && !gpe.Reference.IsNull ? gpe.Reference.FormKey : (FormKey?)null;
+                    glowWindows.Add(new DynamicLodReference(glowRef,
+                        r.FormKey.ModKey.FileName.String, r.FormKey.ID,
+                        wsCtx.Record.FormKey.ModKey.FileName.String, wsCtx.Record.FormKey.ID,
+                        glowParent?.ModKey.FileName.String, glowParent?.ID ?? 0,
+                        r.EnableParent?.Flags.HasFlag(EnableParent.Flag.SetEnableStateToOppositeOfParent) ?? false,
+                        flags.HasFlag(LodReferenceFlags.InitiallyDisabled), glowGrid, Glow: true));
+                }
+
                 if (gridMesh is not null)
                 {
                     if (p.Position.Z <= -29000f) return; // "undelete and disable" leftovers
@@ -636,6 +653,13 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             progress?.Report($"Grid objects: {gridObjects.Count:N0} water planes, waterfalls, fires, windmills and other animated objects go to the SKSE plugin "
                 + $"({string.Join(", ", gridObjects.GroupBy(g => g.Grid).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count():N0}"))}; "
                 + $"{gridObjects.Count - full:N0} use _dyndolod_lod meshes, {full:N0} the full model)");
+        }
+
+        if (glowWindows.Count > 0)
+        {
+            dynamic.AddRange(glowWindows);
+            progress?.Report($"Window glow: {glowWindows.Count:N0} references with a glow LOD mesh go to the SKSE plugin "
+                + $"({string.Join(", ", glowWindows.GroupBy(g => g.Grid).OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count():N0}"))}; {glowWindows.Select(g => g.Ref.Meshes.Lod4).Distinct().Count():N0} meshes)");
         }
 
         // 4) Enable parents: keep a parented ref only if it starts out enabled (following the whole parent

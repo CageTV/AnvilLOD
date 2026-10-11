@@ -24,6 +24,14 @@ namespace AnvilLOD
 
 		// Parent > Child copies (AnvilLOD.copies): the objects around Whiterun, Solitude, Windhelm and Riften that their child
 		// worldspaces leave out, drawn while the player is in the city and the object is inside the loaded cells
+		// Window glow (DynDOLOD's <model>glow_lod_N.nif meshes), drawn beyond the loaded cells and lit by the hour
+		bool          glowWindows{ true };
+		float         glowIntensity{ 1.0f };   // multiplies the mesh's own emissive multiple at full night
+		float         glowDuskStart{ 18.0f };  // the glow fades in from here ...
+		float         glowDuskEnd{ 20.5f };    // ... to full here
+		float         glowDawnStart{ 4.5f };   // and fades out from here ...
+		float         glowDawnEnd{ 6.5f };     // ... to nothing here
+
 		bool          parentCopies{ true };
 		bool          parentCopyAllCells{ false };  // false: only in cells the child worldspace has (where the engine hides the parent's LOD)
 

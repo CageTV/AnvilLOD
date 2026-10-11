@@ -399,7 +399,7 @@ public static class ScanPipeline
                 IReadOnlyDictionary<string, string>? waterMap = null;
                 if (req.WaterStandIns && req.Scan.GridObjects)
                 {
-                    var gridMeshes = (scan.Dynamic ?? []).Where(d => d.IsGridObject)
+                    var gridMeshes = (scan.Dynamic ?? []).Where(d => d.IsGridObject && !d.Glow)
                         .Select(d => d.Ref.Meshes.Lod4 ?? d.Ref.Meshes.Lod8 ?? d.Ref.Meshes.Lod16 ?? d.Ref.Meshes.Lod32)
                         .Where(m => !string.IsNullOrEmpty(m)).Select(m => m!);
                     var standIns = WaterStandIns.Build(gridMeshes, assets, output);

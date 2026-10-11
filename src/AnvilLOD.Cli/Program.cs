@@ -61,6 +61,8 @@ public static class Program
                                  1170 (SE 1.5.97 - AE 1.6.1170), 17 (newer, 1.7.x), none (installed separately)
           --no-grid-objects      Don't hand water planes, waterfalls, fires and windmills (DynDOLOD
                                  "grid" objects) to the AnvilLOD SKSE plugin
+          --glow-windows         (experimental) DynDOLOD's window glow: the <model>glow_lod_N.nif meshes of farmhouses, inns and forts are
+                                 drawn by the SKSE plugin beyond the loaded cells and lit at night (AnvilLOD.dyn). Off by default
           --parent-copies        (experimental) DynDOLOD's Parent > Child copies: the objects around Whiterun, Solitude, Windhelm and
                                  Riften that the walled-city worldspaces leave out are drawn by the SKSE plugin while you are in the
                                  city (AnvilLOD.copies). Needs --dyndolod for its childworld configs. Off by default
@@ -203,7 +205,8 @@ public static class Program
                 GridObjects: !a.Has("no-grid-objects"),
                 Tree3D: Tree3DFromArgs(a),
                 MatchTextures: !a.Has("no-match-textures"),
-                ParentCopies: a.Has("parent-copies")),
+                ParentCopies: a.Has("parent-copies"),
+                GlowWindows: a.Has("glow-windows")),
             OutputFolder: outputFolder,
             CleanOutput: !a.Has("keep-output"),
             Generate: generate,
