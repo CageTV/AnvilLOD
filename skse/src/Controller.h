@@ -28,6 +28,9 @@ namespace AnvilLOD
 		std::size_t GridCount() const { return _gridCount; }
 		std::size_t CopyCount() const { return _copyCount; }
 		std::size_t GlowCount() const { return _glowCount; }
+		std::size_t CopiesShown() const { return _copiesShown; }
+		std::int32_t PlayerCellX() const { return _playerCellX; }
+		std::int32_t PlayerCellY() const { return _playerCellY; }
 		float       GlowFactor() const { return _glowFactor; }
 		std::size_t AnimatedCount() const { return _animatedShown; }
 		/// Drops every drawn object so the next update redraws with current settings.
@@ -55,6 +58,7 @@ namespace AnvilLOD
 			bool                           copy{ false };       // a Parent > Child copy (AnvilLOD.copies): drawn while the player is in `world`, inside the loaded cells
 			bool                           childCell{ false };  // ... and the child worldspace has a cell here
 			bool                           glow{ false };       // a window glow mesh: its emissive multiple follows the hour
+			bool                           standIn{ false };    // a parent-worldspace stand-in for a real object of the city worldspace
 			std::vector<std::pair<RE::BSLightingShaderProperty*, float>> glowProps;  // shader properties of the drawn clone and their own emissive multiple
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held
@@ -69,7 +73,7 @@ namespace AnvilLOD
 		void Animate();
 		float Seconds() const;
 		void HideAll();
-		bool WantShown(const Item& a_item, const RE::NiPoint3& a_player, std::int32_t a_pcx, std::int32_t a_pcy, std::int32_t a_half) const;
+		bool WantShown(const Item& a_item, const RE::NiPoint3& a_player, std::int32_t a_pcx, std::int32_t a_pcy, std::int32_t a_half, RE::FormID a_playerWorld) const;
 		bool IsEnabled(const Item& a_item) const;
 		void Show(Item& a_item);
 		void Hide(Item& a_item);
@@ -92,6 +96,9 @@ namespace AnvilLOD
 		std::size_t                                                 _gridCount{ 0 };
 		std::size_t                                                 _copyCount{ 0 };
 		std::size_t                                                 _glowCount{ 0 };
+		std::atomic<std::size_t>                                    _copiesShown{ 0 };
+		std::atomic<std::int32_t>                                   _playerCellX{ 0 };
+		std::atomic<std::int32_t>                                   _playerCellY{ 0 };
 		float                                                       _glowFactor{ 0.0f };  // 0 by day, 1 at night, from the game hour
 		std::unordered_map<std::uint32_t, std::vector<float>>       _glowBases;           // per mesh: the emissive multiple of each of its shaders, as the file has it
 		std::atomic<std::size_t>                                    _animatedShown{ 0 };

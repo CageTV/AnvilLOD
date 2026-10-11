@@ -24,6 +24,7 @@ namespace AnvilLOD
 		static constexpr std::uint32_t kNearGrid = 8;     // "Near LOD": drawn only near the loaded cells
 		static constexpr std::uint32_t kNeverFade = 16;   // "Never Fade LOD": drawn at any distance
 		static constexpr std::uint32_t kGlow = 32;        // window glow mesh: lit by the hour (night only), not always on
+		static constexpr std::uint32_t kStandIn = 64;     // Tamriel's stand-in for a real object of a city worldspace: not drawn while the player is in that city
 	};
 
 	/// One Parent > Child copy from AnvilLOD.copies: a parent worldspace reference around a walled city, drawn while the player is

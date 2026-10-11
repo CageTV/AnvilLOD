@@ -189,7 +189,7 @@ namespace AnvilLOD::Menu
 			if (c.CopyCount() == 0) {
 				Smf::TextDisabled("No AnvilLOD.copies found.");
 			} else {
-				Smf::Text("Copies: %zu references", c.CopyCount());
+				Smf::Text("Copies: %zu references, %zu drawn now (you are in cell %d, %d)", c.CopyCount(), c.CopiesShown(), static_cast<int>(c.PlayerCellX()), static_cast<int>(c.PlayerCellY()));
 			}
 			Smf::Separator();
 			Smf::TextWrapped("Window glow: the glowing windows of farmhouses, inns and forts beyond the loaded cells, lit from dusk to dawn. "
@@ -204,6 +204,9 @@ namespace AnvilLOD::Menu
 			Smf::Separator();
 			Smf::Checkbox("Draw Parent > Child copies", &s.parentCopies);
 			Smf::Checkbox("Also where the city worldspace has no cell (experimental)", &s.parentCopyAllCells);
+			int extraCells = s.parentCopyExtraCells;
+			if (Smf::SliderInt("Extra cells beyond the loaded ones", &extraCells, 0, 6)) s.parentCopyExtraCells = extraCells;
+			Smf::TextDisabled("    For testing: draw copies further out. If objects still vanish near the walls, raise it until they stay.");
 			Smf::Separator();
 			if (Smf::Button("Save to AnvilLOD.ini##dyn")) g_status = s.Save() ? "Saved." : "Could not write AnvilLOD.ini.";
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());

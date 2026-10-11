@@ -38,5 +38,6 @@ public class GlowWindowTests
         Assert.Equal(4u | 32u, DynamicLodWriter.Flags(glow with { Grid = DynamicGrid.Far }));
         Assert.Equal(4u | 16u | 32u, DynamicLodWriter.Flags(glow with { Grid = DynamicGrid.NeverFade }));
         Assert.Equal(4u | 8u, DynamicLodWriter.Flags(glow with { Glow = false }));
+        Assert.Equal(4u | 8u | 64u, DynamicLodWriter.Flags(glow with { Glow = false, StandIn = true }));   // city stand-in
     }
 }

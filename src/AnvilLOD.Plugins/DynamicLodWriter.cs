@@ -18,7 +18,8 @@ namespace AnvilLOD.Plugins;
 ///   u32 flags (1 = enable state opposite of parent, 2 = initially disabled,
 ///              4 = grid object: water / waterfall / fire / windmill, always dynamic and animated,
 ///              8 = near grid (drawn only near the loaded cells), 16 = never fade (drawn at any distance),
-///              32 = window glow mesh: lit by the hour (night only) instead of always on)
+///              32 = window glow mesh: lit by the hour (night only) instead of always on,
+///              64 = city stand-in (ChildworldMatches): not drawn while the player is in a child worldspace of its worldspace)
 /// </code>
 /// </summary>
 public static class DynamicLodWriter
@@ -95,7 +96,7 @@ public static class DynamicLodWriter
     public static uint Flags(DynamicLodReference d) =>
         (d.ParentOpposite ? 1u : 0u) | (d.InitiallyDisabled ? 2u : 0u)
         | (d.IsGridObject ? 4u : 0u) | (d.Grid == DynamicGrid.Near ? 8u : 0u) | (d.Grid == DynamicGrid.NeverFade ? 16u : 0u)
-        | (d.Glow ? 32u : 0u);
+        | (d.Glow ? 32u : 0u) | (d.StandIn ? 64u : 0u);
 
     public const string DefaultIni = """
         ; AnvilLOD SKSE plugin settings

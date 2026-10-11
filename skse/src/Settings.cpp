@@ -93,6 +93,8 @@ namespace AnvilLOD
 					glowDawnEnd = std::stof(value);
 				} else if (EqualsNoCase(key, "bParentCopies")) {
 					parentCopies = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "iParentCopyExtraCells")) {
+					parentCopyExtraCells = std::clamp(static_cast<std::int32_t>(std::stol(value)), 0, 6);
 				} else if (EqualsNoCase(key, "bParentCopyAllCells")) {
 					parentCopyAllCells = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bVerboseLog")) {
@@ -104,6 +106,7 @@ namespace AnvilLOD
 		}
 		logger::info("Settings: enabled={} maxDistance={} interval={}ms maxShown={} gridObjects={} water={} near={} far={} animate={} animationFps={}",
 			enabled, maxDistance, updateIntervalMs, maxShown, gridObjects, waterPlanes, nearGridDistance, farGridDistance, animate, animationFps);
+		logger::info("Settings: parentCopies={} parentCopyAllCells={} glowWindows={} glowIntensity={}", parentCopies, parentCopyAllCells, glowWindows, glowIntensity);
 	}
 
 	bool Settings::Save() const
@@ -124,6 +127,7 @@ namespace AnvilLOD
 			{ "fGlowIntensity", std::format("{:.2f}", glowIntensity) },
 			{ "bParentCopies", parentCopies ? "1" : "0" },
 			{ "bParentCopyAllCells", parentCopyAllCells ? "1" : "0" },
+			{ "iParentCopyExtraCells", std::to_string(parentCopyExtraCells) },
 			{ "bVerboseLog", verboseLog ? "1" : "0" },
 		});
 	}

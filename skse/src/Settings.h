@@ -33,6 +33,7 @@ namespace AnvilLOD
 		float         glowDawnEnd{ 6.5f };     // ... to nothing here
 
 		bool          parentCopies{ true };
+		std::int32_t  parentCopyExtraCells{ 0 };    // draw copies this many cells beyond the loaded ones too (to find how far the engine hides the parent's LOD)
 		bool          parentCopyAllCells{ false };  // false: only in cells the child worldspace has (where the engine hides the parent's LOD)
 
 		static Settings& Get();

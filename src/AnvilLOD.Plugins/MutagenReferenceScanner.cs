@@ -692,6 +692,15 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             MissingMeshes: missing.ToDictionary(kv => kv.Key, kv => kv.Value),
             Elapsed: sw.Elapsed);
 
+        // Tamriel's low-detail stand-ins for a city's real objects (ChildworldMatches): the SKSE plugin leaves them out while the player is in the city.
+        int dynStandIns = 0;
+        for (int i = 0; i < dynamic.Count; i++)
+            if (_childCopies.IsParentStandIn(LodRules.FormIdKey(dynamic[i].RefPlugin, dynamic[i].RefLocalId)))
+            {
+                dynamic[i] = dynamic[i] with { StandIn = true };
+                dynStandIns++;
+            }
+        if (dynStandIns > 0) progress?.Report($"Dynamic LOD: {dynStandIns:N0} of them are city stand-ins (ChildworldMatches), not drawn while you are in the city");
         if (options.ParentCopies)
             progress?.Report($"Parent > Child copies: {parentCopies.Count:N0} references ({string.Join(", ", parentCopiesByChild.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value:N0}"))}); "
                 + $"left out: {pcNoLod:N0} without LOD, {pcSwitchable:N0} switchable, {pcIgnored:N0} by the ignore list, {pcNavmesh:N0} in navmesh cells, {pcStandIn:N0} city stand-ins listed in ChildworldMatches, {pcFlat:N0} flat ground pieces (roads)");

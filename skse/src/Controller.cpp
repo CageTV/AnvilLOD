@@ -281,6 +281,7 @@ namespace AnvilLOD
 			item.nearGrid = (e.flags & DynamicEntry::kNearGrid) != 0;
 			item.neverFade = (e.flags & DynamicEntry::kNeverFade) != 0;
 			item.glow = (e.flags & DynamicEntry::kGlow) != 0;
+			item.standIn = (e.flags & DynamicEntry::kStandIn) != 0;
 			_glowCount += item.glow ? 1 : 0;
 			item.water = item.grid && IsWaterMesh(_meshes[e.mesh]);
 			_gridCount += item.grid ? 1 : 0;
@@ -388,7 +389,7 @@ namespace AnvilLOD
 		return !a_item.initiallyDisabled;
 	}
 
-	bool Controller::WantShown(const Item& a_item, const RE::NiPoint3& a_player, std::int32_t a_pcx, std::int32_t a_pcy, std::int32_t a_half) const
+	bool Controller::WantShown(const Item& a_item, const RE::NiPoint3& a_player, std::int32_t a_pcx, std::int32_t a_pcy, std::int32_t a_half, RE::FormID a_playerWorld) const
 	{
 		const auto& settings = Settings::Get();
 		if (a_item.underside) {
@@ -400,16 +401,21 @@ namespace AnvilLOD
 			if (!settings.parentCopies || (!settings.parentCopyAllCells && !a_item.childCell)) {
 				return false;
 			}
-			return std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half;
+			const auto reach = a_half + settings.parentCopyExtraCells;
+			return std::abs(a_item.cellX - a_pcx) <= reach && std::abs(a_item.cellY - a_pcy) <= reach;
 		}
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
 		}
+		if (a_item.standIn && a_item.world != a_playerWorld) {
+			return false;  // the city worldspace has the real object
+		}
 		if (a_item.glow && (!settings.glowWindows || _glowFactor <= 0.001f)) {
 			return false;  // windows are dark by day: nothing to draw
 		}
-		// Inside the loaded cells the real object is (or would be) there.
-		if (std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half) {
+		// Inside the loaded cells the real object is (or would be) there. Not for an object of the parent worldspace seen from a child
+		// one (Whiterun's windmills and water planes while the player is in the city's worldspace): the child has no such reference.
+		if (a_item.world == a_playerWorld && std::abs(a_item.cellX - a_pcx) <= a_half && std::abs(a_item.cellY - a_pcy) <= a_half) {
 			return false;
 		}
 		const float dx = a_item.pos.x - a_player.x, dy = a_item.pos.y - a_player.y;
@@ -624,6 +630,18 @@ namespace AnvilLOD
 
 	void Controller::Update()
 	{
+		struct CountCopies
+		{
+			Controller& c;
+			~CountCopies()
+			{
+				std::size_t n = 0;
+				for (auto i : c._shown) {
+					n += c._items[i].copy ? 1 : 0;
+				}
+				c._copiesShown = n;
+			}
+		} countCopies{ *this };
 		const auto& settings = Settings::Get();
 		if (_refresh.exchange(false)) {
 			HideAll();
@@ -654,6 +672,7 @@ namespace AnvilLOD
 		const auto pos = player ? player->GetPosition() : RE::NiPoint3{};
 		const auto pcx = CellOf(pos.x), pcy = CellOf(pos.y);
 		const auto half = LoadedGridHalf();
+		const RE::FormID playerWorld = world ? world->GetFormID() : 0;
 		std::unordered_set<RE::FormID> activeWorlds;
 		for (auto* list : lists) {
 			if (!list->empty()) {
@@ -665,7 +684,7 @@ namespace AnvilLOD
 		stillShown.reserve(_shown.size());
 		for (auto i : _shown) {
 			auto& item = _items[i];
-			if (activeWorlds.contains(item.world) && WantShown(item, pos, pcx, pcy, half)) {
+			if (activeWorlds.contains(item.world) && WantShown(item, pos, pcx, pcy, half, playerWorld)) {
 				stillShown.push_back(i);
 			} else {
 				Hide(item);
@@ -675,6 +694,8 @@ namespace AnvilLOD
 			}
 		}
 		_shown = std::move(stillShown);
+		_playerCellX = pcx;
+		_playerCellY = pcy;
 		if (_glowCount > 0) {
 			ApplyGlow();
 		}
@@ -683,7 +704,7 @@ namespace AnvilLOD
 		for (auto* list : lists) {
 			for (auto i : *list) {
 				auto& item = _items[i];
-				if (item.node || !WantShown(item, pos, pcx, pcy, half)) {
+				if (item.node || !WantShown(item, pos, pcx, pcy, half, playerWorld)) {
 					continue;
 				}
 				if (_shown.size() >= settings.maxShown) {
