@@ -268,6 +268,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var parentCopies = new List<ParentCopy>();
         var parentCopiesByChild = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         var parentCopyRegions = new List<ParentCopyRegion>();
+        var parentCellWater = new Dictionary<(string Ws, int X, int Y), float>();
         long pcInRegion = 0, pcNoLod = 0, pcSwitchable = 0, pcIgnored = 0, pcNavmesh = 0, pcStandIn = 0, pcFlat = 0;
         var flatModels = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         // Road chunks, mud patches and other flat ground pieces lie within a few units of the terrain. As a drawn copy (not a real
@@ -308,11 +309,18 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 if (!parentCopyTargets.TryGetValue(cfg.Parent, out var list)) parentCopyTargets[cfg.Parent] = list = [];
                 list.Add(target);
             }
+            var parentNames = configs.Values.Select(c => c.Parent).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var cctx in priority.Cell().WinningContextOverrides(linkCache))
                 if (cctx.Record.Grid is { } grid
                     && cctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var cws)
-                    && cws.Record.EditorID is { } cid && targetsByChild.TryGetValue(cid, out var tgt))
-                    tgt.Cells.Add((grid.Point.X, grid.Point.Y));
+                    && cws.Record.EditorID is { } cid)
+                {
+                    if (targetsByChild.TryGetValue(cid, out var tgt)) tgt.Cells.Add((grid.Point.X, grid.Point.Y));
+                    else if (parentNames.Contains(cid) && cctx.Record.WaterHeight is { } wh && float.IsFinite(wh) && MathF.Abs(wh) < 1_000_000f
+                             && cctx.Record.Flags.HasFlag(Cell.Flag.HasWater)
+                             && configs.Values.Any(c => c.Bounds is not null && c.Parent.Equals(cid, StringComparison.OrdinalIgnoreCase) && c.Covers(grid.Point.X, grid.Point.Y)))
+                        parentCellWater[(cid, grid.Point.X, grid.Point.Y)] = wh;   // the cell's own water (rivers, ponds): the terrain LOD water the child hides
+                }
             if (configs.Values.Any(c => c.NoCellsWithNavmesh))
                 foreach (var nctx in priority.NavigationMesh().WinningContextOverrides(linkCache))
                     if (nctx.TryGetParentSimpleContext<ICellGetter>(out var ncell) && ncell.Record.Grid is { } ngrid
@@ -710,7 +718,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic,
             options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null,
             options.ParentCopies ? parentCopies : null,
-            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions) : null);
+            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions, parentCellWater) : null);
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>

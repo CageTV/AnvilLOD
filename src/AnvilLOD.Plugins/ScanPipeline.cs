@@ -429,6 +429,27 @@ public static class ScanPipeline
                     progress?.Report($"Parent > Child copies: grass LOD for {gc.Cells:N0} cells around the walled cities ({gc.Meshes:N0} small meshes in meshes\\{GrassCopies.Folder}), the parent's grass blocks are hidden there");
                 }
             }
+            if (req.Scan.ParentCopies && terrain is not null && scan.ParentCopyStats is { Regions: { Count: > 0 } wRegions, WaterCells: { Count: > 0 } wCells })
+            {
+                var standInDir = Path.Combine(output, "meshes", "anvillod", "water");
+                var tplPath = Directory.Exists(standInDir) ? Directory.EnumerateFiles(standInDir, "water*.nif").OrderBy(f => f, StringComparer.Ordinal).FirstOrDefault() : null;
+                LodMeshPart? tpl = null;
+                if (tplPath is not null)
+                {
+                    try { tpl = AnvilLOD.Meshes.Nif.NifGeometryReader.Read(tplPath, File.ReadAllBytes(tplPath)).Parts.FirstOrDefault(); }
+                    catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException or InvalidDataException or NotSupportedException) { }
+                }
+                if (tpl is null) progress?.Report("Parent > Child copies: no water stand-in to take the water material from (turn on the water stand-ins), so the cell water around the cities is not drawn.");
+                else
+                {
+                    var wc = WaterCopies.Build(terrain.Heights, wCells, wRegions, tpl, output, ct);
+                    if (wc.Copies.Count > 0)
+                    {
+                        parentCopies = [.. parentCopies ?? [], .. wc.Copies];
+                        progress?.Report($"Parent > Child copies: water for {wc.Cells:N0} cells around the walled cities ({wc.Runs:N0} water strips in meshes\\{WaterCopies.Folder}), the terrain LOD water is switched off there");
+                    }
+                }
+            }
             if (req.Scan.ParentCopies && parentCopies is { Count: > 0 } pcs)
             {
                 int written = ParentCopyWriter.Write(output, pcs);

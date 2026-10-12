@@ -1,0 +1,124 @@
+using System.Numerics;
+using AnvilLOD.Core.Lod;
+using AnvilLOD.Core.World;
+using AnvilLOD.Meshes;
+using AnvilLOD.Meshes.Authoring;
+
+namespace AnvilLOD.Plugins;
+
+/// <summary>
+/// River and pond water for the walled cities' child worldspaces. The parent's cell water around a city (the White River and the
+/// ponds south of Whiterun) is drawn by the terrain LOD's water, which the child worldspace switches off (NoLodWater), and the
+/// loaded cells of the child have no water of their own: so a stretch of river near the walls is simply missing. For every parent cell
+/// with its own water height inside a copy region this writes a flat plane at that height over the quads where the terrain lies
+/// below it (merged into runs), with the lit "fake water" material the stream stand-ins use, and hands it to the SKSE plugin as a
+/// copy.
+/// </summary>
+public static class WaterCopies
+{
+    public const string Folder = "anvillod\\watercopy";
+
+    public sealed record Result(List<ParentCopy> Copies, int Cells, int Runs);
+
+    public static Result Build(TerrainHeights terrain, IReadOnlyDictionary<(string Ws, int X, int Y), float> waterCells,
+        IReadOnlyList<ParentCopyRegion> regions, LodMeshPart template, string outputFolder, CancellationToken ct = default)
+    {
+        var copies = new List<ParentCopy>();
+        var done = new HashSet<(string, int, int)>();
+        int runsTotal = 0;
+        float uvPerUnit = UvPerUnit(template);
+        // The stream stand-ins are tinted dark olive (0x2A3433, alpha 0xAF); the terrain LOD water this replaces is blue, so a
+        // wider river / pond gets a blue tint over the same ripple texture and blending (R,G,B,A packed little-endian).
+        const uint color = 0xC0806240u;
+        const bool colors = true;
+
+        foreach (var region in regions)
+        {
+            foreach (var ((ws, x, y), h) in waterCells)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!ws.Equals(region.Parent, StringComparison.OrdinalIgnoreCase) || !region.Config.Covers(x, y)) continue;
+                var rel = GamePath.Join(Folder, $"{ws}_{x}_{y}.nif".ToLowerInvariant());
+                var full = Path.Combine(outputFolder, "meshes", rel.Replace('\\', Path.DirectorySeparatorChar));
+                if (done.Add((ws.ToLowerInvariant(), x, y)))
+                {
+                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, out int runs);
+                    if (part is null) { done.Remove((ws.ToLowerInvariant(), x, y)); continue; }
+                    runsTotal += runs;
+                    Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                    File.WriteAllBytes(full, LodNifWriter.Write($"water_{x}_{y}", [part], "AnvilLOD water copy"));
+                }
+                else if (!File.Exists(full)) continue;
+                copies.Add(new ParentCopy(region.ChildWorldspace, region.WorldPlugin, region.WorldLocalId,
+                    "cell water", 0, "Cell water", rel, new Vector3(x * CellCoord.CellSize, y * CellCoord.CellSize, 0), Vector3.Zero, 1f, x, y,
+                    region.ChildCells.Contains((x, y)), false));
+            }
+        }
+        return new Result(copies, done.Count, runsTotal);
+    }
+
+    /// <summary>Texture units per game unit of the template plane (its UVs against its positions), so the water keeps its ripple scale.</summary>
+    internal static float UvPerUnit(LodMeshPart p)
+    {
+        for (int t = 0; t + 2 < p.Triangles.Length; t += 3)
+        {
+            int a = p.Triangles[t], b = p.Triangles[t + 1], c = p.Triangles[t + 2];
+            float areaPos = MathF.Abs(Vector3.Cross(p.Positions[b] - p.Positions[a], p.Positions[c] - p.Positions[a]).Length()) * 0.5f;
+            var e1 = p.UVs[b] - p.UVs[a];
+            var e2 = p.UVs[c] - p.UVs[a];
+            float areaUv = MathF.Abs(e1.X * e2.Y - e1.Y * e2.X) * 0.5f;
+            if (areaPos > 1f && areaUv > 1e-9f) return MathF.Sqrt(areaUv / areaPos);
+        }
+        return 1f / 2048f;
+    }
+
+    private static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
+        float uvPerUnit, bool colors, uint color, out int runs)
+    {
+        const int N = TerrainHeights.Grid - 1;   // 32 quads per side
+        var pos = new List<Vector3>();
+        var uv = new List<Vector2>();
+        var tris = new List<ushort>();
+        float ox = cx * CellCoord.CellSize, oy = cy * CellCoord.CellSize;
+        runs = 0;
+        for (int j = 0; j < N; j++)
+        {
+            int start = -1;
+            for (int i = 0; i <= N; i++)
+            {
+                bool wet = false;
+                if (i < N)
+                {
+                    int gx = cx * N + i, gy = cy * N + j;
+                    float? a = terrain.VertexAt(ws, gx, gy), b = terrain.VertexAt(ws, gx + 1, gy);
+                    float? c = terrain.VertexAt(ws, gx, gy + 1), d = terrain.VertexAt(ws, gx + 1, gy + 1);
+                    wet = (a is { } va && va < h) || (b is { } vb && vb < h) || (c is { } vc && vc < h) || (d is { } vd && vd < h);
+                }
+                if (wet) { if (start < 0) start = i; continue; }
+                if (start < 0) continue;
+                // one rectangle for the run start..i-1 of row j
+                float x0 = start * TerrainHeights.Spacing, x1 = i * TerrainHeights.Spacing, y0 = j * TerrainHeights.Spacing, y1 = (j + 1) * TerrainHeights.Spacing;
+                int v = pos.Count;
+                pos.Add(new Vector3(x0, y0, h)); pos.Add(new Vector3(x1, y0, h)); pos.Add(new Vector3(x1, y1, h)); pos.Add(new Vector3(x0, y1, h));
+                for (int k = 0; k < 4; k++)
+                    uv.Add(new Vector2((ox + pos[v + k].X) * uvPerUnit, (oy + pos[v + k].Y) * uvPerUnit));
+                tris.AddRange([(ushort)v, (ushort)(v + 1), (ushort)(v + 2), (ushort)v, (ushort)(v + 2), (ushort)(v + 3)]);
+                runs++;
+                start = -1;
+            }
+        }
+        if (pos.Count == 0) return null;
+        int n = pos.Count;
+        return new LodMeshPart
+        {
+            Name = "water",
+            Material = template.Material,
+            Positions = [.. pos], UVs = [.. uv],
+            Normals = Enumerable.Repeat(Vector3.UnitZ, n).ToArray(),
+            Tangents = Enumerable.Repeat(Vector3.UnitX, n).ToArray(),
+            Bitangents = Enumerable.Repeat(Vector3.UnitY, n).ToArray(),
+            Colors = colors ? Enumerable.Repeat(color, n).ToArray() : null,
+            Triangles = [.. tris],
+        };
+    }
+}

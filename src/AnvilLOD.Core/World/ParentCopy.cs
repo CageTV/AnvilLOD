@@ -28,7 +28,8 @@ public sealed record ParentCopyStats(
     long Switchable,         // ... that start disabled, have an enable parent or are persistent
     long IgnoredByRule,      // ... skipped by IgnoreParentEDID
     long InNavmeshCells,     // ... in a child cell with a navmesh (NoCellsWithNAVM=1)
-    IReadOnlyList<ParentCopyRegion>? Regions = null);
+    IReadOnlyList<ParentCopyRegion>? Regions = null,
+    IReadOnlyDictionary<(string Ws, int X, int Y), float>? WaterCells = null);   // parent cells with an explicit water height, inside the copy regions
 
 /// <summary>A child worldspace's copy region: where grass LOD (which lives in the parent's blocks, hidden there) is copied too.</summary>
 public sealed record ParentCopyRegion(
