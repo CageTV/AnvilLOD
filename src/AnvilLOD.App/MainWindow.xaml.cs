@@ -83,6 +83,7 @@ public partial class MainWindow : Window
         PbrLodCheck.IsChecked = _settings.PbrLod;
         PbrLodBrightnessBox.SelectedIndex = BrightnessIndex(_settings.PbrLodBrightness);
         UndersideCheck.IsChecked = _settings.Underside;
+        NativeGridObjectsCheck.IsChecked = _settings.NativeGridObjects;
         Tree3DCheck.IsChecked = _settings.Tree3D;
         Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
         Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
@@ -136,6 +137,7 @@ public partial class MainWindow : Window
         _settings.PbrLod = PbrLodCheck.IsChecked == true;
         _settings.PbrLodBrightness = BrightnessPercent(PbrLodBrightnessBox.SelectedIndex);
         _settings.Underside = UndersideCheck.IsChecked == true;
+        _settings.NativeGridObjects = NativeGridObjectsCheck.IsChecked == true;
         _settings.Tree3D = Tree3DCheck.IsChecked == true;
         _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
         _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
@@ -404,6 +406,7 @@ public partial class MainWindow : Window
             ObjectBrightness: _settings.ObjectBrightness / 100f,
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
+            NativeGridObjects: _settings.NativeGridObjects,
             PbrLod: _settings.PbrLod,
             LargeReferences: _settings.LargeReferences,
             LargeRefsEsl: _settings.LargeRefsEsl,

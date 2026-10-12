@@ -28,14 +28,22 @@ public static class UndersidePluginWriter
 
     private static string UndersideModelPath(string worldspace) => AnvilLOD.Meshes.UndersideBuilder.ModelPath(worldspace);
 
-    private const int FlagNotPlayable = 0x4, FlagPersistent = 0x400, FlagIsFullLod = 0x10000; // the flags DynDOLOD sets
+    private const int FlagNotPlayable = 0x4, FlagPersistent = 0x400, FlagInitiallyDisabled = 0x800, FlagIsFullLod = 0x10000; // the flags DynDOLOD sets
 
-    public sealed record Result(string Path, IReadOnlyList<string> Worldspaces, IReadOnlyList<string> Skipped, IReadOnlyList<string> Masters);
+    public sealed record Result(string Path, IReadOnlyList<string> Worldspaces, IReadOnlyList<string> Skipped, IReadOnlyList<string> Masters,
+        int NativeBases = 0, int NativeReferences = 0, IReadOnlyList<NativeGridObjectWriter.Entry>? NativeRefs = null);
 
     /// <param name="worldspaces">EditorIDs of the worldspaces whose underside NIF was generated.</param>
-    public static Result Write(GameContext game, IReadOnlyCollection<string> worldspaces, string outputFolder)
+    /// <param name="natives">Grid objects (waterfalls, windmill fans, wheels) to place as real references, see <see cref="NativeGridObjects"/>.</param>
+    public static Result Write(GameContext game, IReadOnlyCollection<string> worldspaces, string outputFolder, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
     {
+        natives ??= [];
+        var undersideWorlds = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
         var wanted = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
+        foreach (var n in natives) wanted.Add(n.Source.Ref.Worldspace);
+        var nativeBase = new Dictionary<(string Model, bool Movable), FormKey>();
+        int nativeRefs = 0;
+        var nativeEntries = new List<NativeGridObjectWriter.Entry>();
         var esp = new SkyrimMod(ModKey.FromNameAndExtension(FileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
         esp.ModHeader.Stats.NextFormID = 0x800;
 
@@ -46,11 +54,15 @@ public static class UndersidePluginWriter
             var id = ctx.Record.EditorID;
             if (id is null || !wanted.Contains(id) || !seen.Add(id)) continue;
 
-            var stat = new MoveableStatic(esp) { EditorID = $"AnvilLOD_{id}_UndersideBase", MajorRecordFlagsRaw = FlagNotPlayable };
-            esp.MoveableStatics.Add(stat);
-            stat.Model = new Model { File = UndersideModelPath(id) };
-            stat.ObjectBounds.First = new P3Int16(-4096, -4096, -4096);
-            stat.ObjectBounds.Second = new P3Int16(4096, 4096, 4096);
+            MoveableStatic? stat = null;
+            if (undersideWorlds.Contains(id))
+            {
+                stat = new MoveableStatic(esp) { EditorID = $"AnvilLOD_{id}_UndersideBase", MajorRecordFlagsRaw = FlagNotPlayable };
+                esp.MoveableStatics.Add(stat);
+                stat.Model = new Model { File = UndersideModelPath(id) };
+                stat.ObjectBounds.First = new P3Int16(-4096, -4096, -4096);
+                stat.ObjectBounds.Second = new P3Int16(4096, 4096, 4096);
+            }
 
             // The persistent cell has to be the worldspace's own, not a new one: override it, then drop the copied refs
             // (they stay with their plugins; only ours is written).
@@ -87,13 +99,62 @@ public static class UndersidePluginWriter
             top.Grid = null;
             top.Persistent.Clear();
             top.Temporary.Clear();
-            top.Persistent.Add(new PlacedObject(esp)
+            if (stat is not null)
             {
-                EditorID = $"AnvilLOD_{id}_Underside",
-                Base = new FormLinkNullable<IPlaceableObjectGetter>(stat.FormKey),
-                MajorRecordFlagsRaw = FlagPersistent | FlagIsFullLod,
-                Placement = new Placement { Position = new Noggog.P3Float(0, 0, Depth), Rotation = new Noggog.P3Float(0, 0, 0) },
-            });
+                top.Persistent.Add(new PlacedObject(esp)
+                {
+                    EditorID = $"AnvilLOD_{id}_Underside",
+                    Base = new FormLinkNullable<IPlaceableObjectGetter>(stat.FormKey),
+                    MajorRecordFlagsRaw = FlagPersistent | FlagIsFullLod,
+                    Placement = new Placement { Position = new Noggog.P3Float(0, 0, Depth), Rotation = new Noggog.P3Float(0, 0, 0) },
+                });
+            }
+            // Real references for the grid objects the engine can animate itself: one base per model (STAT for the effect LOD
+            // meshes, MSTT for models with sequences) and a persistent, full-LOD reference per placement, like DynDOLOD's.
+            foreach (var n in natives.Where(n => n.Source.Ref.Worldspace.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!nativeBase.TryGetValue((n.Model, n.Movable), out var baseKey))
+                {
+                    var stem = System.IO.Path.GetFileNameWithoutExtension(n.Model.Replace('\\', '/'));
+                    var edid = $"AnvilLOD_{stem}_Base{(n.Movable ? "M" : "S")}";
+                    var bounds = (new P3Int16(-2048, -2048, -2048), new P3Int16(2048, 2048, 2048));
+                    if (n.Movable)
+                    {
+                        var m = new MoveableStatic(esp) { EditorID = edid, MajorRecordFlagsRaw = FlagNotPlayable };
+                        esp.MoveableStatics.Add(m);
+                        m.Model = new Model { File = n.Model };
+                        m.ObjectBounds.First = bounds.Item1; m.ObjectBounds.Second = bounds.Item2;
+                        baseKey = m.FormKey;
+                    }
+                    else
+                    {
+                        var s = new Static(esp) { EditorID = edid, MajorRecordFlagsRaw = FlagNotPlayable };
+                        esp.Statics.Add(s);
+                        s.Model = new Model { File = n.Model };
+                        s.ObjectBounds.First = bounds.Item1; s.ObjectBounds.Second = bounds.Item2;
+                        baseKey = s.FormKey;
+                    }
+                    nativeBase[(n.Model, n.Movable)] = baseKey;
+                }
+                var r = n.Source.Ref;
+                // Disabled to begin with when the vanilla reference is (initially disabled or switched by an enable parent): the
+                // SKSE plugin enables it with the source (AnvilLOD.native).
+                bool startDisabled = n.Source.InitiallyDisabled || n.Source.ParentPlugin is not null;
+                var placed = new PlacedObject(esp)
+                {
+                    EditorID = $"AnvilLOD_{id}_Grid{++nativeRefs}",
+                    Base = new FormLinkNullable<IPlaceableObjectGetter>(baseKey),
+                    MajorRecordFlagsRaw = FlagPersistent | FlagIsFullLod | (startDisabled ? FlagInitiallyDisabled : 0),
+                    Placement = new Placement
+                    {
+                        Position = new Noggog.P3Float(r.Position.X, r.Position.Y, r.Position.Z),
+                        Rotation = new Noggog.P3Float(r.RotationRadians.X, r.RotationRadians.Y, r.RotationRadians.Z),
+                    },
+                    Scale = r.Scale == 1f ? null : r.Scale,
+                };
+                top.Persistent.Add(placed);
+                nativeEntries.Add(new NativeGridObjectWriter.Entry(n, placed.FormKey.ID));
+            }
             done.Add(id);
         }
 
@@ -115,6 +176,6 @@ public static class UndersidePluginWriter
 
         using var written = SkyrimMod.CreateFromBinaryOverlay(espPath, SkyrimRelease.SkyrimSE);
         var masters = written.ModHeader.MasterReferences.Select(m => m.Master.FileName.String).ToList();
-        return new Result(espPath, done, skipped, masters);
+        return new Result(espPath, done, skipped, masters, nativeBase.Count, nativeRefs, nativeEntries);
     }
 }

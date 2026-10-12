@@ -26,7 +26,7 @@ public static class UndersideStage
     public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed, int DrawnByPlugin = 0);
 
     public static Result Run(GameContext game, TerrainHeights terrain, IReadOnlyDictionary<string, LodGrid> grids, string output,
-        int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct)
+        int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
     {
         var sw = Stopwatch.StartNew();
         var made = new List<string>();
@@ -95,9 +95,13 @@ public static class UndersideStage
 
         string? plugin = null;
         var inPlugin = made.Except(drawnByPlugin, StringComparer.OrdinalIgnoreCase).ToList();
-        if (inPlugin.Count > 0)
+        if (inPlugin.Count > 0 || natives is { Count: > 0 })
         {
-            var r = UndersidePluginWriter.Write(game, inPlugin, output);
+            var r = UndersidePluginWriter.Write(game, inPlugin, output, natives);
+            if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, UndersidePluginWriter.FileName, ne);
+            else NativeGridObjectWriter.Remove(output);
+            if (r.NativeReferences > 0)
+                progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels); the SKSE plugin no longer draws them.");
             plugin = r.Path;
             progress?.Report($"Underside: {UndersidePluginWriter.FileName} written for {r.Worldspaces.Count} worldspaces (placement masters: {string.Join(", ", r.Masters)})");
             if (r.Skipped.Count > 0)

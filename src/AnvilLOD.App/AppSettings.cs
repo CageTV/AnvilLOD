@@ -49,6 +49,7 @@ public sealed class AppSettings
     public bool PbrLod { get; set; }            // object LOD textures that match PBR full models (off by default)
     public int PbrLodBrightness { get; set; } = 100; // percent of DynDOLOD's PBR scale for the converted copies, 10-110
     public bool Underside { get; set; }         // terrain underside (NIFs + AnvilLOD.esp), off by default
+    public bool NativeGridObjects { get; set; } // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp, off by default
     public bool Tree3D { get; set; }            // 3D tree LOD models in object LOD (off by default)
     public bool Tree3DLod8 { get; set; }        // use the 3D models at LOD8 as well
     public string? LastRunSizes { get; set; }   // JSON of the last generation's size by LOD level and layer (SizeCalibration), per preset, for the size estimate

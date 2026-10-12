@@ -234,6 +234,39 @@ namespace AnvilLOD
 		LoadDynamic();
 		LoadUndersides();  // after the dynamic file: they share the mesh string table
 		LoadCopies();
+		LoadNative();
+	}
+
+	/// AnvilLOD.native, written when the generator turned waterfalls, windmill fans and water wheels into real references in AnvilLOD.esp
+	/// (the engine animates real references; a model attached by a plugin it never updates). Their enable state follows the vanilla
+	/// reference they stand for: the job DynDOLOD's script or DLL does for its own references.
+	void Controller::LoadNative()
+	{
+		NativeFile file;
+		if (!file.Read("Data/SKSE/Plugins/AnvilLOD/AnvilLOD.native")) {
+			return;
+		}
+		auto* data = RE::TESDataHandler::GetSingleton();
+		if (!data) {
+			return;
+		}
+		std::size_t missing = 0;
+		for (const auto& e : file.entries) {
+			NativeItem item;
+			item.source = data->LookupFormID(e.sourceLocalId, file.strings[e.sourcePlugin]);
+			item.native = data->LookupFormID(e.nativeLocalId, file.strings[e.nativePlugin]);
+			if (item.native == 0 || item.source == 0) {
+				++missing;  // AnvilLOD.esp is not enabled, or a plugin is gone
+				continue;
+			}
+			if (e.parentPlugin != NativeEntry::kNone) {
+				item.parent = data->LookupFormID(e.parentLocalId, file.strings[e.parentPlugin]);
+			}
+			item.opposite = (e.flags & NativeEntry::kOpposite) != 0;
+			item.initiallyDisabled = (e.flags & NativeEntry::kInitiallyDisabled) != 0;
+			_natives.push_back(item);
+		}
+		logger::info("Native grid objects: {} real references in AnvilLOD.esp follow the enable state of their vanilla references, {} skipped (plugin not in the load order)", _natives.size(), missing);
 	}
 
 	/// AnvilLOD.copies, written by the generator when "Parent > Child copies" is on: the references around Whiterun, Solitude, Windhelm and
@@ -443,6 +476,51 @@ namespace AnvilLOD
 			_root->parent->DetachChild(_root.get());
 		}
 		_root.reset();
+	}
+
+	namespace
+	{
+		void EnableRef(RE::TESObjectREFR* a_ref)
+		{
+#if ANVILLOD_RUNTIME_LINE == 17 || ANVILLOD_RUNTIME_LINE == 14
+			a_ref->Enable(false);
+#else
+			using func_t = void (*)(RE::TESObjectREFR*, bool);
+			static REL::Relocation<func_t> func{ RELOCATION_ID(19373, 19800) };
+			func(a_ref, false);
+#endif
+		}
+	}
+
+	/// Keeps each native grid object's enable state equal to its vanilla reference's: the reference itself when it is in memory, else
+	/// its enable parent, else its initial state (the same rules as IsEnabled for the objects the plugin draws itself).
+	void Controller::UpdateNative()
+	{
+		std::size_t enabled = 0;
+		for (const auto& n : _natives) {
+			bool wanted;
+			if (const auto* src = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.source)) {
+				wanted = !src->IsDisabled() && !src->IsDeleted();
+			} else if (n.parent != 0) {
+				const auto* parent = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.parent);
+				wanted = parent ? parent->IsDisabled() == n.opposite : !n.initiallyDisabled;
+			} else {
+				wanted = !n.initiallyDisabled;
+			}
+			auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.native);
+			if (!ref || ref->IsDeleted()) {
+				continue;
+			}
+			if (wanted == ref->IsDisabled()) {
+				if (wanted) {
+					EnableRef(ref);
+				} else {
+					ref->Disable();
+				}
+			}
+			enabled += wanted ? 1 : 0;
+		}
+		_nativeEnabled = enabled;
 	}
 
 	RE::NiNode* Controller::Root()
@@ -848,6 +926,9 @@ namespace AnvilLOD
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
 		auto*       world = player ? player->GetWorldspace() : nullptr;
+		if (!_natives.empty() && player && player->Is3DLoaded()) {
+			UpdateNative();
+		}
 		if (_glowCount > 0) {
 			if (auto* calendar = RE::Calendar::GetSingleton()) {
 				_glowFactor = GlowAmount(calendar->GetHour(), settings);

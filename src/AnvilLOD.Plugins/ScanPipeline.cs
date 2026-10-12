@@ -30,6 +30,7 @@ public sealed record ScanRequest(
     SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
     bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD.esp (ESL)
     int UndersideStep = UndersideMesher.DefaultStep, // LAND vertices per underside quad (smaller = finer and heavier)
+    bool NativeGridObjects = false,                // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp (the engine animates them) instead of SKSE copies
     bool PbrLod = false,                           // object LOD textures that match PBR full models (TexGen pbr_lod twins, converted PBR albedo)
     float PbrLodBrightness = 1f,                   // multiplier on DynDOLOD's default PBR scale (0.65) for the converted copies
     int PbrLodSize = 512,                          // largest side of a converted copy
@@ -396,12 +397,15 @@ public static class ScanPipeline
                 progress?.Report($"Tree LOD: {trees.Instances:N0} trees, {trees.TreeTypes} types, {trees.Blocks:N0} blocks"
                                  + $" ({trees.WorldspacesWritten} worldspaces written, {trees.WorldspacesUnchanged} unchanged) in {trees.Elapsed.TotalSeconds:F1}s");
             }
+            // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
+            var natives = req.NativeGridObjects && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? []) : [];
+            var dynamicList = natives.Count == 0 ? scan.Dynamic ?? [] : (scan.Dynamic ?? []).Except(natives.Select(p => p.Source)).ToList();
             if (req.Scan.DynamicLod || req.Scan.GridObjects)
             {
                 IReadOnlyDictionary<string, string>? waterMap = null;
                 if (req.WaterStandIns && req.Scan.GridObjects)
                 {
-                    var gridMeshes = (scan.Dynamic ?? []).Where(d => d.IsGridObject && !d.Glow)
+                    var gridMeshes = dynamicList.Where(d => d.IsGridObject && !d.Glow)
                         .Select(d => d.Ref.Meshes.Lod4 ?? d.Ref.Meshes.Lod8 ?? d.Ref.Meshes.Lod16 ?? d.Ref.Meshes.Lod32)
                         .Where(m => !string.IsNullOrEmpty(m)).Select(m => m!);
                     var standIns = WaterStandIns.Build(gridMeshes, assets, output);
@@ -410,8 +414,8 @@ public static class ScanPipeline
                                      + (standIns.Converted > 0 ? $" ({string.Join(", ", standIns.Names.Select(Path.GetFileNameWithoutExtension).Take(8))}{(standIns.Names.Count > 8 ? ", ..." : "")})" : "")
                                      + $"; {standIns.NoWaterShader} matching meshes had no water shader, {standIns.Unreadable} could not be read.");
                 }
-                int n = DynamicLodWriter.Write(output, scan.Dynamic ?? [], waterMap);
-                int g = scan.Dynamic?.Count(d => d.IsGridObject) ?? 0;
+                int n = DynamicLodWriter.Write(output, dynamicList, waterMap);
+                int g = dynamicList.Count(d => d.IsGridObject);
                 progress?.Report($"Dynamic LOD: {n - g:N0} switchable references and {g:N0} grid objects written to {DynamicLodWriter.RelativePath} for the AnvilLOD SKSE plugin");
             }
             else
@@ -496,13 +500,26 @@ public static class ScanPipeline
             {
                 try
                 {
-                    var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct);
+                    var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct, natives);
                     progress?.Report($"Underside: {u.Worldspaces} worldspaces, {u.Blocks:N0} blocks, {u.Triangles:N0} triangles in {u.Elapsed.TotalSeconds:F1}s"
                                      + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} (flagged ESL, no plugin slot) in your mod manager."));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     Warn($"Underside failed: {ex.Message}");
+                }
+            }
+            else if (natives.Count > 0)
+            {
+                try
+                {
+                    var r = UndersidePluginWriter.Write(game, [], output, natives);
+                    if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, UndersidePluginWriter.FileName, ne);
+                    progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels); the SKSE plugin no longer draws them. Enable {UndersidePluginWriter.FileName} (flagged ESL, no plugin slot) in your mod manager.");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"Native grid objects failed: {ex.Message}");
                 }
             }
             else UndersideStage.RemoveAll(output);

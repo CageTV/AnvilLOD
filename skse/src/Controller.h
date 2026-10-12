@@ -34,6 +34,8 @@ namespace AnvilLOD
 		std::int32_t PlayerCellY() const { return _playerCellY; }
 		float       GlowFactor() const { return _glowFactor; }
 		std::size_t AnimatedCount() const { return _animatedShown; }
+		std::size_t NativeCount() const { return _natives.size(); }
+		std::size_t NativeEnabledCount() const { return _nativeEnabled; }
 		/// Drops every drawn object so the next update redraws with current settings.
 		void Refresh() { _refresh = true; }
 
@@ -68,6 +70,8 @@ namespace AnvilLOD
 		void LoadDynamic();
 		void LoadUndersides();
 		void LoadCopies();
+		void LoadNative();
+		void UpdateNative();
 		void PrepareGlow(Item& a_item);
 		void ApplyGlow();
 		void Update();
@@ -81,6 +85,18 @@ namespace AnvilLOD
 		RE::NiNode* Root();
 		RE::NiNode* Template(std::uint32_t a_mesh);
 		static std::int32_t LoadedGridHalf();
+
+		/// A grid object that is a real reference in AnvilLOD.esp: its enable state follows the vanilla reference it stands for.
+		struct NativeItem
+		{
+			RE::FormID source{ 0 };
+			RE::FormID native{ 0 };
+			RE::FormID parent{ 0 };
+			bool       opposite{ false };
+			bool       initiallyDisabled{ false };
+		};
+		std::vector<NativeItem>                                     _natives;
+		std::size_t                                                 _nativeEnabled{ 0 };
 
 		std::vector<std::string>                                    _meshes;
 		std::vector<Item>                                           _items;

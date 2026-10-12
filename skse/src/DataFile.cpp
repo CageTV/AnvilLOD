@@ -87,6 +87,54 @@ namespace AnvilLOD
 		return true;
 	}
 
+	bool NativeFile::Read(const std::filesystem::path& a_path)
+	{
+		std::ifstream in(a_path, std::ios::binary);
+		if (!in) {
+			return false;  // the option is off, or Generate was run without it: not an error
+		}
+		std::vector<char> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+		Reader            r(std::move(bytes));
+
+		std::array<char, 4> magic{};
+		std::uint32_t       version = 0;
+		if (!r.Get(magic) || std::string_view(magic.data(), 4) != "ALNV"sv || !r.Get(version)) {
+			logger::error("{} is not an AnvilLOD native file", a_path.string());
+			return false;
+		}
+		if (version != 1) {
+			logger::error("{} has version {}, this plugin reads version 1 - update the AnvilLOD plugin or regenerate", a_path.string(), version);
+			return false;
+		}
+		std::uint32_t count = 0;
+		if (!r.Get(count)) {
+			return false;
+		}
+		strings.resize(count);
+		for (auto& s : strings) {
+			if (!r.GetString(s)) {
+				logger::error("{}: truncated string table", a_path.string());
+				return false;
+			}
+		}
+		if (!r.Get(count)) {
+			return false;
+		}
+		entries.resize(count);
+		for (auto& e : entries) {
+			if (!r.Get(e.sourcePlugin) || !r.Get(e.sourceLocalId) || !r.Get(e.nativePlugin) || !r.Get(e.nativeLocalId) || !r.Get(e.parentPlugin) || !r.Get(e.parentLocalId) || !r.Get(e.flags)) {
+				logger::error("{}: truncated entry table", a_path.string());
+				return false;
+			}
+			const auto n = static_cast<std::uint32_t>(strings.size());
+			if (e.sourcePlugin >= n || e.nativePlugin >= n || (e.parentPlugin != NativeEntry::kNone && e.parentPlugin >= n)) {
+				logger::error("{}: bad string index", a_path.string());
+				return false;
+			}
+		}
+		return true;
+	}
+
 	bool DataFile::Read(const std::filesystem::path& a_path)
 	{
 		std::ifstream in(a_path, std::ios::binary);

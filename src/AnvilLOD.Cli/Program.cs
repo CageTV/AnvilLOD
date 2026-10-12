@@ -220,6 +220,7 @@ public static class Program
             ChildWorlds: !a.Has("no-child-worlds"),
             Seasons: a.Has("seasons"),
             Underside: a.Has("underside"),
+            NativeGridObjects: a.Has("native-grid-objects"),
             PbrLod: a.Has("pbr-lod"),
             LargeReferences: a.Has("large-refs"),
             LargeRefsEsl: !a.Has("large-refs-no-esl"),

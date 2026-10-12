@@ -52,6 +52,32 @@ namespace AnvilLOD
 		bool Read(const std::filesystem::path& a_path);
 	};
 
+	/// One grid object that is a real reference in AnvilLOD.esp (AnvilLOD.native): the vanilla reference it stands for, its enable
+	/// parent, and the real reference whose enable state follows the source's.
+	struct NativeEntry
+	{
+		std::uint32_t sourcePlugin;
+		std::uint32_t sourceLocalId;
+		std::uint32_t nativePlugin;
+		std::uint32_t nativeLocalId;
+		std::uint32_t parentPlugin;  // 0xFFFFFFFF = no enable parent
+		std::uint32_t parentLocalId;
+		std::uint32_t flags;
+
+		static constexpr std::uint32_t kNone = 0xFFFFFFFF;
+		static constexpr std::uint32_t kOpposite = 1;
+		static constexpr std::uint32_t kInitiallyDisabled = 2;
+	};
+
+	struct NativeFile
+	{
+		std::vector<std::string> strings;
+		std::vector<NativeEntry> entries;
+
+		/// Reads Data\SKSE\Plugins\AnvilLOD\AnvilLOD.native. Returns false (quietly when it just isn't there) if it can't be used.
+		bool Read(const std::filesystem::path& a_path);
+	};
+
 	struct DataFile
 	{
 		std::vector<std::string>  strings;
