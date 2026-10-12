@@ -16,6 +16,7 @@ namespace AnvilLOD
 		bool          waterPlanes{ true };          // includes meshes with the water shader (lakes, pools, streams)
 		float         nearGridDistance{ 40000.0f }; // "Near LOD" objects
 		float         farGridDistance{ 120000.0f }; // "Far LOD" / "Far Full" objects
+		bool          driveSequences{ true };       // play the transform sequences of drawn clones ourselves (windmill blades, water wheels)
 		bool          tickManagers{ true };         // also tick controller managers of drawn clones (windmill blades, water wheels)
 		bool          animate{ false };             // EXPERIMENTAL: keep grid objects animated (bAnimateExperimental)
 		std::uint32_t animationFps{ 30 };           // update ticks per second while animate is on

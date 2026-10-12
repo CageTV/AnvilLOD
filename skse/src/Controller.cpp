@@ -105,6 +105,98 @@ namespace AnvilLOD
 			}
 		}
 
+		/// NiQuatTransform's memory layout (CommonLib only forward-declares the type): rotation w,x,y,z, translation, scale. An
+		/// interpolator that has nothing to say about a channel leaves it at -FLT_MAX.
+		struct QuatTransform
+		{
+			float w{ -FLT_MAX }, x{ -FLT_MAX }, y{ -FLT_MAX }, z{ -FLT_MAX };
+			float tx{ -FLT_MAX }, ty{ -FLT_MAX }, tz{ -FLT_MAX };
+			float scale{ -FLT_MAX };
+		};
+		static_assert(sizeof(QuatTransform) == 32);
+
+		bool Valid(float a_value)
+		{
+			return a_value > -1.0e30f;
+		}
+
+		/// Quaternion to rotation matrix (the older CommonLib line has no NiQuaternion::ToRotation).
+		RE::NiMatrix3 ToMatrix(float w, float x, float y, float z)
+		{
+			RE::NiMatrix3 m;
+			m.entry[0][0] = 1.0f - 2.0f * (y * y + z * z);
+			m.entry[0][1] = 2.0f * (x * y - w * z);
+			m.entry[0][2] = 2.0f * (x * z + w * y);
+			m.entry[1][0] = 2.0f * (x * y + w * z);
+			m.entry[1][1] = 1.0f - 2.0f * (x * x + z * z);
+			m.entry[1][2] = 2.0f * (y * z - w * x);
+			m.entry[2][0] = 2.0f * (x * z - w * y);
+			m.entry[2][1] = 2.0f * (y * z + w * x);
+			m.entry[2][2] = 1.0f - 2.0f * (x * x + y * y);
+			return m;
+		}
+
+		/// A clone's controllers are never advanced by the engine (their times stay at -FLT_MAX), so a windmill drawn as LOD stood
+		/// still. Play the sequences ourselves: evaluate each transform interpolator of an animating sequence at the sequence's own
+		/// time and write the result into the node it drives. Only transform channels (blades, water wheels, flags).
+		void DriveSequences(const std::vector<RE::NiTimeController*>& a_controllers, RE::NiAVObject* a_root, float a_now)
+		{
+			for (auto* ctl : a_controllers) {
+				auto* mgr = netimmerse_cast<RE::NiControllerManager*>(ctl);
+				if (!mgr) {
+					continue;
+				}
+				for (auto& seq : mgr->sequenceArray) {
+					if (!seq || !seq->Animating()) {
+						continue;
+					}
+					const float begin = seq->beginKeyTime, span = seq->endKeyTime - seq->beginKeyTime;
+					const float x = a_now * (seq->frequency > 0.0f ? seq->frequency : 1.0f);
+					float       t = begin;
+					if (span > 0.0001f) {
+						switch (seq->cycleType.get()) {
+						case RE::NiTimeController::CycleType::kClamp:
+							t = begin + std::min(x, span);
+							break;
+						case RE::NiTimeController::CycleType::kReverse:
+							{
+								const float m = std::fmod(x, span * 2.0f);
+								t = begin + (m > span ? span * 2.0f - m : m);
+							}
+							break;
+						default:
+							t = begin + std::fmod(x, span);
+							break;
+						}
+					}
+					const auto count = std::min(seq->interpArray.size(), seq->idTagArray.size());
+					for (std::size_t i = 0; i < count; ++i) {
+						auto* interp = seq->interpArray[i].interpolator.get();
+						if (!interp || !interp->IsTransformValueSupported()) {
+							continue;
+						}
+						auto* target = a_root->GetObjectByName(seq->idTagArray[i].avObjectName);
+						if (!target) {
+							continue;
+						}
+						QuatTransform value;
+						if (!interp->Update1(t, target, reinterpret_cast<RE::NiQuatTransform&>(value))) {
+							continue;
+						}
+						if (Valid(value.w)) {
+							target->local.rotate = ToMatrix(value.w, value.x, value.y, value.z);
+						}
+						if (Valid(value.tx)) {
+							target->local.translate = RE::NiPoint3(value.tx, value.ty, value.tz);
+						}
+						if (Valid(value.scale)) {
+							target->local.scale = value.scale;
+						}
+					}
+				}
+			}
+		}
+
 		/// Models that animate through a controller manager (windmill blades, water wheels) only move while a
 		/// sequence plays; the game starts one when the reference loads, so do the same for our copy.
 		void StartSequences(const std::vector<RE::NiTimeController*>& a_controllers)
@@ -649,6 +741,9 @@ namespace AnvilLOD
 			// 2026-10-11 log), so a controller manager (windmill blades, water wheels: they animate through sequences) is also
 			// ticked itself. Plain controllers are not: calling those directly crashed in
 			// BSLightingShaderPropertyFloatController::Update on cloned models (crash 2026-10-08).
+			if (Settings::Get().driveSequences) {
+				DriveSequences(item.controllers, item.node.get(), t);
+			}
 			item.node->Update(update);
 			if (Settings::Get().tickManagers) {
 				for (auto* ctl : item.controllers) {
