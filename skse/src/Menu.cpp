@@ -198,7 +198,10 @@ namespace AnvilLOD::Menu
 			if (c.GlowCount() == 0) {
 				Smf::TextDisabled("No window glow in AnvilLOD.dyn.");
 			} else {
-				Smf::Text("Glow windows: %zu references, glow now %.0f%%", c.GlowCount(), c.GlowFactor() * 100.0f);
+				Smf::Text("Glow windows: %zu references, %zu drawn now, glow now %.0f%%", c.GlowCount(), c.GlowShown(), c.GlowFactor() * 100.0f);
+				if (c.GlowShown() == 0 && c.GlowFactor() > 0.001f && s.glowWindows) {
+					Smf::TextDisabled("    None drawn: windows inside the loaded cells are the real ones (the engine lights them), and only windows beyond them are drawn here. Look at distant buildings.");
+				}
 			}
 			Smf::Checkbox("Window glow at night", &s.glowWindows);
 			Smf::SliderFloat("Glow intensity", &s.glowIntensity, 0.0f, 3.0f, "%.2f");

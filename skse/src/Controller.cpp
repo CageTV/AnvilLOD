@@ -884,11 +884,13 @@ namespace AnvilLOD
 			Controller& c;
 			~CountCopies()
 			{
-				std::size_t n = 0;
+				std::size_t n = 0, g = 0;
 				for (auto i : c._shown) {
 					n += c._items[i].copy ? 1 : 0;
+					g += c._items[i].glow ? 1 : 0;
 				}
 				c._copiesShown = n;
+				c._glowShown = g;
 				if (Settings::Get().verboseLog && ++c._updateCount % 10 == 0) {
 					std::size_t kids = 0;
 					if (c._root) {
@@ -906,7 +908,7 @@ namespace AnvilLOD
 							break;
 						}
 					}
-					logger::info("Update #{}: {} drawn ({} copies), root {} with {} children, flags {:#x}, parent {}", c._updateCount, c._shown.size(), n,
+					logger::info("Update #{}: {} drawn ({} copies, {} glow windows), root {} with {} children, flags {:#x}, parent {}", c._updateCount, c._shown.size(), n, g,
 						c._root ? "present" : "ABSENT", kids, c._root ? static_cast<unsigned>(c._root->GetFlags().underlying()) : 0u,
 						c._root && c._root->parent ? c._root->parent->name.c_str() : "none");
 				}

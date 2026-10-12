@@ -29,6 +29,7 @@ namespace AnvilLOD
 		std::size_t GridCount() const { return _gridCount; }
 		std::size_t CopyCount() const { return _copyCount; }
 		std::size_t GlowCount() const { return _glowCount; }
+		std::size_t GlowShown() const { return _glowShown; }
 		std::size_t CopiesShown() const { return _copiesShown; }
 		std::int32_t PlayerCellX() const { return _playerCellX; }
 		std::int32_t PlayerCellY() const { return _playerCellY; }
@@ -120,6 +121,7 @@ namespace AnvilLOD
 		std::size_t                                                 _copyCount{ 0 };
 		std::size_t                                                 _glowCount{ 0 };
 		std::atomic<std::size_t>                                    _copiesShown{ 0 };
+		std::atomic<std::size_t>                                    _glowShown{ 0 };  // window glow items drawn now
 		std::atomic<std::int32_t>                                   _playerCellX{ 0 };
 		std::atomic<std::int32_t>                                   _playerCellY{ 0 };
 		float                                                       _glowFactor{ 0.0f };  // 0 by day, 1 at night, from the game hour
