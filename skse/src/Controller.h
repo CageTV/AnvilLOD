@@ -89,6 +89,7 @@ namespace AnvilLOD
 		std::unordered_set<std::uint32_t>                           _failedMeshes;
 		std::unordered_set<std::uint32_t>                           _animLogged;
 		std::uint32_t                                               _animTick{ 0 };
+		std::uint32_t                                               _updateCount{ 0 };
 		std::uint32_t                                               _animSkipped{ 0 };
 		RE::NiPointer<RE::NiNode>                                   _root;
 		std::vector<std::size_t>                                    _shown;
