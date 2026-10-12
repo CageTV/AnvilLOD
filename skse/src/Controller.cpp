@@ -497,6 +497,18 @@ namespace AnvilLOD
 				std::ranges::stable_partition(a_item.controllers, [](RE::NiTimeController* c) { return netimmerse_cast<RE::NiControllerManager*>(c) != nullptr; });
 				RE::NiTimeController::StartAnimations(node);
 				StartSequences(a_item.controllers);
+				// A clone's controllers come out never started (start / last time at -FLT_MAX after 100 s of updates, 2026-10-11):
+				// do what the loader does to a scene graph that has animations, then start the plain controllers explicitly.
+				{
+					bool selective = true, rigid = false;
+					node->SetSelectiveUpdateFlags(selective, true, rigid);
+					const float now = Seconds();
+					for (auto* ctl : a_item.controllers) {
+						if (!netimmerse_cast<RE::NiControllerManager*>(ctl)) {
+							ctl->Start(now);
+						}
+					}
+				}
 				++_animatedShown;
 				if (settings.verboseLog && _animLogged.size() < 40 && _animLogged.insert(a_item.mesh).second) {
 					logger::info("anim {}: {} controllers", _meshes[a_item.mesh], a_item.controllers.size());
@@ -510,7 +522,7 @@ namespace AnvilLOD
 								}
 							}
 						} else {
-							logger::info("  {} freq={} phase={} start={} last={}", name, ctl->frequency, ctl->phase, ctl->startTime, ctl->lastTime);
+							logger::info("  {} flags={:#x} freq={} phase={} start={} last={}", name, static_cast<unsigned>(ctl->flags.underlying()), ctl->frequency, ctl->phase, ctl->startTime, ctl->lastTime);
 						}
 					}
 				}
@@ -635,7 +647,7 @@ namespace AnvilLOD
 			if (probe && probed.size() < 12 && probed.insert(item.mesh).second) {
 				logger::info("animprobe tick {} t={:.2f} {}", _animTick, t, _meshes[item.mesh]);
 				for (auto* ctl : item.controllers) {
-					logger::info("  {} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", ctl->lastTime, ctl->startTime, ctl->scaledTime);
+					logger::info("  {} flags={:#x} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", static_cast<unsigned>(ctl->flags.underlying()), ctl->lastTime, ctl->startTime, ctl->scaledTime);
 				}
 			}
 		}
@@ -685,6 +697,12 @@ namespace AnvilLOD
 			// Hide now, draw again on the next update: detaching and re-attaching in the same pass left the objects around the player
 			// invisible until the next cell change (Redraw now, 2026-10-11).
 			HideAll();
+			// ... and with a new root too, like after a cell change (entering and leaving a building brought the objects back, a plain
+			// hide and draw did not).
+			if (_root && _root->parent) {
+				_root->parent->DetachChild(_root.get());
+			}
+			_root.reset();
 			return;
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
