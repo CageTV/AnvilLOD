@@ -411,7 +411,9 @@ public static class ScanPipeline
             // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
             var natives = req.NativeGridObjects && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? []) : [];
             var nativeSources = natives.Select(p => p.Source).ToHashSet();
-            var dynamicList = natives.Count == 0 ? scan.Dynamic ?? [] : (scan.Dynamic ?? []).Select(d => nativeSources.Contains(d) ? d with { NativeBacked = true } : d).ToList();
+            // Left out of AnvilLOD.dyn entirely: the engine draws the real references in the walled cities too (tested at Whiterun: they are
+            // there and they turn), so a model drawn by the plugin as well showed up as a second, motionless fan.
+            var dynamicList = natives.Count == 0 ? scan.Dynamic ?? [] : (scan.Dynamic ?? []).Where(d => !nativeSources.Contains(d)).ToList();
             if (req.Scan.DynamicLod || req.Scan.GridObjects)
             {
                 IReadOnlyDictionary<string, string>? waterMap = null;
