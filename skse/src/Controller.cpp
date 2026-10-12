@@ -682,7 +682,10 @@ namespace AnvilLOD
 		} countCopies{ *this };
 		const auto& settings = Settings::Get();
 		if (_refresh.exchange(false)) {
+			// Hide now, draw again on the next update: detaching and re-attaching in the same pass left the objects around the player
+			// invisible until the next cell change (Redraw now, 2026-10-11).
 			HideAll();
+			return;
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
 		auto*       world = player ? player->GetWorldspace() : nullptr;
