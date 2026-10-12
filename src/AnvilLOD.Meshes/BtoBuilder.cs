@@ -65,7 +65,8 @@ public static class BtoBuilder
     /// multiplies with the diffuse texture, so LOD textures shared with other mods are left alone.</param>
     /// <param name="categorize">Names the layer a mesh path belongs to (<see cref="LodLayers"/>: objects, grass, tree3d, treecard); null = everything is "objects".
     /// Each layer other than objects gets its own shapes under a named node, so the SKSE plugin can hide it in game, and feeds the size breakdown.</param>
-    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f, Func<string, string>? categorize = null)
+    /// <param name="inset">Units a mesh path's geometry is pulled inside its own surface (see <see cref="LodInset"/>), or null for none. Only LOD4 and LOD8 use it.</param>
+    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f, Func<string, string>? categorize = null, Func<string, float>? inset = null)
     {
         var origin = new Vector3(quad.X * CellCoord.CellSize, quad.Y * CellCoord.CellSize, 0);
         float level = (int)quad.Level;
@@ -94,6 +95,7 @@ public static class BtoBuilder
             var rot = Transforms.RotationOnly(m);
             placed++;
             var category = categorize?.Invoke(path!) ?? LodLayers.Objects;
+            float pull = inset is not null && (int)quad.Level <= LodInset.MaxLevel ? inset(path!) : 0f;
 
             foreach (var part in mesh.Parts)
             {
@@ -110,7 +112,7 @@ public static class BtoBuilder
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
                     list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName });
-                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment);
+                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull);
             }
         }
 
@@ -235,18 +237,25 @@ public static class BtoBuilder
         public int TriangleCount => _indexCount / 3;
 
         /// <returns>Number of triangles dropped because they were buried under the terrain.</returns>
-        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment)
+        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment, float inset = 0f)
         {
             var world = new Vector3[p.VertexCount];
             for (int i = 0; i < world.Length; i++) world[i] = Vector3.Transform(p.Positions[i], m);
 
-            // Decide which triangles survive, then copy only the vertices they use.
+            // Decide which triangles survive (on the true surface), then copy only the vertices they use.
             var keep = new bool[p.TriangleCount];
             int culled = 0;
             for (int t = 0; t < keep.Length; t++)
             {
                 keep[t] = terrain is null || !terrain.Buried(world[p.Triangles[t * 3]], world[p.Triangles[t * 3 + 1]], world[p.Triangles[t * 3 + 2]]);
                 if (!keep[t]) culled++;
+            }
+
+            if (inset > 0f)
+            {
+                var worldNormals = new Vector3[p.VertexCount];
+                for (int i = 0; i < worldNormals.Length; i++) worldNormals[i] = Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ);
+                LodInset.Apply(world, worldNormals, inset);
             }
 
             var tris = _segTris[segmented ? segment : 0];

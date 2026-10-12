@@ -68,6 +68,9 @@ public sealed class LodGenerator
     /// <summary>Names the kind of thing a mesh path is, for the size breakdown (null = everything is "objects").</summary>
     public Func<string, string>? Categorize { get; init; }
 
+    /// <summary>Units a mesh path's geometry is pulled inside its own surface in LOD4/LOD8 (<see cref="LodInset"/>); null = none.</summary>
+    public Func<string, float>? Inset { get; init; }
+
     /// <param name="terrain">Terrain heights for buried-triangle removal, or null to keep everything.</param>
     /// <param name="synthetic">Meshes built on the fly (grass patches). They're not cached: each is used by one block.</param>
     public LodGenerator(IAssetSource assets, TerrainHeights? terrain = null, ISyntheticMeshSource? synthetic = null)
@@ -334,7 +337,7 @@ public sealed class LodGenerator
                 {
                     var test = _terrain is null ? null
                         : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level));
-                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize);
+                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize, Inset);
                     var rel = seasonSuffix is null ? quad.RelativePath : AnvilLOD.Core.Lod.SeasonSwaps.SeasonalPath(quad.RelativePath, seasonSuffix);
                     var path = Path.Combine(outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(path)!);

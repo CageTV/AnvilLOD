@@ -39,7 +39,9 @@ public sealed record ScanRequest(
     bool Candles = false,                          // also load DynDOLOD's Candles rules (candle/lantern/sconce lights get Far LOD)
     bool FxGlow = false,                           // also load DynDOLOD's FXGlow rules (fire and light glow cards get Far LOD)
     string? CustomRulesFile = null,                // the user's own rule file: its rules come first (null = DynDOLOD's own files only)
-    bool CleanOutput = true);                      // Generate empties the output folder first (only if it is AnvilLOD's own, see OutputFolder), so old files never mix with new ones
+    bool CleanOutput = true,                       // Generate empties the output folder first (only if it is AnvilLOD's own, see OutputFolder), so old files never mix with new ones
+    float IceInset = LodInset.DefaultIce,          // units glacier/ice LOD (LOD4, LOD8) is pulled inside its own surface, so the full model wins the z-fight where both are drawn (0 = off)
+    float MountainInset = 0f);                     // the same for mountain LOD (off by default)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -326,7 +328,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (cullTerrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
@@ -370,7 +372,7 @@ public static class ScanPipeline
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize, TextureVariants = scan.TextureVariants };
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f ? path => LodInset.For(path, req.IceInset, req.MountainInset) : null, TextureVariants = scan.TextureVariants };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
             var tm = generator.Matching;
             if (scan.TextureVariants is not null && tm.Meshes > 0)

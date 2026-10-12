@@ -76,6 +76,8 @@ public static class Program
           --grass-bottom <pct>   Grass LOD brightness at the roots, 10-120 (default 50), like GrassBrightnessBottom
           --tree-brightness <pct> Tree LOD billboard brightness, 10-110 (default 100)
           --object-brightness <pct> Object LOD brightness, 10-110 (default 100)
+          --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
+          --mountain-inset <units>  The same for mountain LOD (default 0 = off)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
           --tree-3d              Use 3D tree LOD models (DynDOLOD passthru_lod.nif, matched by the CRC32 of the
                                  tree's mesh) in object LOD: 3D at LOD4, billboard cards from LOD8 on.
@@ -236,6 +238,8 @@ public static class Program
                 "none" or "separate" => SkseDllChoice.None,
                 var v => throw new CliArgException($"--skse-dll must be auto, 1170, 17, vr or none (got '{v}')."),
             },
+            IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
+            MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 0f,
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,
             GrassDensity: (a.Get("grass-density") is { } gd && float.TryParse(gd, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pct) ? pct : 8f) / 100f,

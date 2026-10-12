@@ -90,6 +90,8 @@ public partial class MainWindow : Window
         GrassLodCheck.IsChecked = _settings.GrassLod;
         TreeBrightnessBox.SelectedIndex = BrightnessIndex(_settings.TreeBrightness);
         ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
+        IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
+        MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
         ParentCopiesCheck.IsChecked = _settings.ParentCopies;
@@ -144,6 +146,8 @@ public partial class MainWindow : Window
         _settings.GrassLod = GrassLodCheck.IsChecked == true;
         _settings.TreeBrightness = BrightnessPercent(TreeBrightnessBox.SelectedIndex);
         _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
+        _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
+        _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
         _settings.ParentCopies = ParentCopiesCheck.IsChecked == true;
@@ -404,6 +408,8 @@ public partial class MainWindow : Window
             GrassLod: _settings.GrassLod,
             TreeBrightness: _settings.TreeBrightness / 100f,
             ObjectBrightness: _settings.ObjectBrightness / 100f,
+            IceInset: _settings.IceInset,
+            MountainInset: _settings.MountainInset,
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
             NativeGridObjects: _settings.NativeGridObjects,
@@ -1151,6 +1157,9 @@ public partial class MainWindow : Window
 
     private static int GrassBrightnessValue(ComboBox box, int fallback)
         => box.SelectedItem is ComboBoxItem { Tag: int p } ? p : fallback;
+
+    private static readonly int[] InsetChoices = [0, 2, 4, 6, 8, 12, 16, 24];
+    private static int InsetIndex(int units) => Array.IndexOf(InsetChoices, InsetChoices.OrderBy(c => Math.Abs(c - units)).First());
 
     private static int BrightnessIndex(int percent) => Math.Clamp((int)Math.Round(percent / 10.0) - 1, 0, 10);
     private static int BrightnessPercent(int index) => index < 0 ? 100 : (Math.Clamp(index, 0, 10) + 1) * 10;

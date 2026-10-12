@@ -57,6 +57,8 @@ public sealed class AppSettings
     public bool GrassLod { get; set; } = true;
     public int TreeBrightness { get; set; } = 100;   // percent, 10-110
     public int ObjectBrightness { get; set; } = 100; // percent, 10-110
+    public int IceInset { get; set; } = 6;           // units, 0-24: glacier/ice LOD pulled inside its surface (0 = off)
+    public int MountainInset { get; set; } = 0;      // units, 0-24: the same for mountain LOD (experimental)
     public bool DynamicLod { get; set; } = true;
     public bool GridObjects { get; set; } = true;
     public bool ParentCopies { get; set; }

@@ -401,6 +401,30 @@
                             <ComboBoxItem Content="100% (default)" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
+<TextBlock Text="Glacier and ice LOD inset (stops flicker where LOD and the full model overlap)" Margin="0,2,0,2" />
+<ComboBox x:Name="IceInsetBox" SelectedIndex="3" Margin="0,0,0,6"
+                                  ToolTip="Pulls glacier and ice LOD (LOD4 and LOD8) this far inside its own surface, so the full model is always the nearer one where both are drawn during the transition. Ice replacers ship LOD that is a decimated copy of the full model, so the two surfaces cross and flicker. Raise it if you still see flicker, lower it if distant ice looks sunken. Changing it rebuilds the affected blocks.">
+                            <ComboBoxItem Content="0 (off)" />
+                            <ComboBoxItem Content="2 units" />
+                            <ComboBoxItem Content="4 units" />
+                            <ComboBoxItem Content="6 units (default)" />
+                            <ComboBoxItem Content="8 units" />
+                            <ComboBoxItem Content="12 units" />
+                            <ComboBoxItem Content="16 units" />
+                            <ComboBoxItem Content="24 units" />
+                        </ComboBox>
+<TextBlock Text="Mountain LOD inset" Margin="0,2,0,2" />
+<ComboBox x:Name="MountainInsetBox" SelectedIndex="0" Margin="0,0,0,6"
+                                  ToolTip="The same inset for mountain LOD (meshes\lod\mountains and dlc01\lod\mountains). Off by default: try it if the mountain LOD flickers against the full mesh as you approach.">
+                            <ComboBoxItem Content="0 (off, default)" />
+                            <ComboBoxItem Content="2 units" />
+                            <ComboBoxItem Content="4 units" />
+                            <ComboBoxItem Content="6 units" />
+                            <ComboBoxItem Content="8 units" />
+                            <ComboBoxItem Content="12 units" />
+                            <ComboBoxItem Content="16 units" />
+                            <ComboBoxItem Content="24 units" />
+                        </ComboBox>
 <CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
 <CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
                         </StackPanel>
