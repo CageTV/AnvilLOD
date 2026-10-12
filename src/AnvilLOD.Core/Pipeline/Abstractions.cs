@@ -83,7 +83,8 @@ public sealed record DynamicLodReference(
     bool InitiallyDisabled = false,
     DynamicGrid Grid = DynamicGrid.None,                   // set for grid objects (always-dynamic, animated), None for switchable refs
     bool Glow = false,                                     // a window glow mesh: the SKSE plugin lights it by the hour instead of leaving it on
-    bool StandIn = false)                                  // ChildworldMatches lists it as a stand-in for a real object of a city worldspace: hidden inside the loaded cells while the player is in that city
+    bool StandIn = false,                                  // ChildworldMatches lists it as a stand-in for a real object of a city worldspace: hidden inside the loaded cells while the player is in that city
+    bool NativeBacked = false)                             // a real reference in AnvilLOD.esp stands for it in its own worldspace; the plugin draws the model only while the player is in another one (a city)
 {
     public bool IsGridObject => Grid != DynamicGrid.None;
 }

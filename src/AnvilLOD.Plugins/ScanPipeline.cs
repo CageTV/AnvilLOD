@@ -410,7 +410,8 @@ public static class ScanPipeline
             }
             // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
             var natives = req.NativeGridObjects && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? []) : [];
-            var dynamicList = natives.Count == 0 ? scan.Dynamic ?? [] : (scan.Dynamic ?? []).Except(natives.Select(p => p.Source)).ToList();
+            var nativeSources = natives.Select(p => p.Source).ToHashSet();
+            var dynamicList = natives.Count == 0 ? scan.Dynamic ?? [] : (scan.Dynamic ?? []).Select(d => nativeSources.Contains(d) ? d with { NativeBacked = true } : d).ToList();
             if (req.Scan.DynamicLod || req.Scan.GridObjects)
             {
                 IReadOnlyDictionary<string, string>? waterMap = null;

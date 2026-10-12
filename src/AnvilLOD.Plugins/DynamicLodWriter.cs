@@ -19,6 +19,7 @@ namespace AnvilLOD.Plugins;
 ///              4 = grid object: water / waterfall / fire / windmill, always dynamic and animated,
 ///              8 = near grid (drawn only near the loaded cells), 16 = never fade (drawn at any distance),
 ///              32 = window glow mesh: lit by the hour (night only) instead of always on,
+///              128 = native-backed: a real reference in AnvilLOD.esp draws it in its own worldspace, so the plugin only draws the model in other worldspaces (a walled city),
 ///              64 = city stand-in (ChildworldMatches): hidden inside the loaded cells even while the player is in the city's own worldspace, where the real object is)
 /// </code>
 /// </summary>
@@ -96,7 +97,7 @@ public static class DynamicLodWriter
     public static uint Flags(DynamicLodReference d) =>
         (d.ParentOpposite ? 1u : 0u) | (d.InitiallyDisabled ? 2u : 0u)
         | (d.IsGridObject ? 4u : 0u) | (d.Grid == DynamicGrid.Near ? 8u : 0u) | (d.Grid == DynamicGrid.NeverFade ? 16u : 0u)
-        | (d.Glow ? 32u : 0u) | (d.StandIn ? 64u : 0u);
+        | (d.Glow ? 32u : 0u) | (d.StandIn ? 64u : 0u) | (d.NativeBacked ? 128u : 0u);
 
     public const string DefaultIni = """
         ; AnvilLOD SKSE plugin settings

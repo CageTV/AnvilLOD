@@ -22,8 +22,10 @@ public static class NativeGridObjects
 
     public sealed record Pick(DynamicLodReference Source, string Model, bool Movable);
 
+    /// <summary>DynDOLOD's own plugins and AnvilLOD's (a plugin from an earlier Generate that is still in the load order): never a source.</summary>
     private static bool IsDynDolod(string? plugin) =>
-        plugin is not null && plugin.StartsWith("DynDOLOD", StringComparison.OrdinalIgnoreCase);
+        plugin is not null && (plugin.StartsWith("DynDOLOD", StringComparison.OrdinalIgnoreCase)
+                               || plugin.Equals("AnvilLOD.esp", StringComparison.OrdinalIgnoreCase) || plugin.Equals("AnvilLOD.esm", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The model the SKSE plugin would draw for this grid object, relative to Data\meshes, normalized.</summary>
     public static string? ModelOf(DynamicLodReference d)

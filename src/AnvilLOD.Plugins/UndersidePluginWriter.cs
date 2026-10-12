@@ -42,7 +42,19 @@ public static class UndersidePluginWriter
         var wanted = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
         foreach (var n in natives) wanted.Add(n.Source.Ref.Worldspace);
         var nativeBase = new Dictionary<(string Model, bool Movable), FormKey>();
-        int nativeRefs = 0;
+        // The Whiterun windmill towers are persistent references of a base that is visible when distant, but the references are not
+        // flagged for it, so the engine never draws them at a distance (the Missing Windmill Fix mod places a flagged duplicate on each).
+        var towerFix = new List<(string World, FormKey Base, Noggog.P3Float Pos, Noggog.P3Float Rot, float? Scale)>();
+        foreach (var pctx in game.LoadOrder.PriorityOrder.PlacedObject().WinningContextOverrides(game.LinkCache))
+        {
+            var pr = pctx.Record;
+            if ((pr.MajorRecordFlagsRaw & (FlagPersistent | 0x8000 | FlagInitiallyDisabled)) != FlagPersistent || pr.Placement is not { } pp) continue;
+            if (!pctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var pws) || pws.Record.EditorID is not { } pwsId || !wanted.Contains(pwsId)) continue;
+            if (!game.LinkCache.TryResolve<IStaticGetter>(pr.Base.FormKey, out var pst) || pst.EditorID?.StartsWith("SFarmhouseWindMill", StringComparison.OrdinalIgnoreCase) != true) continue;
+            if ((pst.MajorRecordFlagsRaw & 0x8000) == 0) continue;
+            towerFix.Add((pwsId, pr.Base.FormKey, pp.Position, pp.Rotation, pr.Scale));
+        }
+        int nativeRefs = 0, towerRefs = 0;
         var nativeEntries = new List<NativeGridObjectWriter.Entry>();
         var esp = new SkyrimMod(ModKey.FromNameAndExtension(FileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
         esp.ModHeader.Stats.NextFormID = 0x800;
@@ -154,6 +166,17 @@ public static class UndersidePluginWriter
                 };
                 top.Persistent.Add(placed);
                 nativeEntries.Add(new NativeGridObjectWriter.Entry(n, placed.FormKey.ID));
+            }
+            foreach (var t in towerFix.Where(t => t.World.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            {
+                top.Persistent.Add(new PlacedObject(esp)
+                {
+                    EditorID = $"AnvilLOD_{id}_WindmillTower{++towerRefs}",
+                    Base = new FormLinkNullable<IPlaceableObjectGetter>(t.Base),
+                    MajorRecordFlagsRaw = FlagPersistent | 0x8000,
+                    Placement = new Placement { Position = t.Pos, Rotation = t.Rot },
+                    Scale = t.Scale,
+                });
             }
             done.Add(id);
         }

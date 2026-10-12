@@ -62,6 +62,7 @@ namespace AnvilLOD
 			bool                           childCell{ false };  // ... and the child worldspace has a cell here
 			bool                           glow{ false };       // a window glow mesh: its emissive multiple follows the hour
 			bool                           standIn{ false };    // a parent-worldspace stand-in for a real object of the city worldspace
+			bool                           nativeBacked{ false };  // a real reference in AnvilLOD.esp draws it in its own worldspace
 			std::vector<std::pair<RE::BSLightingShaderProperty*, float>> glowProps;  // shader properties of the drawn clone and their own emissive multiple
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held

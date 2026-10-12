@@ -38,6 +38,10 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         return LodShaderKind.None;
     }
 
+    private readonly ConcurrentDictionary<FormKey, bool> _persistentScenery = new();
+    private bool PersistentScenery(FormKey baseKey) => _persistentScenery.GetOrAdd(baseKey, k =>
+        _game.LinkCache.TryResolve<IStaticGetter>(k, out var st) && (st.MajorRecordFlagsRaw & 0x8000) != 0);
+
     private const float FlatModelHeight = 24f, FlatModelMinSpan = 128f;   // game units: a ground piece is at most this tall and at least this wide
 
     private sealed record ParentCopyTarget(ParentCopyWorld Config, FormKey WorldKey, HashSet<(int X, int Y)> Cells, HashSet<(int X, int Y)> NavmeshCells);
@@ -363,7 +367,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 if (t.Config.NoCellsWithNavmesh && t.NavmeshCells.Contains((cx, cy))) { pcNavmesh++; continue; }
                 var raw = r.MajorRecordFlagsRaw;
                 // Whatever a quest can switch off would stay visible: same rule as the child-to-parent copies.
-                if ((raw & FlagInitiallyDisabled) != 0 || (raw & FlagPersistent) != 0 || (r.EnableParent is { } pep && !pep.Reference.IsNull)) { pcSwitchable++; continue; }
+                // A persistent reference of a base that is visible when distant is scenery (the three Whiterun windmill towers): copy it.
+                if ((raw & FlagInitiallyDisabled) != 0 || ((raw & FlagPersistent) != 0 && !PersistentScenery(baseKey.Value)) || (r.EnableParent is { } pep && !pep.Reference.IsNull)) { pcSwitchable++; continue; }
                 var edid = baseEdid.GetOrAdd(baseKey.Value, k => linkCache.TryResolve(k, out var b) ? b.EditorID : null);
                 if (t.Config.IgnoresEditorId(edid)) { pcIgnored++; continue; }
                 if (_childCopies.IsParentStandIn(LodRules.FormIdKey(r.FormKey.ModKey.ToString(), r.FormKey.ID))) { pcStandIn++; continue; }

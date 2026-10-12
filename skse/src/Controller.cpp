@@ -410,6 +410,7 @@ namespace AnvilLOD
 			item.neverFade = (e.flags & DynamicEntry::kNeverFade) != 0;
 			item.glow = (e.flags & DynamicEntry::kGlow) != 0;
 			item.standIn = (e.flags & DynamicEntry::kStandIn) != 0;
+			item.nativeBacked = (e.flags & DynamicEntry::kNativeBacked) != 0;
 			_glowCount += item.glow ? 1 : 0;
 			item.water = item.grid && IsWaterMesh(_meshes[e.mesh]);
 			_gridCount += item.grid ? 1 : 0;
@@ -500,7 +501,8 @@ namespace AnvilLOD
 		for (const auto& n : _natives) {
 			bool wanted;
 			if (const auto* src = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.source)) {
-				wanted = !src->IsDisabled() && !src->IsDeleted();
+				// The vanilla reference's own 3D is up when its cell is loaded: then it is the one to see, not our copy of it.
+				wanted = !src->IsDisabled() && !src->IsDeleted() && !src->Is3DLoaded();
 			} else if (n.parent != 0) {
 				const auto* parent = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.parent);
 				wanted = parent ? parent->IsDisabled() == n.opposite : !n.initiallyDisabled;
@@ -587,6 +589,9 @@ namespace AnvilLOD
 			}
 			const auto reach = a_half + settings.parentCopyExtraCells;
 			return std::abs(a_item.cellX - a_pcx) <= reach && std::abs(a_item.cellY - a_pcy) <= reach;
+		}
+		if (a_item.nativeBacked && a_item.world == a_playerWorld) {
+			return false;  // its real reference draws it here (AnvilLOD.esp); the model is only for other worldspaces, a walled city
 		}
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
