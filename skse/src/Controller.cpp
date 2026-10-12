@@ -492,6 +492,22 @@ namespace AnvilLOD
 				RE::NiTimeController::StartAnimations(node);
 				StartSequences(a_item.controllers);
 				++_animatedShown;
+				if (settings.verboseLog && _animLogged.size() < 40 && _animLogged.insert(a_item.mesh).second) {
+					logger::info("anim {}: {} controllers", _meshes[a_item.mesh], a_item.controllers.size());
+					for (auto* ctl : a_item.controllers) {
+						const char* name = ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?";
+						if (auto* mgr = netimmerse_cast<RE::NiControllerManager*>(ctl)) {
+							logger::info("  {} sequences={}", name, mgr->sequenceArray.size());
+							for (auto& seq : mgr->sequenceArray) {
+								if (seq) {
+									logger::info("    seq '{}' animating={} state={}", seq->name.c_str(), seq->Animating(), static_cast<int>(seq->state.get()));
+								}
+							}
+						} else {
+							logger::info("  {} freq={} phase={} start={} last={}", name, ctl->frequency, ctl->phase, ctl->startTime, ctl->lastTime);
+						}
+					}
+				}
 			}
 		}
 
@@ -596,6 +612,9 @@ namespace AnvilLOD
 	{
 		const float t = Seconds();
 		RE::NiUpdateData update{ t, RE::NiUpdateData::Flag::kNone };
+		++_animTick;
+		const bool probe = Settings::Get().verboseLog && (_animTick == 3 || _animTick == 120);
+		std::unordered_set<std::uint32_t> probed;
 		for (auto i : _shown) {
 			auto& item = _items[i];
 			if (item.controllers.empty() || !item.node) {
@@ -604,6 +623,12 @@ namespace AnvilLOD
 			// Only the scene graph's own update pass. Calling controllers' Update directly crashed in
 			// BSLightingShaderPropertyFloatController::Update on cloned models (crash 2026-10-08).
 			item.node->Update(update);
+			if (probe && probed.size() < 12 && probed.insert(item.mesh).second) {
+				logger::info("animprobe tick {} t={:.2f} {}", _animTick, t, _meshes[item.mesh]);
+				for (auto* ctl : item.controllers) {
+					logger::info("  {} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", ctl->lastTime, ctl->startTime, ctl->scaledTime);
+				}
+			}
 		}
 	}
 

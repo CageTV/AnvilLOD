@@ -86,6 +86,8 @@ namespace AnvilLOD
 		std::unordered_map<RE::FormID, std::vector<std::size_t>>    _byWorld;
 		std::unordered_map<std::uint32_t, RE::NiPointer<RE::NiNode>> _templates;
 		std::unordered_set<std::uint32_t>                           _failedMeshes;
+		std::unordered_set<std::uint32_t>                           _animLogged;
+		std::uint32_t                                               _animTick{ 0 };
 		RE::NiPointer<RE::NiNode>                                   _root;
 		std::vector<std::size_t>                                    _shown;
 		std::atomic<bool>                                           _queued{ false };
