@@ -1,3 +1,5 @@
+using Mutagen.Bethesda.Plugins.Records;
+using Mutagen.Bethesda.Skyrim;
 using System.Numerics;
 using AnvilLOD.Core.Lod;
 using AnvilLOD.Core.Pipeline;
@@ -70,5 +72,68 @@ uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
         var rapids = Grid(@"meshes\effects\fxrapids.nif", grid: DynamicGrid.Near);
         Assert.Single(NativeGridObjects.Select([plane, rapids], NativeGridObjects.Kinds.Effects, waterStandIns: true));
         Assert.Equal(2, NativeGridObjects.Select([plane, rapids], NativeGridObjects.Kinds.Effects).Count);
+    }
+
+    [Fact]
+    public void Effects_are_packed_into_as_few_esl_plugins_as_fit_counting_base_records()
+    {
+        // 3,360 references over 100 models: two full plugins, not three (a 1,600 cap would have made a nearly empty third).
+        var picks = Enumerable.Range(0, 3360)
+            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\candles\candle{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
+            .ToList();
+        var chunks = UndersidePluginWriter.PackEffects(picks).ToList();
+        Assert.Equal(2, chunks.Count);
+        Assert.Equal(picks.Count, chunks.Sum(c => c.Count));
+        Assert.All(chunks, c => Assert.True(c.Count + c.Select(p => (p.Model, p.Movable)).Distinct().Count() <= UndersidePluginWriter.EslBudget));
+        Assert.Empty(UndersidePluginWriter.PackEffects([]));
+    }
+
+    [Fact]
+    public void Large_range_packs_up_to_4088_records_per_plugin()
+    {
+        var picks = Enumerable.Range(0, 6000)
+            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\candles\candle{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
+            .ToList();
+        Assert.Equal(2, UndersidePluginWriter.PackEffects(picks, large: true).Count());
+        Assert.Equal(4, UndersidePluginWriter.PackEffects(picks, large: false).Count());   // 6,000 refs + 100 bases per plugin: 1,940 per 2,040
+    }
+
+    [Fact]
+    public void A_large_range_esl_round_trips_with_header_171_and_low_form_ids()
+    {
+        var mod = new Mutagen.Bethesda.Skyrim.SkyrimMod(Mutagen.Bethesda.Plugins.ModKey.FromNameAndExtension("T.esp"), Mutagen.Bethesda.Skyrim.SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
+        mod.ModHeader.Stats.Version = 1.71f;
+        mod.ModHeader.Stats.NextFormID = 1;
+        for (int i = 0; i < 3000; i++)
+            mod.Statics.Add(new Mutagen.Bethesda.Skyrim.Static(mod) { EditorID = "S" + i });
+        var path = Path.Combine(Path.GetTempPath(), "AnvilLOD_esl_" + Guid.NewGuid().ToString("N") + ".esp");
+        try
+        {
+            mod.WriteToBinary(path, new Mutagen.Bethesda.Plugins.Binary.Parameters.BinaryWriteParameters { ModKey = Mutagen.Bethesda.Plugins.Binary.Parameters.ModKeyOption.CorrectToPath, LowerRangeDisallowedHandler = new Mutagen.Bethesda.Plugins.Binary.Parameters.NoCheckIfLowerRangeDisallowed() });
+            using var back = Mutagen.Bethesda.Skyrim.SkyrimMod.CreateFromBinaryOverlay(path, Mutagen.Bethesda.Skyrim.SkyrimRelease.SkyrimSE);
+            Assert.True(back.IsSmallMaster);
+            Assert.Equal(1.71f, back.ModHeader.Stats.Version, 2);
+            Assert.Equal(3000, back.Statics.Count);
+            Assert.Equal(1u, back.Statics.Min(x => x.FormKey.ID));
+            Assert.True(back.Statics.Max(x => x.FormKey.ID) < 0x1000);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void The_game_version_comes_from_the_skse_runtime_dll_when_the_exe_reports_nothing_useful()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "AnvilLOD_skse_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            Assert.Null(SksePluginInstaller.VersionFromSkseFiles(dir));
+            File.WriteAllBytes(Path.Combine(dir, "skse64_1_5_97.dll"), []);
+            File.WriteAllBytes(Path.Combine(dir, "skse64_loader.exe"), []);
+            Assert.Equal(new Version(1, 5, 97, 0), SksePluginInstaller.VersionFromSkseFiles(dir));
+            File.WriteAllBytes(Path.Combine(dir, "skse64_1_6_1170.dll"), []);
+            Assert.Equal(SkseDllChoice.UpTo1170, SksePluginInstaller.ForVersion(SksePluginInstaller.VersionFromSkseFiles(dir)!));
+        }
+        finally { Directory.Delete(dir, true); }
     }
 }

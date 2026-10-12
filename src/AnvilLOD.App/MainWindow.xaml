@@ -389,6 +389,13 @@
 <CheckBox x:Name="NativeEffectsCheck" Content="Fires, candles, torches, lava and streams as real references too (experimental)" Margin="20,2,0,6"
                                   IsEnabled="{Binding IsChecked, ElementName=NativeGridObjectsCheck}"
                                   ToolTip="Also writes the fires, candles, lanterns, torches, lava and streams of Tamriel and Solstheim into AnvilLOD.esp as real references, so the engine animates them (flames flicker, particles move) at a distance. The SKSE plugin switches them on only within the near grid distance of you. They go in a second plugin, AnvilLOD Effects.esp (flagged ESL, no plugin slot): enable it too. Needs the option above." />
+<TextBlock Text="ESL plugin size (how many records each AnvilLOD Effects plugin holds)" Margin="20,2,0,2" />
+<ComboBox x:Name="EslRangeBox" SelectedIndex="0" Margin="20,0,0,6"
+                                  ToolTip="Game 1.6.1130 and newer let an ESL hold 4,096 records, older ones 2,048. Auto reads your installed game. WARNING: a plugin made for 4,096 does NOT load on a game older than 1.6.1130 (including 1.6.640 and SE 1.5.97): choose 2,048 if the list is for such a version or will be shared with people on one.">
+    <ComboBoxItem Content="Auto-detect from the installed game (recommended)" />
+    <ComboBoxItem Content="2,048 - works on every game version" />
+    <ComboBoxItem Content="4,096 - game 1.6.1130 or newer only" />
+</ComboBox>
 <TextBlock Text="Object LOD brightness (buildings, rocks, grass LOD)" Margin="0,2,0,2" />
 <ComboBox x:Name="ObjectBrightnessBox" SelectedIndex="9" Margin="0,0,0,6"
                                   ToolTip="Darkens object LOD through vertex colours, so the LOD textures themselves (shared with other mods) are left alone. Changing it rebuilds every block.">

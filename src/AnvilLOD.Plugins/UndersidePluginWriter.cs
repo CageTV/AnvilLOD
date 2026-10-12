@@ -39,14 +39,40 @@ public static class UndersidePluginWriter
     /// <param name="worldspaces">EditorIDs of the worldspaces whose underside NIF was generated.</param>
     /// <param name="natives">Grid objects (waterfalls, windmill fans, wheels) to place as real references, see <see cref="NativeGridObjects"/>.</param>
     public const string EffectsFileName = "AnvilLOD Effects.esp";
-    /// <summary>References per effects plugin; the rest of the 2,048 ESL records go to base records and cell overrides.</summary>
-    public const int EffectsPerPlugin = 1600;
+    /// <summary>New records an ESL can hold (FormIDs 0x800 to 0xFFF) minus a little spare room.</summary>
+    public const int EslBudget = 2040;
+    /// <summary>Same, for game 1.6.1130 and newer, which read ESLs with plugin header 1.71 and FormIDs 0x000 to 0xFFF.</summary>
+    public const int LargeEslBudget = 4088;
+    public const float LargeEslHeaderVersion = 1.71f;
+
+    /// <summary>
+    /// Splits the effects into as few plugins as fit: in order, each plugin takes references until its references plus the base records
+    /// they need (one per distinct model and kind) would pass <see cref="EslBudget"/>. Cell overrides reuse the vanilla FormIDs, so they cost no new ones.
+    /// </summary>
+    public static IEnumerable<List<NativeGridObjects.Pick>> PackEffects(IReadOnlyList<NativeGridObjects.Pick> effects, bool large = false)
+    {
+        var chunk = new List<NativeGridObjects.Pick>();
+        var bases = new HashSet<(string, bool)>();
+        foreach (var p in effects)
+        {
+            int extra = bases.Contains((p.Model, p.Movable)) ? 1 : 2;
+            if (chunk.Count + bases.Count + extra > (large ? LargeEslBudget : EslBudget) && chunk.Count > 0)
+            {
+                yield return chunk;
+                chunk = [];
+                bases.Clear();
+            }
+            chunk.Add(p);
+            bases.Add((p.Model, p.Movable));
+        }
+        if (chunk.Count > 0) yield return chunk;
+    }
 
     /// <summary>
     /// AnvilLOD.esp (underside, waterfalls, windmills, wheels) and, when there are fires, candles, torches, lava or streams, a second
     /// plugin <c>AnvilLOD Effects.esp</c> with those: each ESL-flagged while it fits (2,048 records), so neither takes a plugin slot.
     /// </summary>
-    public static Result Write(GameContext game, IReadOnlyCollection<string> worldspaces, string outputFolder, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
+    public static Result Write(GameContext game, IReadOnlyCollection<string> worldspaces, string outputFolder, IReadOnlyList<NativeGridObjects.Pick>? natives = null, bool largeEsl = false)
     {
         natives ??= [];
         var main = WriteOne(game, FileName, worldspaces, outputFolder, natives.Where(n => !n.Effect).ToList(), towers: true);
@@ -55,13 +81,13 @@ public static class UndersidePluginWriter
         foreach (var old in Directory.Exists(outputFolder) ? Directory.GetFiles(outputFolder, "AnvilLOD Effects*.esp") : [])
             File.Delete(old);
         if (effects.Count == 0) return main;
-        // One ESL holds 2,048 records: references plus their base records and the persistent cell overrides. Chunks of EffectsPerPlugin
-        // references leave room for those, so a list with many more fires and candles than ours just gets more plugins.
+        // One ESL holds 2,048 new records: the references plus one base record per distinct model. Each plugin is filled up to that limit
+        // (see PackEffects), so a list with many more fires and candles than ours only gets as many plugins as it really needs.
         var results = new List<Result>();
-        for (int i = 0, part = 1; i < effects.Count; i += EffectsPerPlugin, part++)
+        foreach (var chunk in PackEffects(effects, largeEsl))
         {
-            var name = part == 1 ? EffectsFileName : $"AnvilLOD Effects {part}.esp";
-            results.Add(WriteOne(game, name, [], outputFolder, effects.Skip(i).Take(EffectsPerPlugin).ToList(), towers: false));
+            var name = results.Count == 0 ? EffectsFileName : $"AnvilLOD Effects {results.Count + 1}.esp";
+            results.Add(WriteOne(game, name, [], outputFolder, chunk, towers: false, largeEsl));
         }
         return main with
         {
@@ -76,7 +102,7 @@ public static class UndersidePluginWriter
     }
 
     private static Result WriteOne(GameContext game, string fileName, IReadOnlyCollection<string> worldspaces, string outputFolder,
-        IReadOnlyList<NativeGridObjects.Pick> natives, bool towers)
+        IReadOnlyList<NativeGridObjects.Pick> natives, bool towers, bool largeEsl = false)
     {
         var undersideWorlds = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
         var wanted = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
@@ -98,7 +124,9 @@ public static class UndersidePluginWriter
         int nativeRefs = 0, towerRefs = 0;
         var nativeEntries = new List<NativeGridObjectWriter.Entry>();
         var esp = new SkyrimMod(ModKey.FromNameAndExtension(fileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
-        esp.ModHeader.Stats.NextFormID = 0x800;
+        // Game 1.6.1130 and newer read an ESL with header 1.71 as having 4,096 FormIDs (0x000 to 0xFFF, 0x000 itself unused); older ones only 0x800 to 0xFFF.
+        if (largeEsl) { esp.ModHeader.Stats.Version = LargeEslHeaderVersion; esp.ModHeader.Stats.NextFormID = 0x001; }
+        else esp.ModHeader.Stats.NextFormID = 0x800;
 
         var done = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -232,7 +260,7 @@ public static class UndersidePluginWriter
             if (File.Exists(legacy)) File.Delete(legacy);
         }
         // An ESL holds 2,048 records (FormIDs 0x800 to 0xFFF). Fires, candles and the rest of the effects go over that: then it is a plain ESP.
-        bool small = esp.EnumerateMajorRecords().Count() <= EslRecordLimit;
+        bool small = esp.EnumerateMajorRecords().Count(r => r.FormKey.ModKey == esp.ModKey) <= (largeEsl ? 4096 : EslRecordLimit);
         esp.IsSmallMaster = small;
         var order = game.LoadOrder.ListedOrder.Select(l => l.ModKey).Where(k => k != esp.ModKey).ToList();
         esp.WriteToBinary(espPath, new BinaryWriteParameters
@@ -240,6 +268,8 @@ public static class UndersidePluginWriter
             ModKey = ModKeyOption.CorrectToPath,
             MastersListOrdering = new MastersListOrderingByLoadOrder(order),
             RecordCount = RecordCountOption.Iterate,
+            // FormIDs below 0x800 are valid in an ESL for game 1.6.1130 and newer (header 1.71); Mutagen refuses them unless told not to check.
+            LowerRangeDisallowedHandler = largeEsl ? new NoCheckIfLowerRangeDisallowed() : new ThrowIfLowerRangeDisallowed(),
         });
 
         using var written = SkyrimMod.CreateFromBinaryOverlay(espPath, SkyrimRelease.SkyrimSE);

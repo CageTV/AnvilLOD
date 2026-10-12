@@ -85,6 +85,7 @@ public partial class MainWindow : Window
         UndersideCheck.IsChecked = _settings.Underside;
         NativeGridObjectsCheck.IsChecked = _settings.NativeGridObjects;
         NativeEffectsCheck.IsChecked = _settings.NativeEffects;
+        EslRangeBox.SelectedIndex = Math.Clamp(_settings.EslRange, 0, 2);
         Tree3DCheck.IsChecked = _settings.Tree3D;
         Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
         Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
@@ -142,6 +143,7 @@ public partial class MainWindow : Window
         _settings.Underside = UndersideCheck.IsChecked == true;
         _settings.NativeGridObjects = NativeGridObjectsCheck.IsChecked == true;
         _settings.NativeEffects = NativeEffectsCheck.IsChecked == true;
+        _settings.EslRange = Math.Max(0, EslRangeBox.SelectedIndex);
         _settings.Tree3D = Tree3DCheck.IsChecked == true;
         _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
         _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
@@ -416,6 +418,7 @@ public partial class MainWindow : Window
             Underside: _settings.Underside,
             NativeGridObjects: _settings.NativeGridObjects,
             NativeEffects: _settings.NativeEffects,
+            EslRange: _settings.EslRange == 1 ? 2048 : _settings.EslRange == 2 ? 4096 : 0,
             PbrLod: _settings.PbrLod,
             LargeReferences: _settings.LargeReferences,
             LargeRefsEsl: _settings.LargeRefsEsl,

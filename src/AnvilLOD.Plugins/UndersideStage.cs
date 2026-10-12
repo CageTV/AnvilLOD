@@ -26,7 +26,7 @@ public static class UndersideStage
     public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed, int DrawnByPlugin = 0, bool PluginLight = true);
 
     public static Result Run(GameContext game, TerrainHeights terrain, IReadOnlyDictionary<string, LodGrid> grids, string output,
-        int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
+        int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct, IReadOnlyList<NativeGridObjects.Pick>? natives = null, bool largeEsl = false)
     {
         var sw = Stopwatch.StartNew();
         var made = new List<string>();
@@ -98,7 +98,7 @@ public static class UndersideStage
         var inPlugin = made.Except(drawnByPlugin, StringComparer.OrdinalIgnoreCase).ToList();
         if (inPlugin.Count > 0 || natives is { Count: > 0 })
         {
-            var r = UndersidePluginWriter.Write(game, inPlugin, output, natives);
+            var r = UndersidePluginWriter.Write(game, inPlugin, output, natives, largeEsl);
             if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, ne);
             else NativeGridObjectWriter.Remove(output);
             if (r.NativeReferences > 0)

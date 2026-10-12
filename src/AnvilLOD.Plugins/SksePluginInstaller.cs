@@ -34,17 +34,44 @@ public static class SksePluginInstaller
 
     public sealed record Result(bool Installed, string Message, Version? GameVersion = null, SkseDllChoice Used = SkseDllChoice.None);
 
-    /// <summary>File version of SkyrimSE.exe (or SkyrimVR.exe) next to the game's Data folder, or null if it can't be read.</summary>
+    /// <summary>
+    /// Version of the game next to the Data folder, or null if it can't be read. SkyrimVR.exe: its file version (1.4.15). SkyrimSE.exe: the
+    /// file version, but some executables (a downgraded 1.5.97 for one) carry a bogus 1.0.0.0 there, which used to be mistaken for VR; then
+    /// the product version and the SKSE runtime DLL next to it (skse64_1_5_97.dll) say which game it is. A SkyrimSE.exe is never VR.
+    /// </summary>
     public static Version? GameVersion(string gameDataFolder)
     {
         var gameFolder = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(gameDataFolder));
         if (gameFolder is null) return null;
         var exe = Path.Combine(gameFolder, "SkyrimSE.exe");
-        if (!File.Exists(exe)) exe = Path.Combine(gameFolder, "SkyrimVR.exe");
+        bool vr = false;
+        if (!File.Exists(exe)) { exe = Path.Combine(gameFolder, "SkyrimVR.exe"); vr = true; }
         if (!File.Exists(exe)) return null;
         var info = FileVersionInfo.GetVersionInfo(exe);
-        if (info.FileMajorPart == 0 && info.FileMinorPart == 0) return null;
-        return new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
+        var v = new Version(info.FileMajorPart, info.FileMinorPart, info.FileBuildPart, info.FilePrivatePart);
+        if (vr) return v.Major == 0 && v.Minor == 0 ? null : v;
+        if (v >= FirstSpecialEdition) return v;
+        if (Version.TryParse(info.ProductVersion?.Replace(',', '.').Replace(" ", ""), out var pv) && pv >= FirstSpecialEdition) return pv;
+        return VersionFromSkseFiles(gameFolder);
+    }
+
+    /// <summary>The game version named by the newest <c>skse64_&lt;major&gt;_&lt;minor&gt;_&lt;build&gt;.dll</c> in a game folder, or null.</summary>
+    public static Version? VersionFromSkseFiles(string gameFolder)
+    {
+        Version? best = null;
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(gameFolder, "skse64_*.dll"))
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(Path.GetFileName(f), @"^skse64_(\d+)_(\d+)_(\d+)\.dll$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (!m.Success) continue;
+                var v = new Version(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value), int.Parse(m.Groups[3].Value), 0);
+                if (best is null || v > best) best = v;
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return best;
     }
 
     public static SkseDllChoice ForVersion(Version v) =>

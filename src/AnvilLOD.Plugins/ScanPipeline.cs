@@ -30,6 +30,7 @@ public sealed record ScanRequest(
     SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
     bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD.esp (ESL)
     int UndersideStep = UndersideMesher.DefaultStep, // LAND vertices per underside quad (smaller = finer and heavier)
+    int EslRange = 0,                              // size of the ESL effects plugins: 0 auto (from the installed game), 2048, or 4096 (game 1.6.1130 or newer only)
     bool NativeEffects = false,                    // fires, candles, torches, lava and streams as real references too (second plugin, AnvilLOD Effects.esp, ESL)
     bool NativeGridObjects = false,                // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp (the engine animates them) instead of SKSE copies
     bool PbrLod = false,                           // object LOD textures that match PBR full models (TexGen pbr_lod twins, converted PBR albedo)
@@ -76,6 +77,26 @@ public sealed record ScanSummary(
 /// </summary>
 public static class ScanPipeline
 {
+    /// <summary>
+    /// ESL size for the plugins AnvilLOD splits (the effects plugins): game 1.6.1130 and newer read 4,096 FormIDs per ESL, older ones 2,048,
+    /// and a plugin made for the larger range does not load on an older game. Auto reads the installed game's version and falls back to 2,048.
+    /// </summary>
+    internal static bool ResolveLargeEsl(int choice, string dataFolder, IProgress<string>? progress)
+    {
+        if (choice == 2048) return false;
+        if (choice == 4096)
+        {
+            progress?.Report("ESL size: 4,096 records per plugin (your choice; needs game 1.6.1130 or newer).");
+            return true;
+        }
+        var v = SksePluginInstaller.GameVersion(dataFolder);
+        bool large = v is not null && v >= new Version(1, 6, 1130, 0);
+        progress?.Report(v is null
+            ? "ESL size: 2,048 records per plugin (the game version could not be read; pick 4,096 yourself if you run 1.6.1130 or newer)."
+            : $"ESL size: {(large ? "4,096" : "2,048")} records per plugin (game {v}{(large ? "" : ", older than 1.6.1130")}).");
+        return large;
+    }
+
     public static ScanSummary Run(ScanRequest req, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         if (req.Generate && string.IsNullOrWhiteSpace(req.OutputFolder))
@@ -414,6 +435,7 @@ public static class ScanPipeline
             // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
             var nativeKinds = (req.NativeGridObjects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Waterworks : 0)
                               | (req.NativeEffects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Effects : 0);
+            var largeEsl = ResolveLargeEsl(req.EslRange, game.DataFolder, progress);
             var natives = nativeKinds != 0 && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? [], nativeKinds, req.WaterStandIns) : [];
             var nativeSources = natives.Select(p => p.Source).ToHashSet();
             // Left out of AnvilLOD.dyn entirely: the engine draws the real references in the walled cities too (tested at Whiterun: they are
@@ -519,7 +541,7 @@ public static class ScanPipeline
             {
                 try
                 {
-                    var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct, natives);
+                    var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct, natives, largeEsl);
                     progress?.Report($"Underside: {u.Worldspaces} worldspaces, {u.Blocks:N0} blocks, {u.Triangles:N0} triangles in {u.Elapsed.TotalSeconds:F1}s"
                                      + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} in your mod manager{(u.PluginLight ? " (flagged ESL, no plugin slot)" : " (too many records for an ESL: it is a regular plugin and takes a slot)")}."));
                 }
@@ -532,7 +554,7 @@ public static class ScanPipeline
             {
                 try
                 {
-                    var r = UndersidePluginWriter.Write(game, [], output, natives);
+                    var r = UndersidePluginWriter.Write(game, [], output, natives, largeEsl);
                     if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, ne);
                     progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels, effects); the SKSE plugin no longer draws them. Enable {UndersidePluginWriter.FileName}{(r.EffectsPlugins == 0 ? "" : r.EffectsPlugins == 1 ? $" and {UndersidePluginWriter.EffectsFileName}" : $" and the {r.EffectsPlugins} AnvilLOD Effects*.esp files")} in your mod manager{(r.IsLight ? " (flagged ESL, no plugin slot)" : " (too many records for an ESL: a regular plugin that takes a slot)")}.");
                 }

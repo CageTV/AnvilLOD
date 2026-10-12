@@ -49,6 +49,7 @@ public sealed class AppSettings
     public bool PbrLod { get; set; }            // object LOD textures that match PBR full models (off by default)
     public int PbrLodBrightness { get; set; } = 100; // percent of DynDOLOD's PBR scale for the converted copies, 10-110
     public bool Underside { get; set; }         // terrain underside (NIFs + AnvilLOD.esp), off by default
+    public int EslRange { get; set; }       // 0 auto-detect from the game, 1 = 2,048 records per ESL, 2 = 4,096 (game 1.6.1130 or newer only)
     public bool NativeEffects { get; set; } // fires, candles, torches, lava and streams as real references too, off by default
     public bool NativeGridObjects { get; set; } // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp, off by default
     public bool Tree3D { get; set; }            // 3D tree LOD models in object LOD (off by default)
