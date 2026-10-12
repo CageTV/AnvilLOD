@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "DataFile.h"
 
 namespace AnvilLOD
@@ -96,6 +97,7 @@ namespace AnvilLOD
 		bool                                                        _capWarned{ false };
 		std::atomic<bool>                                           _animQueued{ false };
 		std::atomic<bool>                                           _refresh{ false };
+		std::chrono::steady_clock::time_point                       _holdUntil{};
 		std::size_t                                                 _gridCount{ 0 };
 		std::size_t                                                 _copyCount{ 0 };
 		std::size_t                                                 _glowCount{ 0 };

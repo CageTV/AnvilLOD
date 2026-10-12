@@ -73,6 +73,8 @@ namespace AnvilLOD
 					nearGridDistance = std::stof(value);
 				} else if (EqualsNoCase(key, "fFarGridDistance")) {
 					farGridDistance = std::stof(value);
+				} else if (EqualsNoCase(key, "bTickManagers")) {
+					tickManagers = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bAnimateExperimental")) {
 					animate = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "iAnimationFps")) {
@@ -121,6 +123,7 @@ namespace AnvilLOD
 			{ "fNearGridDistance", std::format("{:.0f}", nearGridDistance) },
 			{ "fFarGridDistance", std::format("{:.0f}", farGridDistance) },
 			{ "bAnimateExperimental", animate ? "1" : "0" },
+			{ "bTickManagers", tickManagers ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
 			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bGlowWindows", glowWindows ? "1" : "0" },

@@ -75,6 +75,9 @@ namespace AnvilLOD
 			}
 			int guard = 0;
 			for (auto* c = a_object->GetControllers(); c && guard < 64; c = c->next.get(), ++guard) {
+				if (!c->target) {
+					c->SetTarget(a_object);
+				}
 				a_out.push_back(c);
 			}
 		}
@@ -641,13 +644,22 @@ namespace AnvilLOD
 			if (item.controllers.empty() || !item.node) {
 				continue;
 			}
-			// Only the scene graph's own update pass. Calling controllers' Update directly crashed in
+			// The scene graph's own update pass; it left every controller of a clone untouched (start / last time never set,
+			// 2026-10-11 log), so a controller manager (windmill blades, water wheels: they animate through sequences) is also
+			// ticked itself. Plain controllers are not: calling those directly crashed in
 			// BSLightingShaderPropertyFloatController::Update on cloned models (crash 2026-10-08).
 			item.node->Update(update);
+			if (Settings::Get().tickManagers) {
+				for (auto* ctl : item.controllers) {
+					if (auto* mgr = netimmerse_cast<RE::NiControllerManager*>(ctl)) {
+						mgr->Update(t);
+					}
+				}
+			}
 			if (probe && probed.size() < 12 && probed.insert(item.mesh).second) {
 				logger::info("animprobe tick {} t={:.2f} {}", _animTick, t, _meshes[item.mesh]);
 				for (auto* ctl : item.controllers) {
-					logger::info("  {} flags={:#x} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", static_cast<unsigned>(ctl->flags.underlying()), ctl->lastTime, ctl->startTime, ctl->scaledTime);
+					logger::info("  {} flags={:#x} target={} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", static_cast<unsigned>(ctl->flags.underlying()), ctl->target ? "set" : "NULL", ctl->lastTime, ctl->startTime, ctl->scaledTime);
 				}
 			}
 		}
@@ -703,6 +715,10 @@ namespace AnvilLOD
 				_root->parent->DetachChild(_root.get());
 			}
 			_root.reset();
+			_holdUntil = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+			return;
+		}
+		if (std::chrono::steady_clock::now() < _holdUntil) {
 			return;
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
