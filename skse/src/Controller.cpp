@@ -491,6 +491,7 @@ namespace AnvilLOD
 		node->local.rotate = a_item.rot;
 		node->local.scale = a_item.scale;
 		root->AttachChild(node, true);
+		node->SetAppCulled(false);
 
 		const auto& settings = Settings::Get();
 		const bool  animate = a_item.grid && settings.animate && settings.animationFps > 0;
@@ -660,6 +661,14 @@ namespace AnvilLOD
 				logger::info("animprobe tick {} t={:.2f} {}", _animTick, t, _meshes[item.mesh]);
 				for (auto* ctl : item.controllers) {
 					logger::info("  {} flags={:#x} target={} last={:.2f} start={:.2f} scaled={:.2f}", ctl->GetRTTI() ? ctl->GetRTTI()->GetName() : "?", static_cast<unsigned>(ctl->flags.underlying()), ctl->target ? "set" : "NULL", ctl->lastTime, ctl->startTime, ctl->scaledTime);
+					if (auto* mgr = netimmerse_cast<RE::NiControllerManager*>(ctl)) {
+						for (auto& seq : mgr->sequenceArray) {
+							if (seq) {
+								logger::info("    seq '{}' state={} offset={:.2f} start={:.2f} last={:.2f} lastScaled={:.2f} freq={:.2f} cycle={}", seq->name.c_str(), static_cast<int>(seq->state.get()), seq->offset,
+									seq->startTime, seq->lastTime, seq->lastScaledTime, seq->frequency, static_cast<int>(seq->cycleType.get()));
+							}
+						}
+					}
 				}
 			}
 		}
@@ -707,6 +716,16 @@ namespace AnvilLOD
 					if (c._root) {
 						for (auto& child : c._root->GetChildren()) {
 							kids += child ? 1 : 0;
+						}
+					}
+					for (auto i : c._shown) {
+						const auto& it = c._items[i];
+						if (it.copy && it.node) {
+							const auto& wb = it.node->worldBound;
+							logger::info("  sample copy {}: flags {:#x} culled={} bound=({:.0f},{:.0f},{:.0f} r={:.0f}) pos=({:.0f},{:.0f},{:.0f}) parent {}", c._meshes[it.mesh],
+								static_cast<unsigned>(it.node->GetFlags().underlying()), it.node->GetAppCulled(), wb.center.x, wb.center.y, wb.center.z, wb.radius,
+								it.pos.x, it.pos.y, it.pos.z, it.node->parent ? it.node->parent->name.c_str() : "none");
+							break;
 						}
 					}
 					logger::info("Update #{}: {} drawn ({} copies), root {} with {} children, flags {:#x}, parent {}", c._updateCount, c._shown.size(), n,
