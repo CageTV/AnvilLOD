@@ -318,7 +318,13 @@ namespace AnvilLOD
 					const auto& s = Settings::Get();
 					const auto  fps = s.animate ? s.animationFps : 0u;
 					std::this_thread::sleep_for(std::chrono::milliseconds(fps == 0 ? 500 : std::max<std::uint32_t>(8, 1000 / fps)));
-					if (fps == 0 || _animatedShown == 0 || _animQueued.exchange(true)) {
+					if (fps == 0 || _animatedShown == 0) {
+						continue;
+					}
+					if (_animQueued.exchange(true)) {
+						if (Settings::Get().verboseLog && ++_animSkipped % 500 == 1) {
+							logger::info("Animate: previous tick still queued ({} skipped so far)", _animSkipped);
+						}
 						continue;
 					}
 					SKSE::GetTaskInterface()->AddTask([this] {
@@ -613,7 +619,10 @@ namespace AnvilLOD
 		const float t = Seconds();
 		RE::NiUpdateData update{ t, RE::NiUpdateData::Flag::kNone };
 		++_animTick;
-		const bool probe = Settings::Get().verboseLog && (_animTick == 3 || _animTick == 120);
+		if (Settings::Get().verboseLog && (_animTick == 1 || _animTick % 500 == 0)) {
+			logger::info("Animate tick {}: {} drawn, {} animated, t={:.2f}", _animTick, _shown.size(), _animatedShown.load(), t);
+		}
+		const bool probe = Settings::Get().verboseLog && (_animTick % 150 == 3);
 		std::unordered_set<std::uint32_t> probed;
 		for (auto i : _shown) {
 			auto& item = _items[i];
