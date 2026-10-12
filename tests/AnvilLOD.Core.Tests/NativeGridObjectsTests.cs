@@ -42,4 +42,33 @@ public class NativeGridObjectsTests
         ]);
         Assert.Empty(picks);
     }
+
+    [Theory]
+    [InlineData(@"meshes\dyndolod\lod\effectsxfirewithembers01_dyndolod_lod.nif", NativeGridObjects.Kinds.Fire, true)]
+    [InlineData(@"meshes\clutter\woodfires\campfire01burning.nif", NativeGridObjects.Kinds.Fire, true)]
+    [InlineData(@"meshes\clutter\common\candlelanternwithcandle01.nif", NativeGridObjects.Kinds.Candle, true)]
+    [InlineData(@"meshes\clutter
+uins
+uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
+    [InlineData(@"meshes\dlc02\clutter\dlc2darkelflantern06.nif", NativeGridObjects.Kinds.Candle, true)]
+    [InlineData(@"meshes\dyndolod\lod\effectsxlavafall01_dyndolod_lod.nif", NativeGridObjects.Kinds.Lava, false)]
+    [InlineData(@"meshes\dyndolod\lod\water	undrastreamtransition01_dyndolod_lod.nif", NativeGridObjects.Kinds.Stream, false)]
+    [InlineData(@"meshes\effectsxrapids.nif", NativeGridObjects.Kinds.Stream, true)]
+    public void Effects_are_picked_by_kind_and_only_when_asked_for(string mesh, NativeGridObjects.Kinds kind, bool movable)
+    {
+        Assert.Empty(NativeGridObjects.Select([Grid(mesh, grid: DynamicGrid.Near)]));                           // waterworks only: none of these
+        Assert.Empty(NativeGridObjects.Select([Grid(mesh, grid: DynamicGrid.Near)], NativeGridObjects.Kinds.All & ~kind));
+        var pick = Assert.Single(NativeGridObjects.Select([Grid(mesh, grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects));
+        Assert.Equal(movable, pick.Movable);
+        Assert.True(pick.Near);
+    }
+
+    [Fact]
+    public void Water_planes_stay_with_the_plugin_when_the_fake_water_option_is_on_but_other_streams_do_not()
+    {
+        var plane = Grid(@"meshes\dyndolod\lod\water\tundrastreamtransition01_dyndolod_lod.nif", grid: DynamicGrid.Near);
+        var rapids = Grid(@"meshes\effects\fxrapids.nif", grid: DynamicGrid.Near);
+        Assert.Single(NativeGridObjects.Select([plane, rapids], NativeGridObjects.Kinds.Effects, waterStandIns: true));
+        Assert.Equal(2, NativeGridObjects.Select([plane, rapids], NativeGridObjects.Kinds.Effects).Count);
+    }
 }

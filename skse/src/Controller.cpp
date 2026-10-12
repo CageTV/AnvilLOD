@@ -264,9 +264,13 @@ namespace AnvilLOD
 			}
 			item.opposite = (e.flags & NativeEntry::kOpposite) != 0;
 			item.initiallyDisabled = (e.flags & NativeEntry::kInitiallyDisabled) != 0;
+			item.nearOnly = (e.flags & NativeEntry::kNear) != 0;
+			item.x = e.x;
+			item.y = e.y;
+			_nearNatives += item.nearOnly ? 1 : 0;
 			_natives.push_back(item);
 		}
-		logger::info("Native grid objects: {} real references in AnvilLOD.esp follow the enable state of their vanilla references, {} skipped (plugin not in the load order)", _natives.size(), missing);
+		logger::info("Native grid objects: {} real references in AnvilLOD.esp follow the enable state of their vanilla references ({} of them only within the near grid distance), {} skipped (plugin not in the load order)", _natives.size(), _nearNatives, missing);
 	}
 
 	/// AnvilLOD.copies, written by the generator when "Parent > Child copies" is on: the references around Whiterun, Solitude, Windhelm and
@@ -498,6 +502,14 @@ namespace AnvilLOD
 	void Controller::UpdateNative()
 	{
 		std::size_t enabled = 0;
+		// Near grid objects (fires, candles, streams) are only worth their particles and lights close to the player: within the near grid
+		// distance, with 10% of slack for those already on so the edge does not flicker. Only in an exterior; indoors they are off.
+		const auto* player = RE::PlayerCharacter::GetSingleton();
+		const bool  outside = player && player->GetWorldspace() != nullptr;
+		const float px = outside ? player->GetPositionX() : 0.0f;
+		const float py = outside ? player->GetPositionY() : 0.0f;
+		const float nearOn = Settings::Get().nearGridDistance;
+		const float nearOff = nearOn * 1.1f;
 		for (const auto& n : _natives) {
 			bool wanted;
 			if (const auto* src = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.source)) {
@@ -512,6 +524,12 @@ namespace AnvilLOD
 			auto* ref = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.native);
 			if (!ref || ref->IsDeleted()) {
 				continue;
+			}
+			if (wanted && n.nearOnly) {
+				const float dx = n.x - px;
+				const float dy = n.y - py;
+				const float limit = ref->IsDisabled() ? nearOn : nearOff;
+				wanted = outside && dx * dx + dy * dy <= limit * limit;
 			}
 			if (wanted == ref->IsDisabled()) {
 				if (wanted) {

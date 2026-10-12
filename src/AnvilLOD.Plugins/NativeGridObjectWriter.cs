@@ -9,21 +9,22 @@ namespace AnvilLOD.Plugins;
 /// <code>
 /// char[4] "ALNV", u32 version (1)
 /// u32 stringCount, then per string: u16 byteLength + UTF-8 bytes   (plugin names)
-/// u32 entryCount, then per entry (28 bytes):
+/// u32 entryCount, then per entry (40 bytes in version 2, the first 28 in version 1):
 ///   u32 sourcePlugin (string index), u32 sourceLocalId   (the vanilla reference the grid object stands for),
 ///   u32 nativePlugin (string index), u32 nativeLocalId   (the real reference in AnvilLOD.esp),
 ///   u32 parentPlugin (string index, 0xFFFFFFFF = none), u32 parentLocalId   (the source's enable parent),
-///   u32 flags (1 = enable state opposite of parent, 2 = the source is initially disabled)
+///   u32 flags (1 = enable state opposite of parent, 2 = the source is initially disabled, 4 = near: only enabled within the near grid distance),
+///   f32 x, f32 y, f32 z   (version 2: where the reference is, for the near flag)
 /// </code>
 /// </summary>
 public static class NativeGridObjectWriter
 {
     public const string RelativePath = "SKSE\\Plugins\\AnvilLOD\\AnvilLOD.native";
-    public const uint Version = 1;
+    public const uint Version = 2;
 
-    public sealed record Entry(NativeGridObjects.Pick Pick, uint NativeLocalId);
+    public sealed record Entry(NativeGridObjects.Pick Pick, uint NativeLocalId, string Plugin);
 
-    public static int Write(string outputFolder, string nativePlugin, IReadOnlyList<Entry> entries)
+    public static int Write(string outputFolder, IReadOnlyList<Entry> entries)
     {
         var strings = new List<string>();
         var index = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
@@ -32,13 +33,14 @@ public static class NativeGridObjectWriter
             if (!index.TryGetValue(s, out var i)) { i = (uint)strings.Count; strings.Add(s); index[s] = i; }
             return i;
         }
-        var rows = new List<(uint SP, uint SId, uint NP, uint NId, uint PP, uint PId, uint Flags)>();
+        var rows = new List<(uint SP, uint SId, uint NP, uint NId, uint PP, uint PId, uint Flags, float X, float Y, float Z)>();
         foreach (var e in entries)
         {
             var d = e.Pick.Source;
-            rows.Add((Str(d.RefPlugin), d.RefLocalId, Str(nativePlugin), e.NativeLocalId,
+            rows.Add((Str(d.RefPlugin), d.RefLocalId, Str(e.Plugin), e.NativeLocalId,
                 d.ParentPlugin is { } pp ? Str(pp) : 0xFFFFFFFFu, d.ParentLocalId,
-                (d.ParentOpposite ? 1u : 0u) | (d.InitiallyDisabled ? 2u : 0u)));
+                (d.ParentOpposite ? 1u : 0u) | (d.InitiallyDisabled ? 2u : 0u) | (e.Pick.Near ? 4u : 0u),
+                d.Ref.Position.X, d.Ref.Position.Y, d.Ref.Position.Z));
         }
         var path = Path.Combine(outputFolder, RelativePath.Replace('\\', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -58,6 +60,7 @@ public static class NativeGridObjectWriter
             foreach (var r in rows)
             {
                 w.Write(r.SP); w.Write(r.SId); w.Write(r.NP); w.Write(r.NId); w.Write(r.PP); w.Write(r.PId); w.Write(r.Flags);
+                w.Write(r.X); w.Write(r.Y); w.Write(r.Z);
             }
         }
         File.Move(path + ".tmp", path, overwrite: true);

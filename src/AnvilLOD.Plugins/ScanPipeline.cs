@@ -30,6 +30,7 @@ public sealed record ScanRequest(
     SkseDllChoice SkseDll = SkseDllChoice.Auto,    // which SKSE plugin build Generate puts in the output (None = installed separately)
     bool Underside = false,                        // terrain underside for volumetric lighting mods: <ws>_Underside.nif + AnvilLOD.esp (ESL)
     int UndersideStep = UndersideMesher.DefaultStep, // LAND vertices per underside quad (smaller = finer and heavier)
+    bool NativeEffects = false,                    // fires, candles, torches, lava and streams as real references too (second plugin, AnvilLOD Effects.esp, ESL)
     bool NativeGridObjects = false,                // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp (the engine animates them) instead of SKSE copies
     bool PbrLod = false,                           // object LOD textures that match PBR full models (TexGen pbr_lod twins, converted PBR albedo)
     float PbrLodBrightness = 1f,                   // multiplier on DynDOLOD's default PBR scale (0.65) for the converted copies
@@ -411,7 +412,9 @@ public static class ScanPipeline
                                  + $" ({trees.WorldspacesWritten} worldspaces written, {trees.WorldspacesUnchanged} unchanged) in {trees.Elapsed.TotalSeconds:F1}s");
             }
             // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
-            var natives = req.NativeGridObjects && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? []) : [];
+            var nativeKinds = (req.NativeGridObjects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Waterworks : 0)
+                              | (req.NativeEffects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Effects : 0);
+            var natives = nativeKinds != 0 && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? [], nativeKinds, req.WaterStandIns) : [];
             var nativeSources = natives.Select(p => p.Source).ToHashSet();
             // Left out of AnvilLOD.dyn entirely: the engine draws the real references in the walled cities too (tested at Whiterun: they are
             // there and they turn), so a model drawn by the plugin as well showed up as a second, motionless fan.
@@ -518,7 +521,7 @@ public static class ScanPipeline
                 {
                     var u = UndersideStage.Run(game, terrain.Heights, scan.Grids, output, req.UndersideStep, progress, Warn, ct, natives);
                     progress?.Report($"Underside: {u.Worldspaces} worldspaces, {u.Blocks:N0} blocks, {u.Triangles:N0} triangles in {u.Elapsed.TotalSeconds:F1}s"
-                                     + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} (flagged ESL, no plugin slot) in your mod manager."));
+                                     + (u.Plugin is null ? "" : $". Enable {UndersidePluginWriter.FileName} in your mod manager{(u.PluginLight ? " (flagged ESL, no plugin slot)" : " (too many records for an ESL: it is a regular plugin and takes a slot)")}."));
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -530,8 +533,8 @@ public static class ScanPipeline
                 try
                 {
                     var r = UndersidePluginWriter.Write(game, [], output, natives);
-                    if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, UndersidePluginWriter.FileName, ne);
-                    progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels); the SKSE plugin no longer draws them. Enable {UndersidePluginWriter.FileName} (flagged ESL, no plugin slot) in your mod manager.");
+                    if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, ne);
+                    progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels, effects); the SKSE plugin no longer draws them. Enable {UndersidePluginWriter.FileName}{(r.EffectsPlugins == 0 ? "" : r.EffectsPlugins == 1 ? $" and {UndersidePluginWriter.EffectsFileName}" : $" and the {r.EffectsPlugins} AnvilLOD Effects*.esp files")} in your mod manager{(r.IsLight ? " (flagged ESL, no plugin slot)" : " (too many records for an ESL: a regular plugin that takes a slot)")}.");
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

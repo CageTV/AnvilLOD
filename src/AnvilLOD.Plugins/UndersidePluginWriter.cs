@@ -28,16 +28,56 @@ public static class UndersidePluginWriter
 
     private static string UndersideModelPath(string worldspace) => AnvilLOD.Meshes.UndersideBuilder.ModelPath(worldspace);
 
+    /// <summary>FormIDs 0x800 to 0xFFF.</summary>
+    public const int EslRecordLimit = 2048;
+
     private const int FlagNotPlayable = 0x4, FlagPersistent = 0x400, FlagInitiallyDisabled = 0x800, FlagIsFullLod = 0x10000; // the flags DynDOLOD sets
 
     public sealed record Result(string Path, IReadOnlyList<string> Worldspaces, IReadOnlyList<string> Skipped, IReadOnlyList<string> Masters,
-        int NativeBases = 0, int NativeReferences = 0, IReadOnlyList<NativeGridObjectWriter.Entry>? NativeRefs = null);
+        int NativeBases = 0, int NativeReferences = 0, IReadOnlyList<NativeGridObjectWriter.Entry>? NativeRefs = null, bool IsLight = true, string? EffectsPath = null, int EffectsPlugins = 0);
 
     /// <param name="worldspaces">EditorIDs of the worldspaces whose underside NIF was generated.</param>
     /// <param name="natives">Grid objects (waterfalls, windmill fans, wheels) to place as real references, see <see cref="NativeGridObjects"/>.</param>
+    public const string EffectsFileName = "AnvilLOD Effects.esp";
+    /// <summary>References per effects plugin; the rest of the 2,048 ESL records go to base records and cell overrides.</summary>
+    public const int EffectsPerPlugin = 1600;
+
+    /// <summary>
+    /// AnvilLOD.esp (underside, waterfalls, windmills, wheels) and, when there are fires, candles, torches, lava or streams, a second
+    /// plugin <c>AnvilLOD Effects.esp</c> with those: each ESL-flagged while it fits (2,048 records), so neither takes a plugin slot.
+    /// </summary>
     public static Result Write(GameContext game, IReadOnlyCollection<string> worldspaces, string outputFolder, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
     {
         natives ??= [];
+        var main = WriteOne(game, FileName, worldspaces, outputFolder, natives.Where(n => !n.Effect).ToList(), towers: true);
+        var effects = natives.Where(n => n.Effect).ToList();
+        // Plugins from an earlier run ("AnvilLOD Effects.esp", "AnvilLOD Effects 2.esp", ...) are replaced.
+        foreach (var old in Directory.Exists(outputFolder) ? Directory.GetFiles(outputFolder, "AnvilLOD Effects*.esp") : [])
+            File.Delete(old);
+        if (effects.Count == 0) return main;
+        // One ESL holds 2,048 records: references plus their base records and the persistent cell overrides. Chunks of EffectsPerPlugin
+        // references leave room for those, so a list with many more fires and candles than ours just gets more plugins.
+        var results = new List<Result>();
+        for (int i = 0, part = 1; i < effects.Count; i += EffectsPerPlugin, part++)
+        {
+            var name = part == 1 ? EffectsFileName : $"AnvilLOD Effects {part}.esp";
+            results.Add(WriteOne(game, name, [], outputFolder, effects.Skip(i).Take(EffectsPerPlugin).ToList(), towers: false));
+        }
+        return main with
+        {
+            NativeBases = main.NativeBases + results.Sum(r => r.NativeBases),
+            NativeReferences = main.NativeReferences + results.Sum(r => r.NativeReferences),
+            NativeRefs = (main.NativeRefs ?? []).Concat(results.SelectMany(r => r.NativeRefs ?? [])).ToList(),
+            Masters = main.Masters.Concat(results.SelectMany(r => r.Masters)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            IsLight = main.IsLight && results.All(r => r.IsLight),
+            EffectsPath = results[0].Path,
+            EffectsPlugins = results.Count,
+        };
+    }
+
+    private static Result WriteOne(GameContext game, string fileName, IReadOnlyCollection<string> worldspaces, string outputFolder,
+        IReadOnlyList<NativeGridObjects.Pick> natives, bool towers)
+    {
         var undersideWorlds = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
         var wanted = new HashSet<string>(worldspaces, StringComparer.OrdinalIgnoreCase);
         foreach (var n in natives) wanted.Add(n.Source.Ref.Worldspace);
@@ -45,6 +85,7 @@ public static class UndersidePluginWriter
         // The Whiterun windmill towers are persistent references of a base that is visible when distant, but the references are not
         // flagged for it, so the engine never draws them at a distance (the Missing Windmill Fix mod places a flagged duplicate on each).
         var towerFix = new List<(string World, FormKey Base, Noggog.P3Float Pos, Noggog.P3Float Rot, float? Scale)>();
+        if (towers)
         foreach (var pctx in game.LoadOrder.PriorityOrder.PlacedObject().WinningContextOverrides(game.LinkCache))
         {
             var pr = pctx.Record;
@@ -56,7 +97,7 @@ public static class UndersidePluginWriter
         }
         int nativeRefs = 0, towerRefs = 0;
         var nativeEntries = new List<NativeGridObjectWriter.Entry>();
-        var esp = new SkyrimMod(ModKey.FromNameAndExtension(FileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
+        var esp = new SkyrimMod(ModKey.FromNameAndExtension(fileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
         esp.ModHeader.Stats.NextFormID = 0x800;
 
         var done = new List<string>();
@@ -165,7 +206,7 @@ public static class UndersidePluginWriter
                     Scale = r.Scale == 1f ? null : r.Scale,
                 };
                 top.Persistent.Add(placed);
-                nativeEntries.Add(new NativeGridObjectWriter.Entry(n, placed.FormKey.ID));
+                nativeEntries.Add(new NativeGridObjectWriter.Entry(n, placed.FormKey.ID, fileName));
             }
             foreach (var t in towerFix.Where(t => t.World.Equals(id, StringComparison.OrdinalIgnoreCase)))
             {
@@ -183,12 +224,16 @@ public static class UndersidePluginWriter
 
         var skipped = wanted.Where(w => !seen.Contains(w)).OrderBy(w => w, StringComparer.OrdinalIgnoreCase).ToList();
         Directory.CreateDirectory(outputFolder);
-        var espPath = Path.Combine(outputFolder, FileName);
+        var espPath = Path.Combine(outputFolder, fileName);
+        if (fileName == FileName)
         foreach (var old in LegacyFileNames)
         {
             var legacy = Path.Combine(outputFolder, old);
             if (File.Exists(legacy)) File.Delete(legacy);
         }
+        // An ESL holds 2,048 records (FormIDs 0x800 to 0xFFF). Fires, candles and the rest of the effects go over that: then it is a plain ESP.
+        bool small = esp.EnumerateMajorRecords().Count() <= EslRecordLimit;
+        esp.IsSmallMaster = small;
         var order = game.LoadOrder.ListedOrder.Select(l => l.ModKey).Where(k => k != esp.ModKey).ToList();
         esp.WriteToBinary(espPath, new BinaryWriteParameters
         {
@@ -199,6 +244,6 @@ public static class UndersidePluginWriter
 
         using var written = SkyrimMod.CreateFromBinaryOverlay(espPath, SkyrimRelease.SkyrimSE);
         var masters = written.ModHeader.MasterReferences.Select(m => m.Master.FileName.String).ToList();
-        return new Result(espPath, done, skipped, masters, nativeBase.Count, nativeRefs, nativeEntries);
+        return new Result(espPath, done, skipped, masters, nativeBase.Count, nativeRefs, nativeEntries, small);
     }
 }

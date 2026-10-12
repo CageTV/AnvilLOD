@@ -23,7 +23,7 @@ public static class UndersideStage
     /// <summary>Data file for the SKSE plugin: the child worldspaces whose underside it draws itself (see <see cref="Run"/>).</summary>
     public const string ChildFile = "SKSE\\Plugins\\AnvilLOD\\AnvilLOD.underside";
 
-    public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed, int DrawnByPlugin = 0);
+    public sealed record Result(int Worldspaces, int Blocks, long Triangles, int FilesWritten, int FilesUnchanged, string? Plugin, TimeSpan Elapsed, int DrawnByPlugin = 0, bool PluginLight = true);
 
     public static Result Run(GameContext game, TerrainHeights terrain, IReadOnlyDictionary<string, LodGrid> grids, string output,
         int step, IProgress<string>? progress, Action<string> warn, CancellationToken ct, IReadOnlyList<NativeGridObjects.Pick>? natives = null)
@@ -94,15 +94,17 @@ public static class UndersideStage
         RemoveFiles(output, keep: made);
 
         string? plugin = null;
+        bool pluginLight = true;
         var inPlugin = made.Except(drawnByPlugin, StringComparer.OrdinalIgnoreCase).ToList();
         if (inPlugin.Count > 0 || natives is { Count: > 0 })
         {
             var r = UndersidePluginWriter.Write(game, inPlugin, output, natives);
-            if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, UndersidePluginWriter.FileName, ne);
+            if (r.NativeRefs is { Count: > 0 } ne) NativeGridObjectWriter.Write(output, ne);
             else NativeGridObjectWriter.Remove(output);
             if (r.NativeReferences > 0)
-                progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels); the SKSE plugin no longer draws them.");
+                progress?.Report($"Native grid objects: {r.NativeReferences:N0} references on {r.NativeBases:N0} base records written to {UndersidePluginWriter.FileName} (waterfalls, windmill fans, water wheels, effects); the SKSE plugin no longer draws them.");
             plugin = r.Path;
+            pluginLight = r.IsLight;
             progress?.Report($"Underside: {UndersidePluginWriter.FileName} written for {r.Worldspaces.Count} worldspaces (placement masters: {string.Join(", ", r.Masters)})");
             if (r.Skipped.Count > 0)
                 warn($"Underside: no worldspace record found for {string.Join(", ", r.Skipped)}; they get no placement (their NIF is still written).");
@@ -111,7 +113,7 @@ public static class UndersideStage
 
         var drawn = WriteChildFile(game, drawnByPlugin, output, progress);
 
-        return new Result(made.Count, blocks, tris, written, unchanged, plugin, sw.Elapsed, drawn);
+        return new Result(made.Count, blocks, tris, written, unchanged, plugin, sw.Elapsed, drawn, pluginLight);
     }
 
     /// <summary>EditorID of each worldspace's parent worldspace (winning records), for the ones that have one.</summary>
@@ -178,7 +180,7 @@ public static class UndersideStage
     {
         try
         {
-            foreach (var name in UndersidePluginWriter.LegacyFileNames.Append(UndersidePluginWriter.FileName))
+            foreach (var name in UndersidePluginWriter.LegacyFileNames.Append(UndersidePluginWriter.FileName).Concat(Directory.Exists(output) ? Directory.GetFiles(output, "AnvilLOD Effects*.esp").Select(Path.GetFileName)! : []))
             {
                 var file = Path.Combine(output, name);
                 if (File.Exists(file)) File.Delete(file);

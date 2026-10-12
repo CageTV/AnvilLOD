@@ -84,6 +84,7 @@ public partial class MainWindow : Window
         PbrLodBrightnessBox.SelectedIndex = BrightnessIndex(_settings.PbrLodBrightness);
         UndersideCheck.IsChecked = _settings.Underside;
         NativeGridObjectsCheck.IsChecked = _settings.NativeGridObjects;
+        NativeEffectsCheck.IsChecked = _settings.NativeEffects;
         Tree3DCheck.IsChecked = _settings.Tree3D;
         Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
         Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
@@ -140,6 +141,7 @@ public partial class MainWindow : Window
         _settings.PbrLodBrightness = BrightnessPercent(PbrLodBrightnessBox.SelectedIndex);
         _settings.Underside = UndersideCheck.IsChecked == true;
         _settings.NativeGridObjects = NativeGridObjectsCheck.IsChecked == true;
+        _settings.NativeEffects = NativeEffectsCheck.IsChecked == true;
         _settings.Tree3D = Tree3DCheck.IsChecked == true;
         _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
         _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
@@ -413,6 +415,7 @@ public partial class MainWindow : Window
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
             NativeGridObjects: _settings.NativeGridObjects,
+            NativeEffects: _settings.NativeEffects,
             PbrLod: _settings.PbrLod,
             LargeReferences: _settings.LargeReferences,
             LargeRefsEsl: _settings.LargeRefsEsl,
@@ -452,6 +455,15 @@ public partial class MainWindow : Window
                 : $"Scan finished in {_lastTotal.TotalSeconds:F1}s";
             ProgressText.Text = "Done";
             Progress.Value = 100;
+            // MO2 has no refresh command a program can call: it re-reads its mods and plugins when the program it started exits, so
+            // new plugins (AnvilLOD Effects.esp, ...) only show up after that.
+            if (generate && StartupLog.IsUnderMo2()
+                && MessageBox.Show(this, "LOD generated. MO2 only refreshes its mod and plugin list when AnvilLOD closes, so any new plugins "
+                                         + "(AnvilLOD.esp, AnvilLOD Effects.esp) will not show up until then.\n\nClose AnvilLOD now?",
+                    "AnvilLOD", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                Close();
+            }
         }
         catch (OperationCanceledException)
         {

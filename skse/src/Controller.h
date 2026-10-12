@@ -96,8 +96,12 @@ namespace AnvilLOD
 			RE::FormID parent{ 0 };
 			bool       opposite{ false };
 			bool       initiallyDisabled{ false };
+			bool       nearOnly{ false };  // only enabled within the near grid distance
+			float      x{ 0 };
+			float      y{ 0 };
 		};
 		std::vector<NativeItem>                                     _natives;
+		std::size_t                                                 _nearNatives{ 0 };
 		std::size_t                                                 _nativeEnabled{ 0 };
 
 		std::vector<std::string>                                    _meshes;

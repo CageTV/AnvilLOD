@@ -223,6 +223,7 @@ public static class Program
             Seasons: a.Has("seasons"),
             Underside: a.Has("underside"),
             NativeGridObjects: a.Has("native-grid-objects"),
+            NativeEffects: a.Has("native-effects"),
             PbrLod: a.Has("pbr-lod"),
             LargeReferences: a.Has("large-refs"),
             LargeRefsEsl: !a.Has("large-refs-no-esl"),

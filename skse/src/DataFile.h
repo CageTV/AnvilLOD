@@ -64,10 +64,14 @@ namespace AnvilLOD
 		std::uint32_t parentPlugin;  // 0xFFFFFFFF = no enable parent
 		std::uint32_t parentLocalId;
 		std::uint32_t flags;
+		float         x{ 0 };  // version 2: where the reference is (for kNear)
+		float         y{ 0 };
+		float         z{ 0 };
 
 		static constexpr std::uint32_t kNone = 0xFFFFFFFF;
 		static constexpr std::uint32_t kOpposite = 1;
 		static constexpr std::uint32_t kInitiallyDisabled = 2;
+		static constexpr std::uint32_t kNear = 4;  // only enabled within the near grid distance of the player (fires, candles, streams)
 	};
 
 	struct NativeFile

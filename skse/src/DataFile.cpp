@@ -102,8 +102,8 @@ namespace AnvilLOD
 			logger::error("{} is not an AnvilLOD native file", a_path.string());
 			return false;
 		}
-		if (version != 1) {
-			logger::error("{} has version {}, this plugin reads version 1 - update the AnvilLOD plugin or regenerate", a_path.string(), version);
+		if (version != 1 && version != 2) {
+			logger::error("{} has version {}, this plugin reads versions 1 and 2 - update the AnvilLOD plugin or regenerate", a_path.string(), version);
 			return false;
 		}
 		std::uint32_t count = 0;
@@ -123,6 +123,10 @@ namespace AnvilLOD
 		entries.resize(count);
 		for (auto& e : entries) {
 			if (!r.Get(e.sourcePlugin) || !r.Get(e.sourceLocalId) || !r.Get(e.nativePlugin) || !r.Get(e.nativeLocalId) || !r.Get(e.parentPlugin) || !r.Get(e.parentLocalId) || !r.Get(e.flags)) {
+				logger::error("{}: truncated entry table", a_path.string());
+				return false;
+			}
+			if (version >= 2 && (!r.Get(e.x) || !r.Get(e.y) || !r.Get(e.z))) {
 				logger::error("{}: truncated entry table", a_path.string());
 				return false;
 			}
