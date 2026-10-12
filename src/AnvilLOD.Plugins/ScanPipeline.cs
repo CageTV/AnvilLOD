@@ -109,7 +109,18 @@ public static class ScanPipeline
         using var game = GameContext.Open(gameOptions, progress);
         progress?.Report($"Source: {game.SourceDescription}  ({game.PluginsLoaded:N0} of {game.PluginsListed:N0} plugins loaded)");
         var warnings = new List<string>(game.Warnings);
+        // AnvilLOD replaces DynDOLOD. Generating with DynDOLOD's output enabled doubles the dynamic objects (its references stand on the
+        // same places as the vanilla ones) and makes AnvilLOD pick up DynDOLOD's own LOD meshes; run it with that output disabled.
+        var ddPlugins = game.LoadOrder.ListedOrder.Where(l => l.ModKey.FileName.String.StartsWith("DynDOLOD", StringComparison.OrdinalIgnoreCase)
+                                                            && (l.ModKey.FileName.String.EndsWith(".esm", StringComparison.OrdinalIgnoreCase) || l.ModKey.FileName.String.EndsWith(".esp", StringComparison.OrdinalIgnoreCase)))
+            .Select(l => l.ModKey.FileName.String).ToList();
         foreach (var w in game.Warnings) progress?.Report("WARNING: " + w);
+        if (ddPlugins.Count > 0)
+        {
+            var dd = $"{string.Join(", ", ddPlugins)} {(ddPlugins.Count == 1 ? "is" : "are")} enabled. AnvilLOD replaces DynDOLOD: its output doubles the dynamic objects and its LOD meshes get picked up. Disable DynDOLOD's output mod and plugins before generating.";
+            warnings.Add(dd);
+            progress?.Report("WARNING: " + dd);
+        }
 
         progress?.Report("Indexing BSAs (meshes, LOD settings, DynDOLOD rules, tree billboards)...");
         var assets = game.BuildAssets(

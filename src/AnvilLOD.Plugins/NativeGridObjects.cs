@@ -22,6 +22,9 @@ public static class NativeGridObjects
 
     public sealed record Pick(DynamicLodReference Source, string Model, bool Movable);
 
+    private static bool IsDynDolod(string? plugin) =>
+        plugin is not null && plugin.StartsWith("DynDOLOD", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>The model the SKSE plugin would draw for this grid object, relative to Data\meshes, normalized.</summary>
     public static string? ModelOf(DynamicLodReference d)
     {
@@ -39,6 +42,8 @@ public static class NativeGridObjects
         foreach (var d in dynamic)
         {
             if (!d.IsGridObject || d.Glow || !Worlds.Contains(d.Ref.Worldspace)) continue;
+            // DynDOLOD's own copies (DynDOLOD.esp / .esm) of these references are not ours to copy again; only the vanilla ones are.
+            if (IsDynDolod(d.RefPlugin) || IsDynDolod(d.Ref.WinningPlugin)) continue;
             if (ModelOf(d) is not { } model) continue;
             var lower = model.ToLowerInvariant();
             bool waterfall = lower.Contains("waterfall");
