@@ -194,6 +194,8 @@ public static class ScanPipeline
         // Debugging aid: ANVILLOD_DEBUG_PARENT_COPIES=<file> dumps the Parent > Child candidates as a table (source reference, child world, base, cell).
         if (scan.ParentCopies is { } dumpCopies && Environment.GetEnvironmentVariable("ANVILLOD_DEBUG_PARENT_COPIES") is { Length: > 0 } dumpPath)
             File.WriteAllLines(dumpPath, dumpCopies.Select(c => string.Join('	', c.ChildWorldspace, c.SourcePlugin, c.SourceLocalId.ToString("X6"), c.BaseEditorId, c.Model, c.CellX, c.CellY, c.ChildCellExists ? 1 : 0, c.HasAlternateTextures ? 1 : 0)));
+        if (scan.ParentCopyStats?.Regions is { } dumpRegions && Environment.GetEnvironmentVariable("ANVILLOD_DEBUG_PARENT_COPIES") is { Length: > 0 } cellsPath)
+            File.WriteAllLines(cellsPath + ".cells", dumpRegions.SelectMany(r => r.ChildCells.Select(c => $"{r.ChildWorldspace}	{c.X}	{c.Y}")));
         progress?.Report($"Scan: {scan.Stats.LodReferencesFound:N0} LOD refs from {scan.Stats.PlacedObjectsVisited:N0} refs in {scan.Stats.Elapsed.TotalSeconds:F1}s");
 
         TerrainReader.Result? terrain = null;

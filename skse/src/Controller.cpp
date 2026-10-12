@@ -401,6 +401,11 @@ namespace AnvilLOD
 			if (!settings.parentCopies || (!settings.parentCopyAllCells && !a_item.childCell)) {
 				return false;
 			}
+			if (a_item.childCell) {
+				// The engine hides the parent's LOD in every cell the child worldspace has, loaded or not (measured at Whiterun: the
+				// bare area reaches well past the loaded cells), so these are drawn wherever they are; iMaxShown keeps the nearest.
+				return true;
+			}
 			const auto reach = a_half + settings.parentCopyExtraCells;
 			return std::abs(a_item.cellX - a_pcx) <= reach && std::abs(a_item.cellY - a_pcy) <= reach;
 		}
