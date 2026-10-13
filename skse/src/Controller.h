@@ -128,7 +128,10 @@ namespace AnvilLOD
 		std::atomic<std::size_t>                                    _glowShown{ 0 };  // window glow items drawn now
 		std::atomic<std::int32_t>                                   _playerCellX{ 0 };
 		std::atomic<std::int32_t>                                   _playerCellY{ 0 };
-		float                                                       _glowFactor{ 0.0f };  // 0 by day, 1 at night, from the game hour
+		std::int32_t                                                _glowLogCellX{ 0x7FFFFFFF };  // where the glow line was last logged
+		std::int32_t                                                _glowLogCellY{ 0x7FFFFFFF };
+		RE::FormID                                                  _glowLogWorld{ 0 };
+		float                                                      _glowFactor{ 0.0f };  // 0 by day, 1 at night, from the game hour
 		std::unordered_map<std::uint32_t, std::vector<float>>       _glowBases;           // per mesh: the emissive multiple of each of its shaders, as the file has it
 		std::atomic<std::size_t>                                    _animatedShown{ 0 };
 		std::chrono::steady_clock::time_point                       _epoch{ std::chrono::steady_clock::now() };

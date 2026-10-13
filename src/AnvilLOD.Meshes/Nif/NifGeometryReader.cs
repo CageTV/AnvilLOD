@@ -30,8 +30,8 @@ public static class NifGeometryReader
     /// <summary>Prefix of the warning added to a mesh for every water-shader shape read as lit fake water.</summary>
     public const string WaterPlaneWarning = "WaterPlane:";
 
-    /// <summary>Colour (RGBA, little-endian) of fake water: the dark teal and ~69% opacity of the CS Water Mod stream twins.</summary>
-    public const uint FakeWaterColor = 0xAF33342Au;
+    /// <summary>Colour (RGBA, little-endian) of fake water: CS Water Mod's dark teal at ~69% opacity (0xAF33342A), made 10% more transparent and 10% darker so it sits closer to the water around it.</summary>
+    public const uint FakeWaterColor = 0x9E2E2F26u;
 
     /// <summary>
     /// A BSWaterShaderProperty plane drawn outside the engine's water system comes out black, so LOD stand-ins draw it with

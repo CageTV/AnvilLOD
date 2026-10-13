@@ -35,8 +35,8 @@ public class WaterStandInTests
         Assert.Equal((ushort)0x10ED, m.AlphaFlags);
         Assert.Equal(@"textures\effects\FXwaterTile01.dds", m.Textures[0]);
         Assert.Equal(@"textures\effects\FXwaterTile01_n.dds", m.Textures[1]);
-        // 0xAF33342A little-endian = R 2A, G 34, B 33, A AF (69% opaque dark teal)
-        Assert.Equal(0xAF, (int)(NifGeometryReader.FakeWaterColor >> 24));
+        // 0x9E2E2F26 little-endian = R 26, G 2F, B 2E, A 9E: the stream twins' dark teal (2A3433, 69% opaque) made 10% darker and 10% more transparent
+        Assert.Equal(0x9E, (int)(NifGeometryReader.FakeWaterColor >> 24));
     }
 
     private sealed class MemoryAssets(Dictionary<string, byte[]> files) : IAssetSource

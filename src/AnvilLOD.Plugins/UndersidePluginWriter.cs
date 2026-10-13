@@ -228,7 +228,7 @@ public static class UndersidePluginWriter
                     MajorRecordFlagsRaw = FlagPersistent | FlagIsFullLod | (startDisabled ? FlagInitiallyDisabled : 0),
                     Placement = new Placement
                     {
-                        Position = new Noggog.P3Float(r.Position.X, r.Position.Y, r.Position.Z),
+                        Position = new Noggog.P3Float(r.Position.X, r.Position.Y, r.Position.Z - (NativeGridObjects.IsWaterPlane(n.Model) ? NativeGridObjects.WaterDrop : 0f)),
                         Rotation = new Noggog.P3Float(r.RotationRadians.X, r.RotationRadians.Y, r.RotationRadians.Z),
                     },
                     Scale = r.Scale == 1f ? null : r.Scale,

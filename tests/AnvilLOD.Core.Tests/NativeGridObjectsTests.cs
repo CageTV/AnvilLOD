@@ -75,6 +75,15 @@ uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
     }
 
     [Fact]
+    public void Water_planes_are_recognised_for_the_lift_that_stops_the_flicker()
+    {
+        Assert.True(NativeGridObjects.IsWaterPlane(@"dyndolod\lod\water\tundrastreamtransition01_dyndolod_lod.nif"));
+        Assert.True(NativeGridObjects.IsWaterPlane(@"effects\fxcreekflatlong01.nif"));
+        Assert.False(NativeGridObjects.IsWaterPlane(@"dyndolod\lod\effects\fxwaterfallthin512x128_dyndolod_lod.nif"));
+        Assert.InRange(NativeGridObjects.WaterDrop, 2f, 40f);
+    }
+
+    [Fact]
     public void Effects_are_packed_into_as_few_esl_plugins_as_fit_counting_base_records()
     {
         // 3,360 references over 100 models: two full plugins, not three (a 1,600 cap would have made a nearly empty third).

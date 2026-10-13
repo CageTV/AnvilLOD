@@ -29,7 +29,9 @@ public static class WaterCopies
         float uvPerUnit = UvPerUnit(template);
         // The stream stand-ins are tinted dark olive (0x2A3433, alpha 0xAF); the terrain LOD water this replaces is blue, so a
         // wider river / pond gets a blue tint over the same ripple texture and blending (R,G,B,A packed little-endian).
-        const uint color = 0xC0806240u;
+        // It was 0xC0806240; measured in game next to the real water (Riften) that read about 35% brighter and bluer, so R x0.93,
+        // G x0.75, B x0.63 of it, and 10% more transparent (alpha 0xC0 -> 0xAD).
+        const uint color = 0xAD51493Cu;
         const bool colors = true;
 
         foreach (var region in regions)
@@ -42,7 +44,9 @@ public static class WaterCopies
                 var full = Path.Combine(outputFolder, "meshes", rel.Replace('\\', Path.DirectorySeparatorChar));
                 if (done.Add((ws.ToLowerInvariant(), x, y)))
                 {
-                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, out int runs);
+                    // Whiterun's river reads too low at the full drop (tested in game): 3 units there while that is being tuned (28 sat the plane in the banks, 10 and 6 were still a little low).
+                    float maxDrop = region.ChildWorldspace.Contains("Whiterun", StringComparison.OrdinalIgnoreCase) ? 3f : NativeGridObjects.WaterDrop;
+                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, maxDrop, out int runs);
                     if (part is null) { done.Remove((ws.ToLowerInvariant(), x, y)); continue; }
                     runsTotal += runs;
                     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -73,7 +77,7 @@ public static class WaterCopies
     }
 
     private static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
-        float uvPerUnit, bool colors, uint color, out int runs)
+        float uvPerUnit, bool colors, uint color, float maxDrop, out int runs)
     {
         const int N = TerrainHeights.Grid - 1;   // 32 quads per side
         var pos = new List<Vector3>();
@@ -81,6 +85,14 @@ public static class WaterCopies
         var tris = new List<ushort>();
         float ox = cx * CellCoord.CellSize, oy = cy * CellCoord.CellSize;
         runs = 0;
+        // How far below the water height the plane sits: right at it, it flickers against the real water it overlaps, but a shallow
+        // river (Whiterun's) would be buried in its banks by a fixed drop. Deep water (Riften's lake) gets the full drop; shallow
+        // water gets 40% of its deepest point, never less than 3 units.
+        float lowest = h;
+        for (int gj = 0; gj <= N; gj++)
+            for (int gi = 0; gi <= N; gi++)
+                if (terrain.VertexAt(ws, cx * N + gi, cy * N + gj) is { } tv && tv < lowest) lowest = tv;
+        float drop = Math.Clamp(0.4f * (h - lowest), 3f, maxDrop);
         for (int j = 0; j < N; j++)
         {
             int start = -1;
@@ -99,7 +111,9 @@ public static class WaterCopies
                 // one rectangle for the run start..i-1 of row j
                 float x0 = start * TerrainHeights.Spacing, x1 = i * TerrainHeights.Spacing, y0 = j * TerrainHeights.Spacing, y1 = (j + 1) * TerrainHeights.Spacing;
                 int v = pos.Count;
-                pos.Add(new Vector3(x0, y0, h)); pos.Add(new Vector3(x1, y0, h)); pos.Add(new Vector3(x1, y1, h)); pos.Add(new Vector3(x0, y1, h));
+                // The plane sits a little below the water height: right at it, it flickers against the real water it overlaps.
+                float z = h - drop;
+                pos.Add(new Vector3(x0, y0, z)); pos.Add(new Vector3(x1, y0, z)); pos.Add(new Vector3(x1, y1, z)); pos.Add(new Vector3(x0, y1, z));
                 for (int k = 0; k < 4; k++)
                     uv.Add(new Vector2((ox + pos[v + k].X) * uvPerUnit, (oy + pos[v + k].Y) * uvPerUnit));
                 tris.AddRange([(ushort)v, (ushort)(v + 1), (ushort)(v + 2), (ushort)v, (ushort)(v + 2), (ushort)(v + 3)]);

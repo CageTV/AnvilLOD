@@ -43,6 +43,19 @@ public static class NativeGridObjects
         return rel.StartsWith("meshes\\", StringComparison.Ordinal) ? rel["meshes\\".Length..] : rel;
     }
 
+    /// <summary>
+    /// How far a LOD water plane is lowered below its placement, in game units (the SKSE plugin does the same for the planes it draws).
+    /// A plane at exactly the height of the real water flickers where they overlap; just below it the real water covers it.
+    /// </summary>
+    public const float WaterDrop = 28f;
+
+    /// <summary>A shader-only water plane (stream, creek, pond LOD mesh).</summary>
+    public static bool IsWaterPlane(string model)
+    {
+        var lower = model.ToLowerInvariant();
+        return lower.Contains("\\water\\") || lower.Contains("creek");
+    }
+
     /// <summary>The kind of an effect model, or None. Order matters: a candle fire is a candle, a lava stream is lava.</summary>
     public static Kinds KindOf(string lowerModel)
     {

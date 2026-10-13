@@ -681,6 +681,9 @@ namespace AnvilLOD
 		StripCollision(node);
 
 		node->local.translate = a_item.pos;
+		if (a_item.water) {
+			node->local.translate.z -= 28.0f;  // a plane at the height of the real water flickers; just below it the real water covers it where both are drawn
+		}
 		node->local.rotate = a_item.rot;
 		node->local.scale = a_item.scale;
 		root->AttachChild(node, true);
@@ -1009,15 +1012,26 @@ namespace AnvilLOD
 		// Show newly wanted ones, nearest first: when the cap is reached it is the farthest that are left out, never the ones next to the
 		// player (the list is in FormID order, so cutting it off in order dropped whole areas, the nearby water planes among them).
 		std::vector<std::pair<float, std::size_t>> wanted;
+		std::size_t glowInLists = 0, glowWanted = 0;
 		for (auto* list : lists) {
 			for (auto i : *list) {
 				auto& item = _items[i];
+				glowInLists += item.glow ? 1 : 0;
 				if (item.node || !WantShown(item, pos, pcx, pcy, half, playerWorld)) {
 					continue;
 				}
+				glowWanted += item.glow ? 1 : 0;
 				const float dx = item.pos.x - pos.x, dy = item.pos.y - pos.y;
 				wanted.emplace_back(dx * dx + dy * dy, i);
 			}
+		}
+		// With the verbose log: one line per cell change for the window glow, so a report of "no windows from inside a city" says where they were lost.
+		if (settings.verboseLog && _glowCount > 0 && (pcx != _glowLogCellX || pcy != _glowLogCellY || playerWorld != _glowLogWorld)) {
+			_glowLogCellX = pcx;
+			_glowLogCellY = pcy;
+			_glowLogWorld = playerWorld;
+			logger::info("Glow: world {:08X} cell {},{}: {} world lists, {} glow windows in them, {} wanted now (not yet drawn), {} drawn, glow {:.0f}%, {} objects shown of {} allowed",
+				playerWorld, pcx, pcy, lists.size(), glowInLists, glowWanted, _glowShown.load(), _glowFactor * 100.0f, _shown.size(), settings.maxShown);
 		}
 		std::ranges::sort(wanted);
 		for (const auto& [distance, i] : wanted) {
