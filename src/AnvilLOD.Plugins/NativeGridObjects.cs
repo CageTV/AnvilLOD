@@ -23,7 +23,7 @@ public static class NativeGridObjects
 
     /// <summary>Which kinds of grid object become real references. The first is the original set; the rest are the "effects" option.</summary>
     [Flags]
-    public enum Kinds { None = 0, Waterworks = 1, Fire = 2, Candle = 4, Torch = 8, Lava = 16, Stream = 32, Effects = Fire | Candle | Torch | Lava | Stream, All = Waterworks | Effects }
+    public enum Kinds { None = 0, Waterworks = 1, Fire = 2, Candle = 4, Torch = 8, Lava = 16, Stream = 32, Ships = 64, Effects = Fire | Candle | Torch | Lava | Stream, All = Waterworks | Effects | Ships }
 
     /// <param name="Near">DynDOLOD's "Near LOD" grid column: the SKSE plugin only enables it within the near grid distance of the player (fires, candles, streams).</param>
     public sealed record Pick(DynamicLodReference Source, string Model, bool Movable, bool Near = false, bool Effect = false);
@@ -39,7 +39,7 @@ public static class NativeGridObjects
         var r = d.Ref;
         var mesh = r.Meshes.Lod4 ?? r.Meshes.Lod8 ?? r.Meshes.Lod16 ?? r.Meshes.Lod32;
         if (string.IsNullOrEmpty(mesh)) return null;
-        var rel = GamePath.Normalize(mesh);
+        var rel = GamePath.Normalize(AnvilLOD.Core.Lod.ShipLodModels.StockMesh(mesh));
         return rel.StartsWith("meshes\\", StringComparison.Ordinal) ? rel["meshes\\".Length..] : rel;
     }
 
@@ -48,6 +48,9 @@ public static class NativeGridObjects
     /// A plane at exactly the height of the real water flickers where they overlap; just below it the real water covers it.
     /// </summary>
     public const float WaterDrop = 28f;
+
+    /// <summary>One of Animated Ships' sailing ships (the "Distant" models), relative to Data\meshes, lower case.</summary>
+    public static bool IsAnimatedShip(string lowerModel) => lowerModel.Contains("vicn\\animatedship\\distant\\", StringComparison.Ordinal);
 
     /// <summary>A shader-only water plane (stream, creek, pond LOD mesh).</summary>
     public static bool IsWaterPlane(string model)
@@ -83,6 +86,13 @@ public static class NativeGridObjects
             if (IsDynDolod(d.RefPlugin) || IsDynDolod(d.Ref.WinningPlugin)) continue;
             if (ModelOf(d) is not { } model) continue;
             var lower = model.ToLowerInvariant();
+            // Animated Ships' sailing ships: models that move themselves through a controller sequence, so a real (movable static) reference.
+            if (IsAnimatedShip(lower))
+            {
+                if ((kinds & Kinds.Ships) == 0) continue;
+                picks.Add(new Pick(d, model, true));
+                continue;
+            }
             bool waterfall = lower.Contains("waterfall");
             bool animated = lower.Contains("windmill") || lower.Contains("waterwheel") || lower.Contains("rotor");
             if (waterfall || animated)

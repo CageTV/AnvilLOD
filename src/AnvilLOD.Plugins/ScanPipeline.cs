@@ -43,7 +43,10 @@ public sealed record ScanRequest(
     string? CustomRulesFile = null,                // the user's own rule file: its rules come first (null = DynDOLOD's own files only)
     bool CleanOutput = true,                       // Generate empties the output folder first (only if it is AnvilLOD's own, see OutputFolder), so old files never mix with new ones
     float IceInset = LodInset.DefaultIce,          // units glacier/ice LOD (LOD4, LOD8) is pulled inside its own surface, so the full model wins the z-fight where both are drawn (0 = off)
-    float MountainInset = 0f);                     // the same for mountain LOD (off by default)
+    float MountainInset = 0f,                      // the same for mountain LOD (off by default)
+    bool OpaqueAlpha = true,                       // shapes without an alpha property use opaque copies of textures whose alpha channel isn't opacity (ship hulls), so the LOD shader doesn't cut holes
+    bool DetailedShips = true,
+    bool AnimatedShips = true);                    // with Animated Ships in the load order, its sailing ships are drawn beyond the loaded cells (real references in AnvilLOD.esp; needs native grid objects)                    // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -193,7 +196,8 @@ public static class ScanPipeline
             progress?.Report($"Rule files found in the Data root instead of Data\\DynDOLOD (used anyway): {string.Join(", ", misplaced)}");
         var rulesFolder = ResolveRulesFolder(req.DynDolodFolder);
         var plugins = game.LoadOrder.ListedOrder.Where(l => l.Mod is not null).Select(l => l.ModKey.ToString()).ToList();
-        var ruleOptions = new LodRuleOptions(req.Candles, req.FxGlow, string.IsNullOrWhiteSpace(req.CustomRulesFile) ? null : req.CustomRulesFile);
+        bool animatedShips = req.AnimatedShips && req.NativeGridObjects && req.Scan.GridObjects && plugins.Any(p => p.StartsWith("AnimatedShips", StringComparison.OrdinalIgnoreCase));
+        var ruleOptions = new LodRuleOptions(req.Candles, req.FxGlow, string.IsNullOrWhiteSpace(req.CustomRulesFile) ? null : req.CustomRulesFile, animatedShips);
         if (ruleOptions.CustomFile is not null && !File.Exists(ruleOptions.CustomFile))
             throw new FileNotFoundException($"The custom LOD rules file was not found: {ruleOptions.CustomFile}. Untick \"Use custom rules\" or pick the file again.", ruleOptions.CustomFile);
         if ((req.Candles || req.FxGlow) && rulesFolder is null)
@@ -212,7 +216,8 @@ public static class ScanPipeline
             var lookupFile = Path.Combine(Path.GetDirectoryName(rulesFolder)!, "Configs", "DynDOLOD_SSE_mesh_lookup.txt");
             if (File.Exists(lookupFile)) meshLookup = LodMeshResolver.ParseMeshLookup(File.ReadAllText(lookupFile));
         }
-        var resolver = new LodMeshResolver(lodIndex, rules, assets.Exists, meshLookup);
+        var ships = req.DetailedShips ? new ShipLodSource(assets) : null;
+        var resolver = new LodMeshResolver(lodIndex, rules, assets.Exists, meshLookup) { ModelUpgrade = ships is null ? null : ships.Upgrade, ModelFallback = ships is null ? null : ships.Fallback };
 
         // Walled cities: DynDOLOD's child world configs say which child worldspaces are copied into the parent's LOD.
         var childCopies = ChildWorldCopies.None;
@@ -344,7 +349,7 @@ public static class ScanPipeline
             if (light.Count > 0 || in3d.Count > 0)
                 bttTrees = allTrees.Where(t => !TreeCardSource.NeedsCards(t) && !in3d.Contains(t)).ToList();
         }
-        string? Fingerprint(string p) => grass?.Fingerprint(p) ?? cards?.Fingerprint(p) ?? tree3d?.Fingerprint(p) ?? assets.Fingerprint(p);
+        string? Fingerprint(string p) => grass?.Fingerprint(p) ?? cards?.Fingerprint(p) ?? tree3d?.Fingerprint(p) ?? ships?.Fingerprint(p) ?? assets.Fingerprint(p);
 
         var sw = Stopwatch.StartNew();
         var bucketer = new QuadBucketer(scan.Grids);
@@ -356,7 +361,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
@@ -400,8 +405,13 @@ public static class ScanPipeline
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f ? path => LodInset.For(path, req.IceInset, req.MountainInset) : null, TextureVariants = scan.TextureVariants };
+            var opaqueLod = req.OpaqueAlpha ? new OpaqueLodTextures(assets, OpaqueLodStage.IsTranslucent) : null;
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f) : null, TextureVariants = scan.TextureVariants };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
+            if (ships is not null && ships.Built() is { Count: > 0 } builtShips)
+                progress?.Report($"Detailed ships: {builtShips.Count} ship models drawn from their real models ("
+                                 + string.Join(", ", builtShips.Select(b => $"{Path.GetFileNameWithoutExtension(b.Model)} {b.Lod4:N0}/{b.Lod8:N0} triangles")) + " at LOD4/LOD8)"
+                                 + (ships.WithoutStockLod.Count > 0 ? $"; {ships.WithoutStockLod.Count} of them had no LOD at all and got one: " + string.Join(", ", ships.WithoutStockLod.Select(Path.GetFileNameWithoutExtension)) : ""));
             var tm = generator.Matching;
             if (scan.TextureVariants is not null && tm.Meshes > 0)
                 progress?.Report($"Texture matching: {tm.ShapesChanged:N0} of {tm.Shapes:N0} LOD shapes (in {tm.MeshesChanged:N0} of {tm.Meshes:N0} LOD meshes) now use the texture their full model has, snow, ice and other variants included;"
@@ -440,7 +450,8 @@ public static class ScanPipeline
             }
             // Grid objects the engine can animate itself become real references in AnvilLOD.esp; the SKSE plugin then leaves them out.
             var nativeKinds = (req.NativeGridObjects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Waterworks : 0)
-                              | (req.NativeEffects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Effects : 0);
+                              | (req.NativeEffects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Effects : 0)
+                              | (ruleOptions.AnimatedShips ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Ships : 0);
             var largeEsl = ResolveLargeEsl(req.EslRange, game.DataFolder, progress);
             // Other worldspaces than Tamriel and Solstheim (mod worlds, small worlds) get them too, unless they are children of another one.
             var childWorlds = UndersidePluginWriter.ChildWorldspaces(game);
@@ -451,6 +462,13 @@ public static class ScanPipeline
             if (natives.Any(p => otherWorlds.Contains(p.Source.Ref.Worldspace)))
                 progress?.Report("Native grid objects also written for: " + string.Join(", ", natives.Where(p => otherWorlds.Contains(p.Source.Ref.Worldspace))
                     .GroupBy(p => p.Source.Ref.Worldspace, StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Select(g => $"{g.Key} ({g.Count():N0})")));
+            if (ruleOptions.AnimatedShips)
+            {
+                var sailing = natives.Where(p => NativeGridObjects.IsAnimatedShip(p.Model.ToLowerInvariant())).ToList();
+                progress?.Report(sailing.Count > 0
+                    ? $"Animated Ships: {sailing.Count:N0} sailing ship references ({sailing.Select(p => p.Model).Distinct(StringComparer.OrdinalIgnoreCase).Count()} models) are real references in AnvilLOD.esp; the SKSE plugin enables them with the mod's own schedule"
+                    : "Animated Ships is in the load order, but none of its sailing ships were found to draw (is the plugin active?)");
+            }
             var nativeSources = natives.Select(p => p.Source).ToHashSet();
             // Left out of AnvilLOD.dyn entirely: the engine draws the real references in the walled cities too (tested at Whiterun: they are
             // there and they turn), so a model drawn by the plugin as well showed up as a second, motionless fan.
@@ -535,6 +553,23 @@ public static class ScanPipeline
                 }
             }
             else PbrLodStage.RemoveAll(output);
+
+            if (opaqueLod is not null)
+            {
+                try
+                {
+                    var o = OpaqueLodStage.Run(assets, opaqueLod, output, progress, ct);
+                    progress?.Report(plan.Rebuild.Count == 0
+                        ? "Opaque LOD textures: no blocks were rebuilt, so the existing ones are kept."
+                        : $"Opaque LOD textures: {o.Written + o.Unchanged} textures whose alpha channel isn't opacity point at opaque copies ({o.Written} written, {o.Unchanged} unchanged) in {o.Elapsed.TotalSeconds:F1}s");
+                    if (o.Failed > 0) Warn($"Opaque LOD textures: {o.Failed} could not be written (first: {o.Errors.FirstOrDefault()}).");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"Opaque LOD textures failed: {ex.Message}");
+                }
+            }
+            else OpaqueLodStage.RemoveAll(output);
 
             if (req.LargeReferences)
             {

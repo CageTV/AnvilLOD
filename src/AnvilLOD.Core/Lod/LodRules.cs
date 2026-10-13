@@ -83,7 +83,7 @@ public enum LodPreset { Low, Medium, High }
 /// <param name="FxGlow">Also load the FXGlow rules (<c>DynDOLOD_SSE_fxglow_low/_medium/_high.ini</c>): the glow cards of fires and lights get Far LOD.</param>
 /// <param name="CustomFile">A rule file of the user's own (a DynDOLOD rule file, or one saved by AnvilLOD's rule editor). Its rules come
 /// before every other rule, so they win; its catch-all rule (mask <c>\</c>) replaces the preset's. Null: only DynDOLOD's own files.</param>
-public sealed record LodRuleOptions(bool Candles = false, bool FxGlow = false, string? CustomFile = null);
+public sealed record LodRuleOptions(bool Candles = false, bool FxGlow = false, string? CustomFile = null, bool AnimatedShips = false);
 
 /// <summary>
 /// Reads DynDOLOD mesh-mask / reference rule files (<c>DynDOLOD_SSE_*.ini</c>), so the rules that
@@ -198,10 +198,24 @@ public sealed class LodRules
             rules.AddFile(name, File.ReadAllText(options.CustomFile));
             files.Add(name);
         }
+        // Animated Ships: its sailing ships ("Distant" models) are drawn beyond the loaded cells as real references. DynDOLOD's own rule for the
+        // mod leaves them out of LOD, so this comes before it (but after the user's own file).
+        if (options.AnimatedShips)
+        {
+            const string animatedName = "AnvilLOD: Animated Ships";
+            rules.AddFile(animatedName, AnimatedShipsRules);
+            files.Add(animatedName);
+        }
         foreach (var f in ordered) { rules.AddFile(f, available[f](), pluginOf.GetValueOrDefault(f)); files.Add(f); }
         rules.Files = files;
         return rules;
     }
+
+    /// <summary>Animated Ships (Vicn): the sailing ships under ...\animatedship\distant\ are Far LOD grid objects; the mod's own LOD stand-ins under ...\distant\lod\ stay out.</summary>
+    public const string AnimatedShipsRules =
+        "[Skyrim LODGen]\n" +
+        "LODGen1=vicn\\animatedship\\distant\\lod\\,,,,,Unchanged,0\n" +
+        "LODGen2=vicn\\animatedship\\distant\\,,,,Far LOD,Unchanged,0\n";
 
     /// <summary>The folder with DynDOLOD's rule files (<c>DynDOLOD_SSE_*.ini</c>) inside a DynDOLOD install folder, or null.</summary>
     public static string? FindInstallRulesFolder(string? dyndolod)

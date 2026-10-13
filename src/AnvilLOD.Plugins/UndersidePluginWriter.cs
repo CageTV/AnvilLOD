@@ -205,7 +205,9 @@ public static class UndersidePluginWriter
                 {
                     var stem = System.IO.Path.GetFileNameWithoutExtension(n.Model.Replace('\\', '/'));
                     var edid = $"AnvilLOD_{stem}_Base{(n.Movable ? "M" : "S")}";
-                    var bounds = (new P3Int16(-2048, -2048, -2048), new P3Int16(2048, 2048, 2048));
+                    // A sailing ship's model travels far from its placement: its bounds must cover the whole route or it is culled when the origin is off screen.
+                    short half = NativeGridObjects.IsAnimatedShip(n.Model.ToLowerInvariant()) ? (short)24000 : (short)2048;
+                    var bounds = (new P3Int16((short)-half, (short)-half, (short)-half), new P3Int16(half, half, half));
                     if (n.Movable)
                     {
                         var m = new MoveableStatic(esp) { EditorID = edid, MajorRecordFlagsRaw = FlagNotPlayable };

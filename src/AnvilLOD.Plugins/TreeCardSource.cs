@@ -130,4 +130,6 @@ public sealed class CompositeSyntheticSource(params ISyntheticMeshSource?[] sour
     public bool Owns(string path) => _sources.Any(s => s.Owns(path));
 
     public LodMesh? Build(string path) => _sources.FirstOrDefault(s => s.Owns(path))?.Build(path);
+
+    public bool MapTextures(string path) => _sources.FirstOrDefault(s => s.Owns(path))?.MapTextures(path) ?? false;
 }

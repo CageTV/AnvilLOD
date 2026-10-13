@@ -48,6 +48,18 @@ public sealed class LodMeshResolver
 
     public bool HasFormIdRule(string formIdKey) => _rules.HasFormIdRule(formIdKey);
 
+    /// <summary>
+    /// Replaces the LOD meshes chosen for a model (full model path, the set the rules and MNAM gave) with others, or returns the set
+    /// as it is. Used to draw whole ships from their real models.
+    /// </summary>
+    public Func<string, LodMeshSet, LodMeshSet>? ModelUpgrade { get; init; }
+
+    /// <summary>
+    /// LOD meshes for a model that has none anywhere (no MNAM, no file by name): the full model's path and whether the rules want LOD for it
+    /// in, a set out, or null. The callback decides whether to override a rule that leaves the model out.
+    /// </summary>
+    public Func<string, bool, LodMeshSet?>? ModelFallback { get; init; }
+
     public LodRules Rules => _rules;
     public LodMeshIndex Index => _index;
 
@@ -84,8 +96,14 @@ public sealed class LodMeshResolver
         };
 
         var set = new LodMeshSet(Pick(rule.Lod4), Pick(rule.Lod8), Pick(rule.Lod16), Pick(rule.Lod32));
+        if (ModelUpgrade is not null && set.HasAny) set = ModelUpgrade(fullModelPath, set);
+        else if (ModelFallback is not null && !set.HasAny && !rule.IsGridObject && ModelFallback(fullModelPath, WantsLod(rule)) is { HasAny: true } made) set = made;
         return new Resolution(set, rule, usedNamed, usedMnam);
     }
+
+    /// <summary>The rule asks for a LOD mesh at some level (as opposed to leaving the object out of LOD).</summary>
+    private static bool WantsLod(LodRule r) =>
+        r.Lod4.Kind == LodChoiceKind.Level || r.Lod8.Kind == LodChoiceKind.Level || r.Lod16.Kind == LodChoiceKind.Level || r.Lod32.Kind == LodChoiceKind.Level;
 
     /// <summary>
     /// Mesh for a grid object: DynDOLOD's dynamic LOD mesh (<c>meshes\dyndolod\lod\&lt;model path&gt;_dyndolod_lod.nif</c>,

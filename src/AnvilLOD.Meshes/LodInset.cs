@@ -13,6 +13,9 @@ public static class LodInset
     /// <summary>Default inset in game units for glacier and ice LOD.</summary>
     public const float DefaultIce = 6f;
 
+    /// <summary>Default inset in game units for ship LOD built from the real models: the simplified deck must never poke through the real, bumpier one.</summary>
+    public const float DefaultShip = 3f;
+
     /// <summary>Only the levels that overlap loaded cells need it; LOD16/32 are never drawn over a full model.</summary>
     public const int MaxLevel = 8;
 
@@ -20,9 +23,10 @@ public static class LodInset
     private const float DownFacing = -0.3f;
 
     /// <summary>The inset in units for a mesh path (0 = none): <paramref name="ice"/> for glacier/ice LOD, <paramref name="mountains"/> for mountain LOD.</summary>
-    public static float For(string meshPath, float ice, float mountains)
+    public static float For(string meshPath, float ice, float mountains, float ships = 0f)
     {
-        if (ice <= 0f && mountains <= 0f) return 0f;
+        if (ice <= 0f && mountains <= 0f && ships <= 0f) return 0f;
+        if (ships > 0f && meshPath.StartsWith(AnvilLOD.Core.Lod.ShipLodModels.Prefix, StringComparison.Ordinal)) return ships;
         var p = meshPath.Replace('\\', '/').ToLowerInvariant();
         if (ice > 0f && (p.Contains("/lod/ice/") || p.Contains("/lod/glaciers/") || p.Contains("/lod/icecastle/") || p.StartsWith("lod/ice/", StringComparison.Ordinal)))
             return ice;

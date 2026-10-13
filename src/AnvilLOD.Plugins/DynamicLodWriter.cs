@@ -50,6 +50,7 @@ public static class DynamicLodWriter
             var r = d.Ref;
             var mesh = r.Meshes.Lod4 ?? r.Meshes.Lod8 ?? r.Meshes.Lod16 ?? r.Meshes.Lod32;
             if (string.IsNullOrEmpty(mesh)) continue;
+            mesh = AnvilLOD.Core.Lod.ShipLodModels.StockMesh(mesh);
             var rel = GamePath.Normalize(mesh);
             if (rel.StartsWith("meshes\\", StringComparison.Ordinal)) rel = rel["meshes\\".Length..];
             if (meshMap is not null && meshMap.TryGetValue(rel, out var replacement)) rel = replacement;

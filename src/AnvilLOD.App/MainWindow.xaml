@@ -411,6 +411,10 @@
                             <ComboBoxItem Content="100% (default)" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
+<CheckBox x:Name="DetailedShipsCheck" Content="Detailed ships (made from the real ship models)" IsChecked="True" Margin="0,4,0,6"
+                                  ToolTip="Moored ships are drawn in object LOD from simplified copies of their real models (a longboat gets about 2,800 triangles at LOD4 instead of the stock 250), made on your machine from the models you have installed, so ship replacers are followed. Changing it rebuilds the blocks that contain ships." />
+<CheckBox x:Name="AnimatedShipsCheck" Content="Animated Ships: draw the sailing ships in the distance" IsChecked="True" Margin="0,0,0,6"
+                                  ToolTip="With the Animated Ships mod (Vicn) in your load order, its sailing ships are drawn beyond the loaded cells as real references in AnvilLOD.esp, moving and appearing on the mod's own schedule (the SKSE plugin switches them with the originals). Needs the native waterfalls and windmills option. Does nothing when the mod is not installed." />
 <TextBlock Text="Glacier and ice LOD inset (stops flicker where LOD and the full model overlap)" Margin="0,2,0,2" />
 <ComboBox x:Name="IceInsetBox" SelectedIndex="3" Margin="0,0,0,6"
                                   ToolTip="Pulls glacier and ice LOD (LOD4 and LOD8) this far inside its own surface, so the full model is always the nearer one where both are drawn during the transition. Ice replacers ship LOD that is a decimated copy of the full model, so the two surfaces cross and flicker. Raise it if you still see flicker, lower it if distant ice looks sunken. Changing it rebuilds the affected blocks.">

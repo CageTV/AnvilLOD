@@ -12,6 +12,9 @@ public interface ISyntheticMeshSource
 {
     bool Owns(string path);
     LodMesh? Build(string path);
+
+    /// <summary>True for meshes made from real models, whose textures should go through the PBR and opaque-alpha mapping like any LOD mesh's.</summary>
+    bool MapTextures(string path) => false;
 }
 
 public sealed record GenerateStats(
@@ -42,6 +45,9 @@ public sealed class LodGenerator
 
     /// <summary>When set, textures that the full models replace with PBR ones are swapped for matching LOD textures.</summary>
     public PbrLodTextures? Pbr { get; init; }
+
+    /// <summary>When set, shapes without an alpha property whose diffuse texture has a translucent alpha channel point at an opaque copy.</summary>
+    public OpaqueLodTextures? Opaque { get; init; }
 
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
@@ -90,10 +96,26 @@ public sealed class LodGenerator
 
         if (_synthetic is not null && _synthetic.Owns(path))
         {
+            if (_synthetic.MapTextures(path))
+                return _meshes.GetOrAdd(path, p => new Lazy<LodMesh?>(() => BuildMapped(p), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
             try { return _synthetic.Build(path); }
             catch (Exception ex) { _meshErrors[path] = ex.Message; return null; }
         }
         return _meshes.GetOrAdd(path, p => new Lazy<LodMesh?>(() => Load(p), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+    }
+
+    /// <summary>A synthetic mesh made from a real model, with the textures mapped the way a LOD mesh's are.</summary>
+    private LodMesh? BuildMapped(string path)
+    {
+        try
+        {
+            var mesh = _synthetic!.Build(path);
+            if (mesh is null) { _meshErrors[path] = "could not be built"; return null; }
+            if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
+            if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);
+            return mesh;
+        }
+        catch (Exception ex) { _meshErrors[path] = ex.Message; return null; }
     }
 
     private LodMesh? Load(string path)
@@ -115,6 +137,7 @@ public sealed class LodGenerator
             }
             var mesh = NifGeometryReader.Read(path, bytes);
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
+            if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);
             if (mesh.Parts.Count == 0 && !mesh.NoShapesInFile)
                 _meshErrors[path] = mesh.Warnings.Count > 0 ? string.Join("; ", mesh.Warnings.Distinct()) : "no usable shapes";
             return mesh;
@@ -171,6 +194,8 @@ public sealed class LodGenerator
                         if (!string.IsNullOrWhiteSpace(normal) && Pbr.MapNormal(diffuse, normal) is { } mappedNormal) normal = mappedNormal;
                         diffuse = mapped;
                     }
+                    // A shape without an alpha property is drawn opaque-or-holey by its texture's alpha: same opaque copy the LOD mesh got.
+                    if (!m.HasAlpha && !string.IsNullOrWhiteSpace(diffuse) && Opaque?.MapDiffuse(diffuse) is { } opaque) diffuse = opaque;
                     if (!string.IsNullOrWhiteSpace(diffuse) && !SamePath(diffuse, m.Textures[0]))
                     {
                         var tex = m.Textures.ToList();
@@ -250,6 +275,33 @@ public sealed class LodGenerator
         var name = Path.GetFileNameWithoutExtension(t);
         if (name.EndsWith("_n", StringComparison.Ordinal)) name = name[..^2];
         return name.EndsWith("lod", StringComparison.Ordinal) || name.Contains("_lod", StringComparison.Ordinal);
+    }
+
+    private static LodMesh ApplyOpaque(LodMesh mesh, OpaqueLodTextures opaque)
+    {
+        var cache = new Dictionary<string, LodMaterial>(StringComparer.Ordinal);
+        var parts = new List<LodMeshPart>(mesh.Parts.Count);
+        foreach (var p in mesh.Parts)
+        {
+            var m = p.Material;
+            if (!cache.TryGetValue(m.Key, out var swapped))
+            {
+                swapped = m;
+                if (!m.HasAlpha && m.Textures.Count > 0 && opaque.MapDiffuse(m.Textures[0]) is { } diffuse)
+                {
+                    var tex = m.Textures.ToList();
+                    tex[0] = diffuse;
+                    swapped = m with { Textures = tex };
+                }
+                cache[m.Key] = swapped;
+            }
+            parts.Add(ReferenceEquals(swapped, m) ? p : new LodMeshPart
+            {
+                Name = p.Name, Material = swapped, Positions = p.Positions, UVs = p.UVs, Normals = p.Normals,
+                Tangents = p.Tangents, Bitangents = p.Bitangents, Colors = p.Colors, Triangles = p.Triangles,
+            });
+        }
+        return new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings, NoShapesInFile = mesh.NoShapesInFile };
     }
 
     private static LodMesh ApplyPbr(LodMesh mesh, PbrLodTextures pbr)
