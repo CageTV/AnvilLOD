@@ -39,6 +39,22 @@ public class WaterStandInTests
         Assert.Equal(0x9E, (int)(NifGeometryReader.FakeWaterColor >> 24));
     }
 
+    [Fact]
+    public void A_rivers_flow_direction_follows_the_channel_toward_the_lower_neighbouring_water()
+    {
+        var strip = new List<(float X0, float X1, float Y0, float Y1)>();
+        for (int j = 0; j < 32; j++) strip.Add((1920f, 2176f, j * 128f, (j + 1) * 128f));   // a channel running north-south
+        var cells = new Dictionary<(string Ws, int X, int Y), float> { [("Tamriel", 5, 5)] = -4000f, [("Tamriel", 5, 6)] = -4100f };
+        var north = AnvilLOD.Plugins.WaterCopies.FlowDirection(null!, cells, "Tamriel", 5, 5, -4000f, strip);
+        Assert.NotNull(north);
+        Assert.True(north!.Value.Y > 0.95f && Math.Abs(north.Value.X) < 0.1f);          // the lower neighbour is to the north (+Y)
+        var cells2 = new Dictionary<(string Ws, int X, int Y), float> { [("Tamriel", 5, 5)] = -4000f, [("Tamriel", 5, 4)] = -4100f };
+        var south = AnvilLOD.Plugins.WaterCopies.FlowDirection(null!, cells2, "Tamriel", 5, 5, -4000f, strip);
+        Assert.True(south!.Value.Y < -0.95f);                                           // ... or to the south
+        var pond = new List<(float X0, float X1, float Y0, float Y1)> { (1000f, 3000f, 1000f, 1128f), (1000f, 3000f, 1128f, 1256f), (1000f, 3000f, 1256f, 1384f), (1000f, 3000f, 1384f, 3000f) };
+        Assert.Null(AnvilLOD.Plugins.WaterCopies.FlowDirection(null!, cells, "Tamriel", 5, 5, -4000f, pond));   // roundish: no direction
+    }
+
     private sealed class MemoryAssets(Dictionary<string, byte[]> files) : IAssetSource
     {
         public bool Exists(string p) => files.ContainsKey(p);

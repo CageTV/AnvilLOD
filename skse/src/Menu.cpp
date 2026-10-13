@@ -238,6 +238,9 @@ namespace AnvilLOD::Menu
 			Smf::TextDisabled("    Waterfall flow and windmill blades. Takes effect for objects drawn after the change (use Redraw now).");
 			int fps = static_cast<int>(s.animationFps);
 			if (Smf::SliderInt("Animation ticks per second", &fps, 5, 60)) s.animationFps = static_cast<std::uint32_t>(fps);
+			Smf::Checkbox("Animate the water around the walled cities", &s.animateWater);
+			Smf::TextDisabled("    Slowly scrolls the water texture of the river and pond water drawn around Whiterun, Windhelm, Solitude and Riften.");
+			Smf::SliderFloat("Water flow speed", &s.waterScrollSpeed, 0.0f, 0.1f, "%.3f");
 			Smf::Separator();
 			if (Smf::Button("Redraw now")) {
 				c.Refresh();

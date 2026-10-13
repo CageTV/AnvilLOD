@@ -64,6 +64,7 @@ namespace AnvilLOD
 			bool                           glow{ false };       // a window glow mesh: its emissive multiple follows the hour
 			bool                           standIn{ false };    // a parent-worldspace stand-in for a real object of the city worldspace
 			bool                           nativeBacked{ false };  // a real reference in AnvilLOD.esp draws it in its own worldspace
+			std::vector<RE::BSShaderProperty*> scrollProps;  // water copies: the shader properties whose texture offset is scrolled
 			std::vector<std::pair<RE::BSLightingShaderProperty*, float>> glowProps;  // shader properties of the drawn clone and their own emissive multiple
 			RE::NiPointer<RE::NiAVObject>  node;
 			std::vector<RE::NiTimeController*> controllers;  // owned by node's tree; valid while node is held
@@ -76,6 +77,8 @@ namespace AnvilLOD
 		void UpdateNative();
 		void PrepareGlow(Item& a_item);
 		void ApplyGlow();
+		void PrepareScroll(Item& a_item);
+		void ScrollWater();
 		void Update();
 		void Animate();
 		float Seconds() const;
@@ -119,6 +122,8 @@ namespace AnvilLOD
 		std::atomic<bool>                                           _running{ false };
 		bool                                                        _capWarned{ false };
 		std::atomic<bool>                                           _animQueued{ false };
+		std::atomic<bool>                                           _waterQueued{ false };
+		std::atomic<std::size_t>                                    _waterShown{ 0 };  // water copies drawn now (their texture scrolls)
 		std::atomic<bool>                                           _refresh{ false };
 		std::chrono::steady_clock::time_point                       _holdUntil{};
 		std::size_t                                                 _gridCount{ 0 };

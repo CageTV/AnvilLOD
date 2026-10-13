@@ -26,13 +26,13 @@ public static class WaterCopies
         var copies = new List<ParentCopy>();
         var done = new HashSet<(string, int, int)>();
         int runsTotal = 0;
-        var depthLog = new List<string> { "child,parent,x,y,waterHeight,lowestTerrain,depth,bankSlope,maxDrop,drop" };
+        var depthLog = new List<string> { "child,parent,x,y,waterHeight,lowestTerrain,depth,bankSlope,maxDrop,drop,flowX,flowY" };
         float uvPerUnit = UvPerUnit(template);
         // The stream stand-ins are tinted dark olive (0x2A3433, alpha 0xAF); the terrain LOD water this replaces is blue, so a
         // wider river / pond gets a blue tint over the same ripple texture and blending (R,G,B,A packed little-endian).
         // It was 0xC0806240, then 0xAD51493C (darker, less blue, 10% more transparent). From the air that read grey (about 105,110,110
-        // against Markarth's real water, about 59,86,93 at the same distance), so it is pulled toward that teal: R x0.57, G x0.80, B x0.88.
-        const uint color = 0xAD473A22u;
+        // against Markarth's real water, about 59,86,93 at the same distance), so it is pulled toward that teal: R x0.57, G x0.80, B x0.88. Opacity 0xAD -> 0x80 (50%): the sheet still read solid next to real water.
+        const uint color = 0x80473A22u;
         const bool colors = true;
 
         foreach (var region in regions)
@@ -49,10 +49,10 @@ public static class WaterCopies
                     // parent's water (Whiterun, Windhelm, Solitude) has none to overlap, and lowering the plane there only moves the
                     // shoreline inland and buries a shallow river (tested in game: Whiterun reads right at 3 units, Riften needs 28).
                     float maxDrop = region.UsesParentWater ? 3f : NativeGridObjects.WaterDrop;
-                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, maxDrop, out int runs, out float lowest, out float bankSlope, out float drop);
+                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, maxDrop, waterCells, out int runs, out float lowest, out float bankSlope, out float drop, out Vector2? flow);
                     if (part is null) { done.Remove((ws.ToLowerInvariant(), x, y)); continue; }
                     runsTotal += runs;
-                    depthLog.Add(FormattableString.Invariant($"{region.ChildWorldspace},{ws},{x},{y},{h:F1},{lowest:F1},{h - lowest:F1},{bankSlope:F3},{maxDrop:F0},{drop:F1}"));
+                    depthLog.Add(FormattableString.Invariant($"{region.ChildWorldspace},{ws},{x},{y},{h:F1},{lowest:F1},{h - lowest:F1},{bankSlope:F3},{maxDrop:F0},{drop:F1},{(flow?.X ?? 0f):F2},{(flow?.Y ?? 0f):F2}"));
                     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
                     File.WriteAllBytes(full, LodNifWriter.Write($"water_{x}_{y}", [part], "AnvilLOD water copy"));
                 }
@@ -88,8 +88,72 @@ public static class WaterCopies
         return 1f / 2048f;
     }
 
+    /// <summary>
+    /// Which way a river flows through a water cell, as a unit vector in world axes, or null where there is no clear channel (a pond).
+    /// The channel axis is the principal axis of the wet strips. Its sign is where the water goes down: toward the neighbouring water cells
+    /// with a lower water height (a river's water steps down cell by cell), and where those do not say, toward the lower river bed.
+    /// </summary>
+    internal static Vector2? FlowDirection(TerrainHeights terrain, IReadOnlyDictionary<(string Ws, int X, int Y), float> waterCells,
+        string ws, int cx, int cy, float h, IReadOnlyList<(float X0, float X1, float Y0, float Y1)> rects)
+    {
+        if (rects.Count == 0) return null;
+        double wsum = 0, mx = 0, my = 0;
+        foreach (var r in rects) { double w = r.X1 - r.X0; wsum += w; mx += w * (r.X0 + r.X1) / 2; my += w * (r.Y0 + r.Y1) / 2; }
+        mx /= wsum; my /= wsum;
+        double sxx = 0, sxy = 0, syy = 0;
+        foreach (var r in rects)
+        {
+            double w = r.X1 - r.X0, dx = (r.X0 + r.X1) / 2 - mx, dy = (r.Y0 + r.Y1) / 2 - my;
+            sxx += w * dx * dx; sxy += w * dx * dy; syy += w * dy * dy;
+            // a long run is a strip: spread its length too
+            sxx += w * w * w / 12;
+        }
+        double tr = sxx + syy, det = sxx * syy - sxy * sxy, disc = Math.Sqrt(Math.Max(0, tr * tr / 4 - det));
+        double l1 = tr / 2 + disc, l2 = tr / 2 - disc;
+        if (l1 <= 1e-6 || l1 < 2.5 * Math.Max(l2, 1e-6)) return null;   // roundish: a pond, no direction
+        double ax = sxy, ay = l1 - sxx;
+        if (Math.Abs(ax) + Math.Abs(ay) < 1e-9) { ax = 1; ay = 0; }
+        double len = Math.Sqrt(ax * ax + ay * ay); ax /= len; ay /= len;
+
+        // sign: toward the neighbouring water cells that are lower
+        double fx = 0, fy = 0;
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                if (!waterCells.TryGetValue((ws, cx + dx, cy + dy), out var hn)) continue;
+                double l = Math.Sqrt(dx * dx + dy * dy);
+                fx += (h - hn) * dx / l; fy += (h - hn) * dy / l;
+            }
+        double fl = Math.Sqrt(fx * fx + fy * fy), along = ax * fx + ay * fy;
+        double sign = 0;
+        if (fl > 1e-3 && Math.Abs(along) / fl > 0.3) sign = Math.Sign(along);
+        if (sign == 0)
+        {
+            // toward the lower river bed: terrain height against the position along the axis, over the wet quads
+            const int N = TerrainHeights.Grid - 1;
+            double sp = 0, sh = 0, sph = 0, spp = 0; int n = 0;
+            foreach (var r in rects)
+            {
+                int gi = (int)(r.X0 / TerrainHeights.Spacing), gj = (int)(r.Y0 / TerrainHeights.Spacing);
+                int gi1 = (int)(r.X1 / TerrainHeights.Spacing);
+                for (int i = gi; i < gi1; i++)
+                    if (terrain.VertexAt(ws, cx * N + i, cy * N + gj) is { } t)
+                    {
+                        double p = ((i + 0.5) * TerrainHeights.Spacing - mx) * ax + ((gj + 0.5) * TerrainHeights.Spacing - my) * ay;
+                        sp += p; sh += t; sph += p * t; spp += p * p; n++;
+                    }
+            }
+            if (n < 4) return null;
+            double cov = sph / n - (sp / n) * (sh / n);
+            if (Math.Abs(cov) < 1e-3) return null;
+            sign = cov < 0 ? 1 : -1;   // height falls with the position: flow goes that way
+        }
+        return new Vector2((float)(ax * sign), (float)(ay * sign));
+    }
+
     private static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
-        float uvPerUnit, bool colors, uint color, float maxDrop, out int runs, out float lowest, out float bankSlope, out float drop)
+        float uvPerUnit, bool colors, uint color, float maxDrop, IReadOnlyDictionary<(string Ws, int X, int Y), float> waterCells, out int runs, out float lowest, out float bankSlope, out float drop, out Vector2? flow)
     {
         const int N = TerrainHeights.Grid - 1;   // 32 quads per side
         var pos = new List<Vector3>();
@@ -120,6 +184,8 @@ public static class WaterCopies
             }
         slopes.Sort();
         bankSlope = slopes.Count == 0 ? -1f : slopes[slopes.Count / 2];
+        // The wet runs first (one rectangle per run of wet quads in a row), so the flow direction can be found before the UVs are made.
+        var rects = new List<(float X0, float X1, float Y0, float Y1)>();
         for (int j = 0; j < N; j++)
         {
             int start = -1;
@@ -135,18 +201,28 @@ public static class WaterCopies
                 }
                 if (wet) { if (start < 0) start = i; continue; }
                 if (start < 0) continue;
-                // one rectangle for the run start..i-1 of row j
-                float x0 = start * TerrainHeights.Spacing, x1 = i * TerrainHeights.Spacing, y0 = j * TerrainHeights.Spacing, y1 = (j + 1) * TerrainHeights.Spacing;
-                int v = pos.Count;
-                // The plane sits a little below the water height: right at it, it flickers against the real water it overlaps.
-                float z = h - drop;
-                pos.Add(new Vector3(x0, y0, z)); pos.Add(new Vector3(x1, y0, z)); pos.Add(new Vector3(x1, y1, z)); pos.Add(new Vector3(x0, y1, z));
-                for (int k = 0; k < 4; k++)
-                    uv.Add(new Vector2((ox + pos[v + k].X) * uvPerUnit, (oy + pos[v + k].Y) * uvPerUnit));
-                tris.AddRange([(ushort)v, (ushort)(v + 1), (ushort)(v + 2), (ushort)v, (ushort)(v + 2), (ushort)(v + 3)]);
-                runs++;
+                rects.Add((start * TerrainHeights.Spacing, i * TerrainHeights.Spacing, j * TerrainHeights.Spacing, (j + 1) * TerrainHeights.Spacing));
                 start = -1;
             }
+        }
+        flow = FlowDirection(terrain, waterCells, ws, cx, cy, h, rects);
+        // The texture's U axis runs downstream (so the SKSE plugin's scroll, along U, makes the water flow the right way); where there is no
+        // clear channel (a pond) U is east, as before.
+        var fu = flow ?? Vector2.UnitX;
+        var fv = new Vector2(-fu.Y, fu.X);
+        foreach (var (x0, x1, y0, y1) in rects)
+        {
+            int v = pos.Count;
+            // The plane sits a little below the water height: right at it, it flickers against the real water it overlaps.
+            float z = h - drop;
+            pos.Add(new Vector3(x0, y0, z)); pos.Add(new Vector3(x1, y0, z)); pos.Add(new Vector3(x1, y1, z)); pos.Add(new Vector3(x0, y1, z));
+            for (int k = 0; k < 4; k++)
+            {
+                var world = new Vector2(ox + pos[v + k].X, oy + pos[v + k].Y);
+                uv.Add(new Vector2(Vector2.Dot(world, fu) * uvPerUnit, Vector2.Dot(world, fv) * uvPerUnit));
+            }
+            tris.AddRange([(ushort)v, (ushort)(v + 1), (ushort)(v + 2), (ushort)v, (ushort)(v + 2), (ushort)(v + 3)]);
+            runs++;
         }
         if (pos.Count == 0) return null;
         int n = pos.Count;

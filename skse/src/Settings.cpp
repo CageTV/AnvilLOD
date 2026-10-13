@@ -81,6 +81,10 @@ namespace AnvilLOD
 					animate = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "iAnimationFps")) {
 					animationFps = std::min<std::uint32_t>(120, static_cast<std::uint32_t>(std::stoul(value)));
+				} else if (EqualsNoCase(key, "bAnimateWater")) {
+					animateWater = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "fWaterScrollSpeed")) {
+					waterScrollSpeed = std::clamp(std::stof(value), 0.0f, 0.5f);
 				} else if (EqualsNoCase(key, "bUndersides")) {
 					undersides = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bGlowWindows")) {
@@ -128,6 +132,8 @@ namespace AnvilLOD
 			{ "bTickManagers", tickManagers ? "1" : "0" },
 			{ "bDriveSequences", driveSequences ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
+			{ "bAnimateWater", animateWater ? "1" : "0" },
+			{ "fWaterScrollSpeed", std::format("{:.3f}", waterScrollSpeed) },
 			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bGlowWindows", glowWindows ? "1" : "0" },
 			{ "fGlowIntensity", std::format("{:.2f}", glowIntensity) },

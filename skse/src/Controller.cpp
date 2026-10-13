@@ -467,11 +467,32 @@ namespace AnvilLOD
 				}
 			}).detach();
 		}
+
+		// The water around the walled cities (copies): their texture scrolls, ~15 times a second, on the main thread.
+		if (_copyCount > 0) {
+			std::thread([this] {
+				for (;;) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(66));
+					if (!Settings::Get().animateWater || _waterShown == 0) {
+						continue;
+					}
+					if (_waterQueued.exchange(true)) {
+						continue;
+					}
+					SKSE::GetTaskInterface()->AddTask([this] {
+						ScrollWater();
+						_waterQueued = false;
+					});
+				}
+			}).detach();
+		}
 	}
 
 	void Controller::Reset()
 	{
+		_waterShown = 0;
 		for (auto i : _shown) {
+			_items[i].scrollProps.clear();
 			_items[i].controllers.clear();
 			_items[i].node.reset();
 		}
@@ -733,6 +754,9 @@ namespace AnvilLOD
 		if (a_item.glow) {
 			PrepareGlow(a_item);
 		}
+		if (a_item.copy && Settings::Get().animateWater) {
+			PrepareScroll(a_item);
+		}
 
 		RE::NiUpdateData update{ animate ? Seconds() : 0.0f, RE::NiUpdateData::Flag::kNone };
 		node->Update(update);
@@ -804,6 +828,46 @@ namespace AnvilLOD
 		const float scale = _glowFactor * Settings::Get().glowIntensity;
 		for (auto& [prop, base] : a_item.glowProps) {
 			prop->emissiveMult = base * scale;
+		}
+	}
+
+	/// The water copies are plain lit sheets: scrolling their material's texture offset (the same for every sheet, so neighbours line up)
+	/// is the only animation they get, since the engine never updates the controllers of a model a plugin attaches.
+	void Controller::PrepareScroll(Item& a_item)
+	{
+		a_item.scrollProps.clear();
+		std::string path = _meshes[a_item.mesh];
+		std::ranges::transform(path, path.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		if (path.find("watercopy") == std::string::npos) {
+			return;
+		}
+		std::vector<RE::BSLightingShaderProperty*> props;
+		CollectLightingProperties(a_item.node.get(), props);
+		for (auto* prop : props) {
+			if (prop && prop->material) {
+				a_item.scrollProps.push_back(prop);
+			}
+		}
+		if (!a_item.scrollProps.empty()) {
+			++_waterShown;
+		}
+	}
+
+	void Controller::ScrollWater()
+	{
+		const auto& s = Settings::Get();
+		const float t = Seconds();
+		// The generator lays each water cell's texture with U pointing downstream; a texture coordinate offset that falls moves the
+		// pattern toward +U, so the water flows with the river (V stays put).
+		const float u = -std::fmod(t * s.waterScrollSpeed, 1.0f);
+		const float v = 0.0f;
+		for (auto i : _shown) {
+			for (auto* prop : _items[i].scrollProps) {
+				if (prop && prop->material) {
+					prop->material->texCoordOffset[0] = RE::NiPoint2(u, v);
+					prop->material->texCoordOffset[1] = RE::NiPoint2(u, v);
+				}
+			}
 		}
 	}
 
@@ -887,6 +951,12 @@ namespace AnvilLOD
 			a_item.controllers.clear();
 			if (_animatedShown > 0) {
 				--_animatedShown;
+			}
+		}
+		if (!a_item.scrollProps.empty()) {
+			a_item.scrollProps.clear();
+			if (_waterShown > 0) {
+				--_waterShown;
 			}
 		}
 		a_item.glowProps.clear();

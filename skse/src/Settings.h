@@ -20,6 +20,8 @@ namespace AnvilLOD
 		bool          tickManagers{ true };         // also tick controller managers of drawn clones (windmill blades, water wheels)
 		bool          animate{ false };             // EXPERIMENTAL: keep grid objects animated (bAnimateExperimental)
 		std::uint32_t animationFps{ 30 };           // update ticks per second while animate is on
+		bool          animateWater{ true };         // scroll the texture of the water copies around the walled cities (the engine never animates a model a plugin attaches)
+		float         waterScrollSpeed{ 0.012f };   // water texture tiles per second
 
 		// Terrain underside of child worldspaces (AnvilLOD.underside), drawn only while the player is in that worldspace
 		bool          undersides{ true };
