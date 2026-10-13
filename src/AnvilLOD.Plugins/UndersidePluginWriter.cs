@@ -101,6 +101,13 @@ public static class UndersidePluginWriter
         };
     }
 
+    /// <summary>Editor IDs of the worldspaces that have a parent worldspace (the walled-city interiors-as-worlds: Whiterun, Riften, ...).</summary>
+    public static HashSet<string> ChildWorldspaces(GameContext game) =>
+        game.LoadOrder.PriorityOrder.Worldspace().WinningOverrides()
+            .Where(w => w.Parent is { } p && !p.Worldspace.IsNull)
+            .Select(w => w.EditorID).Where(e => e is not null).Select(e => e!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private static Result WriteOne(GameContext game, string fileName, IReadOnlyCollection<string> worldspaces, string outputFolder,
         IReadOnlyList<NativeGridObjects.Pick> natives, bool towers, bool largeEsl = false)
     {

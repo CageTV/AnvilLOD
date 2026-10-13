@@ -55,6 +55,29 @@ public class WaterStandInTests
         Assert.Null(AnvilLOD.Plugins.WaterCopies.FlowDirection(null!, cells, "Tamriel", 5, 5, -4000f, pond));   // roundish: no direction
     }
 
+    [Fact]
+    public void The_water_edge_follows_the_terrain_contour_instead_of_whole_squares()
+    {
+        // Terrain rising to the north-east: height (x + y - 20) * 8 at grid point (x, y); the water (height 0) fills x + y < 20.
+        var terrain = new AnvilLOD.Core.World.TerrainHeights();
+        var heights = new float[AnvilLOD.Core.World.TerrainHeights.Grid * AnvilLOD.Core.World.TerrainHeights.Grid];
+        for (int y = 0; y < AnvilLOD.Core.World.TerrainHeights.Grid; y++)
+            for (int x = 0; x < AnvilLOD.Core.World.TerrainHeights.Grid; x++)
+                heights[y * AnvilLOD.Core.World.TerrainHeights.Grid + x] = (x + y - 20) * 8f;
+        terrain.Set("Tamriel", 0, 0, heights);
+        var template = new AnvilLOD.Meshes.LodMeshPart
+        {
+            Material = NifGeometryReader.FakeWaterMaterial, Positions = [], UVs = [], Normals = [], Tangents = [], Bitangents = [], Triangles = [],
+        };
+        var part = AnvilLOD.Plugins.WaterCopies.BuildCell(terrain, "Tamriel", 0, 0, 0f, template, 1f / 2048f, true, 0x80473A22u, 3f,
+            new Dictionary<(string Ws, int X, int Y), float>(), out _, out _, out _, out _, out _);
+        Assert.NotNull(part);
+        float s = AnvilLOD.Core.World.TerrainHeights.Spacing;
+        // no vertex sticks out past the contour x + y = 20 grid steps (whole squares would reach x + y = 21), and the contour is reached
+        Assert.All(part!.Positions, p => Assert.True((p.X + p.Y) / s <= 20.001f));
+        Assert.Contains(part.Positions, p => (p.X + p.Y) / s > 19.99f);
+    }
+
     private sealed class MemoryAssets(Dictionary<string, byte[]> files) : IAssetSource
     {
         public bool Exists(string p) => files.ContainsKey(p);

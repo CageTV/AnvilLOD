@@ -70,12 +70,15 @@ public static class NativeGridObjects
 
     /// <summary>Waterfall effect meshes, windmill fans, rotors and water wheels (and, when asked, fires, candles, torches, lava and streams) in the supported worldspaces.</summary>
     /// <param name="waterStandIns">The lit fake-water stand-ins are on: water planes stay with the SKSE plugin, which swaps them.</param>
-    public static IReadOnlyList<Pick> Select(IReadOnlyList<DynamicLodReference> dynamic, Kinds kinds = Kinds.Waterworks, bool waterStandIns = false)
+    /// <param name="otherWorlds">Further worldspaces to write them for: the ones with no parent worldspace (a child worldspace shares its cell
+    /// coordinates with its parent, and a persistent full-LOD reference of it would be drawn in the parent too).</param>
+    public static IReadOnlyList<Pick> Select(IReadOnlyList<DynamicLodReference> dynamic, Kinds kinds = Kinds.Waterworks, bool waterStandIns = false,
+        IReadOnlySet<string>? otherWorlds = null)
     {
         var picks = new List<Pick>();
         foreach (var d in dynamic)
         {
-            if (!d.IsGridObject || d.Glow || !Worlds.Contains(d.Ref.Worldspace)) continue;
+            if (!d.IsGridObject || d.Glow || !(Worlds.Contains(d.Ref.Worldspace) || otherWorlds?.Contains(d.Ref.Worldspace) == true)) continue;
             // DynDOLOD's own copies (DynDOLOD.esp / .esm) of these references are not ours to copy again; only the vanilla ones are.
             if (IsDynDolod(d.RefPlugin) || IsDynDolod(d.Ref.WinningPlugin)) continue;
             if (ModelOf(d) is not { } model) continue;

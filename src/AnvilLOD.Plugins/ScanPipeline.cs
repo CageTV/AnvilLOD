@@ -222,7 +222,8 @@ public static class ScanPipeline
         else if (req.Scan.ParentCopies && rulesFolder is null)
             progress?.Report("Parent > Child copies need DynDOLOD's Configs folder (set the DynDOLOD install folder); none written.");
         var scanner = new MutagenReferenceScanner(game, assets, resolver, childCopies);
-        var scan = scanner.Scan(req.Scan, progress, ct);
+        // The PBR option also picks the PBR-patched waterfall models (Community Shaders only), when the load order has them.
+        var scan = scanner.Scan(req.Scan with { PbrWaterfalls = req.PbrLod }, progress, ct);
         if (scan.Grids.Count == 0)
             Warn(req.Scan.Worldspaces is { Count: > 0 } ws
                 ? $"None of the requested worldspaces ({string.Join(", ", ws)}) has a LODSettings\\<name>.lod file in loose files or BSAs."
@@ -436,7 +437,15 @@ public static class ScanPipeline
             var nativeKinds = (req.NativeGridObjects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Waterworks : 0)
                               | (req.NativeEffects ? AnvilLOD.Plugins.NativeGridObjects.Kinds.Effects : 0);
             var largeEsl = ResolveLargeEsl(req.EslRange, game.DataFolder, progress);
-            var natives = nativeKinds != 0 && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? [], nativeKinds, req.WaterStandIns) : [];
+            // Other worldspaces than Tamriel and Solstheim (mod worlds, small worlds) get them too, unless they are children of another one.
+            var childWorlds = UndersidePluginWriter.ChildWorldspaces(game);
+            var otherWorlds = (scan.Dynamic ?? []).Where(d => d.IsGridObject && !d.Glow).Select(d => d.Ref.Worldspace)
+                .Where(w => !childWorlds.Contains(w) && !NativeGridObjects.Worlds.Contains(w) && !UndersideStage.IgnoredWorlds.Contains(w))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var natives = nativeKinds != 0 && req.Scan.GridObjects ? NativeGridObjects.Select(scan.Dynamic ?? [], nativeKinds, req.WaterStandIns, otherWorlds) : [];
+            if (natives.Any(p => otherWorlds.Contains(p.Source.Ref.Worldspace)))
+                progress?.Report("Native grid objects also written for: " + string.Join(", ", natives.Where(p => otherWorlds.Contains(p.Source.Ref.Worldspace))
+                    .GroupBy(p => p.Source.Ref.Worldspace, StringComparer.OrdinalIgnoreCase).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Select(g => $"{g.Key} ({g.Count():N0})")));
             var nativeSources = natives.Select(p => p.Source).ToHashSet();
             // Left out of AnvilLOD.dyn entirely: the engine draws the real references in the walled cities too (tested at Whiterun: they are
             // there and they turn), so a model drawn by the plugin as well showed up as a second, motionless fan.

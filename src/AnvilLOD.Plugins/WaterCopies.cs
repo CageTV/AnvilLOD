@@ -152,7 +152,7 @@ public static class WaterCopies
         return new Vector2((float)(ax * sign), (float)(ay * sign));
     }
 
-    private static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
+    internal static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
         float uvPerUnit, bool colors, uint color, float maxDrop, IReadOnlyDictionary<(string Ws, int X, int Y), float> waterCells, out int runs, out float lowest, out float bankSlope, out float drop, out Vector2? flow)
     {
         const int N = TerrainHeights.Grid - 1;   // 32 quads per side
@@ -210,20 +210,70 @@ public static class WaterCopies
         // clear channel (a pond) U is east, as before.
         var fu = flow ?? Vector2.UnitX;
         var fv = new Vector2(-fu.Y, fu.X);
-        foreach (var (x0, x1, y0, y1) in rects)
+        // The plane sits a little below the water height: right at it, it flickers against the real water it overlaps.
+        float z = h - drop;
+        int runCount = 0;
+        void AddVertex(float x, float y)
+        {
+            pos.Add(new Vector3(x, y, z));
+            var world = new Vector2(ox + x, oy + y);
+            uv.Add(new Vector2(Vector2.Dot(world, fu) * uvPerUnit, Vector2.Dot(world, fv) * uvPerUnit));
+        }
+        void AddRect(float x0, float x1, float y0, float y1)
         {
             int v = pos.Count;
-            // The plane sits a little below the water height: right at it, it flickers against the real water it overlaps.
-            float z = h - drop;
-            pos.Add(new Vector3(x0, y0, z)); pos.Add(new Vector3(x1, y0, z)); pos.Add(new Vector3(x1, y1, z)); pos.Add(new Vector3(x0, y1, z));
-            for (int k = 0; k < 4; k++)
-            {
-                var world = new Vector2(ox + pos[v + k].X, oy + pos[v + k].Y);
-                uv.Add(new Vector2(Vector2.Dot(world, fu) * uvPerUnit, Vector2.Dot(world, fv) * uvPerUnit));
-            }
+            AddVertex(x0, y0); AddVertex(x1, y0); AddVertex(x1, y1); AddVertex(x0, y1);
             tris.AddRange([(ushort)v, (ushort)(v + 1), (ushort)(v + 2), (ushort)v, (ushort)(v + 2), (ushort)(v + 3)]);
-            runs++;
+            runCount++;
         }
+        // Whole quads are merged into one rectangle per run along the row. A quad the shoreline crosses is cut where the terrain meets the
+        // water height (the contour between its corners), so the water edge follows the bank instead of stepping in whole squares.
+        float S = TerrainHeights.Spacing;
+        for (int j = 0; j < N; j++)
+        {
+            int start = -1;
+            for (int i = 0; i <= N; i++)
+            {
+                float[]? full = null;
+                bool partial = false;
+                if (i < N)
+                {
+                    int gx = cx * N + i, gy = cy * N + j;
+                    float?[] q = [terrain.VertexAt(ws, gx, gy), terrain.VertexAt(ws, gx + 1, gy), terrain.VertexAt(ws, gx + 1, gy + 1), terrain.VertexAt(ws, gx, gy + 1)];
+                    bool anyWet = q.Any(v => v is { } t && t < h);
+                    if (anyWet)
+                    {
+                        if (q.Any(v => v is null) || q.All(v => v!.Value < h)) full = [];   // a whole quad (a missing corner: as before, the whole quad)
+                        else { partial = true; full = [q[0]!.Value, q[1]!.Value, q[2]!.Value, q[3]!.Value]; }
+                    }
+                }
+                if (full is not null && !partial) { if (start < 0) start = i; continue; }
+                if (start >= 0) { AddRect(start * S, i * S, j * S, (j + 1) * S); start = -1; }
+                if (!partial) continue;
+                // the quad's wet part: its wet corners and the points on its edges where the terrain crosses the water height
+                float[] vals = full!;
+                var corner = new Vector2[] { new(i * S, j * S), new((i + 1) * S, j * S), new((i + 1) * S, (j + 1) * S), new(i * S, (j + 1) * S) };
+                var poly = new List<Vector2>(6);
+                for (int k = 0; k < 4; k++)
+                {
+                    int m = (k + 1) % 4;
+                    bool wa = vals[k] < h, wb = vals[m] < h;
+                    if (wa) poly.Add(corner[k]);
+                    if (wa != wb)
+                    {
+                        float t = (h - vals[k]) / (vals[m] - vals[k]);
+                        poly.Add(Vector2.Lerp(corner[k], corner[m], t));
+                    }
+                }
+                if (poly.Count < 3) continue;
+                int b0 = pos.Count;
+                foreach (var pt in poly) AddVertex(pt.X, pt.Y);
+                for (int k = 1; k + 1 < poly.Count; k++)
+                    tris.AddRange([(ushort)b0, (ushort)(b0 + k), (ushort)(b0 + k + 1)]);
+                runCount++;
+            }
+        }
+        runs = runCount;
         if (pos.Count == 0) return null;
         int n = pos.Count;
         return new LodMeshPart

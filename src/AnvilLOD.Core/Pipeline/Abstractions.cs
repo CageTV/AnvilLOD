@@ -32,7 +32,8 @@ public sealed record ScanOptions(
     Tree3DSettings? Tree3D = null,                     // 3D tree LOD models in object LOD (null / Enabled = false: billboards only)
     bool MatchTextures = true,                         // LOD mesh textures follow the full model (alternate textures, snow variants), like DynDOLOD
     bool ParentCopies = false,                         // DynDOLOD's Parent > Child copies around walled cities, drawn by the SKSE plugin
-    bool GlowWindows = false);                         // DynDOLOD's window glow meshes (<model>glow_lod_N.nif), drawn by the SKSE plugin and lit at night
+    bool GlowWindows = false,                          // DynDOLOD's window glow meshes (<model>glow_lod_N.nif), drawn by the SKSE plugin and lit at night
+    bool PbrWaterfalls = false);                       // a waterfall whose full model is PBR-patched (textures\pbr\...) is drawn with that model instead of the plain LOD one
 
 public sealed record ScanResult(
     IReadOnlyDictionary<string, LodGrid> Grids,

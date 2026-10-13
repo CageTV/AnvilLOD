@@ -91,9 +91,13 @@ public sealed class LodMeshResolver
     /// Mesh for a grid object: DynDOLOD's dynamic LOD mesh (<c>meshes\dyndolod\lod\&lt;model path&gt;_dyndolod_lod.nif</c>,
     /// shipped by DynDOLOD Resources and water mods), otherwise the full model. "Far Full" always uses the full model.
     /// </summary>
-    public static string? GridMesh(string modelPath, DynamicGrid grid, Func<string, bool> exists)
+    /// <param name="isPbrModel">When given, a waterfall whose full model is PBR-patched (its textures live under <c>textures\pbr\</c>)
+    /// is drawn with that model: the plain DynDOLOD LOD mesh would show the non-PBR water tile.</param>
+    public static string? GridMesh(string modelPath, DynamicGrid grid, Func<string, bool> exists, Func<string, bool>? isPbrModel = null)
     {
         var full = LodMeshIndex.Normalize(modelPath);
+        if (isPbrModel is not null && full.Contains("waterfall", StringComparison.Ordinal) && exists(full) && isPbrModel(full))
+            return full;
         if (grid != DynamicGrid.FarFull && full.StartsWith("meshes\\", StringComparison.Ordinal) && full.EndsWith(".nif", StringComparison.Ordinal))
         {
             // PGPatcher gives meshes that need several shader variants copies under meshes\_pgpatcher_dups\<n>\ and points the

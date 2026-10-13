@@ -170,6 +170,22 @@ public class GridObjectTests
         Assert.Equal("meshes\\clutter\\windmill.nif", LodMeshResolver.GridMesh("meshes\\clutter\\windmill.nif", DynamicGrid.Far, files.Contains));
         Assert.Null(LodMeshResolver.GridMesh("meshes\\missing.nif", DynamicGrid.Far, files.Contains));
     }
+
+    [Fact]
+    public void A_PBR_patched_waterfall_model_replaces_the_plain_LOD_mesh_only_when_asked()
+    {
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "meshes\\effects\\fxwaterfallbodytall02.nif",
+            "meshes\\dyndolod\\lod\\effects\\fxwaterfallbodytall02_dyndolod_lod.nif",
+            "meshes\\effects\\fxwaterfallthin128x128.nif",
+            "meshes\\dyndolod\\lod\\effects\\fxwaterfallthin128x128_dyndolod_lod.nif",
+        };
+        bool pbr(string p) => p.Contains("bodytall02");
+        Assert.Equal("meshes\\effects\\fxwaterfallbodytall02.nif", LodMeshResolver.GridMesh("effects\\fxwaterfallbodytall02.nif", DynamicGrid.Far, files.Contains, pbr));
+        Assert.Equal("meshes\\dyndolod\\lod\\effects\\fxwaterfallbodytall02_dyndolod_lod.nif", LodMeshResolver.GridMesh("effects\\fxwaterfallbodytall02.nif", DynamicGrid.Far, files.Contains));
+        Assert.Equal("meshes\\dyndolod\\lod\\effects\\fxwaterfallthin128x128_dyndolod_lod.nif", LodMeshResolver.GridMesh("effects\\fxwaterfallthin128x128.nif", DynamicGrid.Far, files.Contains, pbr));
+    }
 }
 
 public class SeasonTests

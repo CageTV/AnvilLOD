@@ -358,7 +358,7 @@
 <CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"
                                   ToolTip="Drops LOD triangles that are completely underground. Big savings on mountains and rocks." />
 <CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
-                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Changing it or the brightness rebuilds every block." />
+                                  ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Waterfalls: when your waterfall model is PBR-patched (CS Water Mod's PBR waterfalls), the waterfall LOD uses that model instead of the plain LOD mesh (Community Shaders only). Changing it or the brightness rebuilds every block." />
 <TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />
 <ComboBox x:Name="PbrLodBrightnessBox" SelectedIndex="9" Margin="20,0,0,6"
                                   IsEnabled="{Binding IsChecked, ElementName=PbrLodCheck}"

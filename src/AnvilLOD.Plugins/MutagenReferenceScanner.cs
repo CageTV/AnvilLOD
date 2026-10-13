@@ -106,6 +106,18 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var meshExists = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         bool Exists(string path) => meshExists.GetOrAdd(path, p => _assets.Exists(p));
         var resolver = _resolver ?? new LodMeshResolver(LodMeshIndex.Build([]), new LodRules(), Exists);
+        var pbrModels = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        // A PBR-patched model names its textures under textures\pbr\ (Community Shaders' PBR). The paths are plain ASCII strings in the file.
+        bool IsPbrModel(string path) => pbrModels.GetOrAdd(path, p =>
+        {
+            if (!_assets.TryOpen(p, out var s)) return false;
+            using (s)
+            {
+                using var ms = new MemoryStream();
+                s.CopyTo(ms);
+                return System.Text.Encoding.ASCII.GetString(ms.GetBuffer(), 0, (int)ms.Length).Contains("textures\\pbr\\", StringComparison.OrdinalIgnoreCase);
+            }
+        });
 
         string? Mnam(AssetLinkGetter<SkyrimModelAssetType> link)
         {
@@ -495,7 +507,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 if (!res.Meshes.HasAny)
                 {
                     if (copy is null && options.GridObjects && res.Rule.IsGridObject)
-                        gridMesh = gridMeshes.GetOrAdd((baseKey.Value, res.Rule.Grid), _ => LodMeshResolver.GridMesh(info.ModelPath, res.Rule.Grid, Exists));
+                        gridMesh = gridMeshes.GetOrAdd((baseKey.Value, res.Rule.Grid), _ => LodMeshResolver.GridMesh(info.ModelPath, res.Rule.Grid, Exists, options.PbrWaterfalls ? IsPbrModel : null));
                     if (gridMesh is null)
                     {
                         if (info.Mnam is not null) skippedMissing++;
