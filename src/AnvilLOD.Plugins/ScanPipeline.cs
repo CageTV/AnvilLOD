@@ -45,8 +45,9 @@ public sealed record ScanRequest(
     float IceInset = LodInset.DefaultIce,          // units glacier/ice LOD (LOD4, LOD8) is pulled inside its own surface, so the full model wins the z-fight where both are drawn (0 = off)
     float MountainInset = 0f,                      // the same for mountain LOD (off by default)
     bool OpaqueAlpha = true,                       // shapes without an alpha property use opaque copies of textures whose alpha channel isn't opacity (ship hulls), so the LOD shader doesn't cut holes
-    bool DetailedShips = true,
-    bool AnimatedShips = true);                    // with Animated Ships in the load order, its sailing ships are drawn beyond the loaded cells (real references in AnvilLOD.esp; needs native grid objects)                    // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
+    bool DetailedShips = true,                     // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
+    bool AnimatedShips = true,                     // with Animated Ships in the load order, its sailing ships are drawn beyond the loaded cells (real references in AnvilLOD.esp; needs native grid objects)
+    bool CsGrassLod = true);                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -570,6 +571,27 @@ public static class ScanPipeline
                 }
             }
             else OpaqueLodStage.RemoveAll(output);
+
+            // Community Shaders' Grass Optimizations: middle and far LOD meshes for the grass models (it keeps the full mesh for any that has none).
+            if (req.CsGrassLod && CsGrassLodStage.FeaturePresent(assets))
+            {
+                try
+                {
+                    var gl = CsGrassLodStage.Run(game, assets, output, ct);
+                    progress?.Report($"Grass Optimizations (Community Shaders) found: {gl.Middle:N0} middle and {gl.Far:N0} far LOD meshes made for {gl.Models:N0} grass models, written to meshes\\LOD\\Grass"
+                                     + $" ({gl.TrianglesMiddle:N0} + {gl.TrianglesFar:N0} triangles in them, against {gl.TrianglesFull:N0} in the models) in {gl.Elapsed.TotalSeconds:F1}s."
+                                     + $" Left alone: {gl.TooSmall:N0} already tiny, {gl.Authored:N0} with LOD meshes from their grass mod, {gl.MultiShape:N0} with several shapes, {gl.LegacyFormat:N0} in the old Skyrim LE format, {gl.OtherLayout:N0} with another vertex layout"
+                                     + (gl.DuplicateNames > 0 ? $", {gl.DuplicateNames:N0} sharing a file name with another model" : "") + ". Turn on mesh LODs in the feature's settings in the Community Shaders menu.");
+                    if (req.GrassLod)
+                        progress?.Report("Note: AnvilLOD's own grass LOD (the grass in the LOD4 blocks) is still on. The feature's author recommends NGIO's extended grass distance plus these LOD meshes instead of grass in the blocks; if you use extended grass, consider unticking Grass LOD.");
+                    if (gl.Failed > 0) Warn($"Grass Optimizations LOD: {gl.Failed} grass models could not be processed (first: {gl.Errors.FirstOrDefault()}).");
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Warn($"Grass Optimizations LOD meshes failed: {ex.Message}");
+                }
+            }
+            else CsGrassLodStage.Remove(output);
 
             if (req.LargeReferences)
             {

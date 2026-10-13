@@ -69,6 +69,25 @@ public static class NifGeometryReader
         return new LodMesh { Path = path, Parts = parts, Warnings = warnings, NoShapesInFile = !anyShape };
     }
 
+    /// <summary>
+    /// The vertex descriptor (layout of the vertex buffer: stride, attribute offsets and which attributes exist) of the first triangle shape in an
+    /// SSE mesh, or null if it has none. Two shapes with the same descriptor can swap vertex buffers without the shader noticing.
+    /// </summary>
+    public static ulong? FirstShapeVertexDescriptor(byte[] data)
+    {
+        var nif = NifFile.Read(data);
+        foreach (var block in nif.Blocks)
+        {
+            if (!ShapeTypes.Contains(block.Type)) continue;
+            var r = nif.ReaderFor(block);
+            ReadAvObject(nif, ref r);
+            r.Skip(16);                 // bounding sphere
+            r.I32(); r.I32(); r.I32();  // skin, shader, alpha
+            return r.U64();
+        }
+        return null;
+    }
+
     // ---------- traversal ----------
 
     private struct AvObject

@@ -79,6 +79,7 @@ public static class Program
           --esl-range <auto|2048|4096>  Records per ESL effects plugin: auto reads the installed game (4096 on 1.6.1130 or newer, else 2048)
           --native-grid-objects     Waterfalls, windmill fans and water wheels (and Animated Ships' sailing ships) as real references in AnvilLOD.esp, which the engine animates
           --native-effects          Fires, candles, torches, lava and streams as real references too (second plugin, AnvilLOD Effects.esp)
+          --no-cs-grass             Don't make LOD meshes for Community Shaders' Grass Optimizations (meshes\LOD\Grass; made only when the feature is installed)
           --no-animated-ships       Don't draw Animated Ships' sailing ships in the distance (they need the native grid objects; on by default when the mod is in the load order)
           --no-detailed-ships       Draw moored ships from the stock LOD meshes instead of simplified copies of their real models
           --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
@@ -247,6 +248,7 @@ public static class Program
             EslRange: a.Get("esl-range") is { } er && int.TryParse(er, out var erv) && erv is 2048 or 4096 ? erv : 0,
             DetailedShips: !a.Has("no-detailed-ships"),
             AnimatedShips: !a.Has("no-animated-ships"),
+            CsGrassLod: !a.Has("no-cs-grass"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
             MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 0f,
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,

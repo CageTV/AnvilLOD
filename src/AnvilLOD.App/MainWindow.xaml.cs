@@ -94,6 +94,7 @@ public partial class MainWindow : Window
         ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
         DetailedShipsCheck.IsChecked = _settings.DetailedShips;
         AnimatedShipsCheck.IsChecked = _settings.AnimatedShips;
+        CsGrassLodCheck.IsChecked = _settings.CsGrassLod;
         IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
         MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
         _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
         _settings.DetailedShips = DetailedShipsCheck.IsChecked == true;
         _settings.AnimatedShips = AnimatedShipsCheck.IsChecked == true;
+        _settings.CsGrassLod = CsGrassLodCheck.IsChecked == true;
         _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
@@ -427,6 +429,7 @@ public partial class MainWindow : Window
             ObjectBrightness: _settings.ObjectBrightness / 100f,
             DetailedShips: _settings.DetailedShips,
             AnimatedShips: _settings.AnimatedShips,
+            CsGrassLod: _settings.CsGrassLod,
             IceInset: _settings.IceInset,
             MountainInset: _settings.MountainInset,
             Seasons: _settings.Seasons,
