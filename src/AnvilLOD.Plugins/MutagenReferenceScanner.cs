@@ -345,7 +345,13 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 list[list.IndexOf(t)] = fixedTarget;
             }
             foreach (var t in targetsByChild.Values)
-                parentCopyRegions.Add(new ParentCopyRegion(t.Config.Child, t.Config.Parent, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID, t.Config, t.Cells));
+                {
+                // A child that uses its parent's water data has no real water of its own, so the water copies never overlap any (Whiterun,
+                // Windhelm, Solitude); one with its own water record (Riften) does, and the copies must sit under it.
+                bool usesParentWater = linkCache.TryResolve<IWorldspaceGetter>(t.WorldKey, out var childWs)
+                    && childWs.Parent is { } cp && cp.Flags.HasFlag(WorldspaceParent.Flag.UseWaterData);
+                parentCopyRegions.Add(new ParentCopyRegion(t.Config.Child, t.Config.Parent, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID, t.Config, t.Cells, usesParentWater));
+            }
             progress?.Report("Parent > Child copies: " + string.Join(", ", targetsByChild.Values.Select(t =>
                 $"{t.Config.Child} ({t.Cells.Count} cells, from {t.Config.Parent})")));
         }

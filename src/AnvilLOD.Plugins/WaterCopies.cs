@@ -26,12 +26,13 @@ public static class WaterCopies
         var copies = new List<ParentCopy>();
         var done = new HashSet<(string, int, int)>();
         int runsTotal = 0;
+        var depthLog = new List<string> { "child,parent,x,y,waterHeight,lowestTerrain,depth,bankSlope,maxDrop,drop" };
         float uvPerUnit = UvPerUnit(template);
         // The stream stand-ins are tinted dark olive (0x2A3433, alpha 0xAF); the terrain LOD water this replaces is blue, so a
         // wider river / pond gets a blue tint over the same ripple texture and blending (R,G,B,A packed little-endian).
-        // It was 0xC0806240; measured in game next to the real water (Riften) that read about 35% brighter and bluer, so R x0.93,
-        // G x0.75, B x0.63 of it, and 10% more transparent (alpha 0xC0 -> 0xAD).
-        const uint color = 0xAD51493Cu;
+        // It was 0xC0806240, then 0xAD51493C (darker, less blue, 10% more transparent). From the air that read grey (about 105,110,110
+        // against Markarth's real water, about 59,86,93 at the same distance), so it is pulled toward that teal: R x0.57, G x0.80, B x0.88.
+        const uint color = 0xAD473A22u;
         const bool colors = true;
 
         foreach (var region in regions)
@@ -44,11 +45,14 @@ public static class WaterCopies
                 var full = Path.Combine(outputFolder, "meshes", rel.Replace('\\', Path.DirectorySeparatorChar));
                 if (done.Add((ws.ToLowerInvariant(), x, y)))
                 {
-                    // Whiterun's river reads too low at the full drop (tested in game): 3 units there while that is being tuned (28 sat the plane in the banks, 10 and 6 were still a little low).
-                    float maxDrop = region.ChildWorldspace.Contains("Whiterun", StringComparison.OrdinalIgnoreCase) ? 3f : NativeGridObjects.WaterDrop;
-                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, maxDrop, out int runs);
+                    // The plane sits below the water height so it does not flicker against real water it overlaps. A city that uses its
+                    // parent's water (Whiterun, Windhelm, Solitude) has none to overlap, and lowering the plane there only moves the
+                    // shoreline inland and buries a shallow river (tested in game: Whiterun reads right at 3 units, Riften needs 28).
+                    float maxDrop = region.UsesParentWater ? 3f : NativeGridObjects.WaterDrop;
+                    var part = BuildCell(terrain, ws, x, y, h, template, uvPerUnit, colors, color, maxDrop, out int runs, out float lowest, out float bankSlope, out float drop);
                     if (part is null) { done.Remove((ws.ToLowerInvariant(), x, y)); continue; }
                     runsTotal += runs;
+                    depthLog.Add(FormattableString.Invariant($"{region.ChildWorldspace},{ws},{x},{y},{h:F1},{lowest:F1},{h - lowest:F1},{bankSlope:F3},{maxDrop:F0},{drop:F1}"));
                     Directory.CreateDirectory(Path.GetDirectoryName(full)!);
                     File.WriteAllBytes(full, LodNifWriter.Write($"water_{x}_{y}", [part], "AnvilLOD water copy"));
                 }
@@ -58,6 +62,14 @@ public static class WaterCopies
                     region.ChildCells.Contains((x, y)), false));
             }
         }
+        // A diagnostic for tuning the drop: one line per water cell (water height, lowest terrain under it, the drop used).
+        if (depthLog.Count > 1)
+        {
+            var dir = Path.Combine(outputFolder, "meshes", Folder.Replace('\\', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(dir);
+            File.WriteAllLines(Path.Combine(dir, "water depths.csv"), depthLog);
+        }
+        if (done.Count > 0) WaterTextures.WriteTo(outputFolder);
         return new Result(copies, done.Count, runsTotal);
     }
 
@@ -77,7 +89,7 @@ public static class WaterCopies
     }
 
     private static LodMeshPart? BuildCell(TerrainHeights terrain, string ws, int cx, int cy, float h, LodMeshPart template,
-        float uvPerUnit, bool colors, uint color, float maxDrop, out int runs)
+        float uvPerUnit, bool colors, uint color, float maxDrop, out int runs, out float lowest, out float bankSlope, out float drop)
     {
         const int N = TerrainHeights.Grid - 1;   // 32 quads per side
         var pos = new List<Vector3>();
@@ -88,11 +100,26 @@ public static class WaterCopies
         // How far below the water height the plane sits: right at it, it flickers against the real water it overlaps, but a shallow
         // river (Whiterun's) would be buried in its banks by a fixed drop. Deep water (Riften's lake) gets the full drop; shallow
         // water gets 40% of its deepest point, never less than 3 units.
-        float lowest = h;
+        lowest = h;
         for (int gj = 0; gj <= N; gj++)
             for (int gi = 0; gi <= N; gi++)
                 if (terrain.VertexAt(ws, cx * N + gi, cy * N + gj) is { } tv && tv < lowest) lowest = tv;
-        float drop = Math.Clamp(0.4f * (h - lowest), 3f, maxDrop);
+        drop = Math.Clamp(0.4f * (h - lowest), 3f, maxDrop);
+        // How steep the banks are where the water meets the land: the height range of the quads that are partly wet and partly dry,
+        // per unit of distance (median over the cell). A flat bank moves the shoreline far inland when the plane is lowered, a steep
+        // one barely at all. Logged for now, to tune the drop.
+        var slopes = new List<float>();
+        for (int gj = 0; gj < N; gj++)
+            for (int gi = 0; gi < N; gi++)
+            {
+                float?[] q = [terrain.VertexAt(ws, cx * N + gi, cy * N + gj), terrain.VertexAt(ws, cx * N + gi + 1, cy * N + gj),
+                              terrain.VertexAt(ws, cx * N + gi, cy * N + gj + 1), terrain.VertexAt(ws, cx * N + gi + 1, cy * N + gj + 1)];
+                if (q.Any(v => v is null)) continue;
+                bool anyWet = q.Any(v => v!.Value < h), anyDry = q.Any(v => v!.Value >= h);
+                if (anyWet && anyDry) slopes.Add((q.Max(v => v!.Value) - q.Min(v => v!.Value)) / TerrainHeights.Spacing);
+            }
+        slopes.Sort();
+        bankSlope = slopes.Count == 0 ? -1f : slopes[slopes.Count / 2];
         for (int j = 0; j < N; j++)
         {
             int start = -1;

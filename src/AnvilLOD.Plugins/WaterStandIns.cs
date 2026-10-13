@@ -67,6 +67,7 @@ public static class WaterStandIns
             names.Add(rel);
             converted++;
         }
+        if (converted > 0) WaterTextures.WriteTo(outputFolder);
         return new Result(map, converted, noWater, unreadable, names);
     }
 }

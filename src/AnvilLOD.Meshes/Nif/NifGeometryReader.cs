@@ -39,11 +39,15 @@ public static class NifGeometryReader
     /// blended). Same flags, alpha property and shader values as that shape.
     /// </summary>
     public static readonly LodMaterial FakeWaterMaterial = new(
-        ["textures\\effects\\FXwaterTile01.dds", "textures\\effects\\FXwaterTile01_n.dds", "", "", "", "", "", "", ""],
+        [FakeWaterDiffuse, FakeWaterNormal, "", "", "", "", "", "", ""],
         0x8E40_0309u, 0x0000_8020u, 3,
         true, 0x10ED, 128,
         Vector3.Zero, 1f,
         new LodShaderPassthru(0, 0f, 0f, 1f, 1f, 1f, 0f, 202f, Vector3.One, 2f, 0.3f, 2f));
+
+    /// <summary>The smooth water tile AnvilLOD ships and writes into its output (assets\water, CS Water Mod's flat tile).</summary>
+    public const string FakeWaterDiffuse = "textures\\anvillod\\water\\watertile_d.dds";
+    public const string FakeWaterNormal = "textures\\anvillod\\water\\watertile_n.dds";
 
     /// <summary>The fake-water plane's UVs are tiled this many times over the source plane's 0-1 range.</summary>
     public const float FakeWaterUvTiling = 4f;

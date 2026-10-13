@@ -36,4 +36,5 @@ public sealed record ParentCopyRegion(
     string ChildWorldspace, string Parent,
     string WorldPlugin, uint WorldLocalId,
     AnvilLOD.Core.Lod.ParentCopyWorld Config,
-    IReadOnlySet<(int X, int Y)> ChildCells);   // the cells the child worldspace has
+    IReadOnlySet<(int X, int Y)> ChildCells,    // the cells the child worldspace has
+    bool UsesParentWater = false);              // the child has no water of its own and shows its parent's (Whiterun, Windhelm, Solitude); Riften has its own

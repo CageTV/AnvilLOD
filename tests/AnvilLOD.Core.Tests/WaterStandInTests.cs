@@ -33,8 +33,8 @@ public class WaterStandInTests
         Assert.Equal(0x8020u, m.ShaderFlags2);
         Assert.True(m.HasAlpha);
         Assert.Equal((ushort)0x10ED, m.AlphaFlags);
-        Assert.Equal(@"textures\effects\FXwaterTile01.dds", m.Textures[0]);
-        Assert.Equal(@"textures\effects\FXwaterTile01_n.dds", m.Textures[1]);
+        Assert.Equal(@"textures\anvillod\water\watertile_d.dds", m.Textures[0]);
+        Assert.Equal(@"textures\anvillod\water\watertile_n.dds", m.Textures[1]);
         // 0x9E2E2F26 little-endian = R 26, G 2F, B 2E, A 9E: the stream twins' dark teal (2A3433, 69% opaque) made 10% darker and 10% more transparent
         Assert.Equal(0x9E, (int)(NifGeometryReader.FakeWaterColor >> 24));
     }

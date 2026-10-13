@@ -8,6 +8,10 @@
     <InternalsVisibleTo Include="AnvilLOD.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The smooth water tile the LOD fake water uses (CS Water Mod's own flat tile), written to the output so it needs no water mod. -->
+    <EmbeddedResource Include="..\..\assets\water\*.dds" LogicalName="water.%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\AnvilLOD.Core\AnvilLOD.Core.csproj" />
     <ProjectReference Include="..\AnvilLOD.Meshes\AnvilLOD.Meshes.csproj" />
     <ProjectReference Include="..\AnvilLOD.Textures\AnvilLOD.Textures.csproj" />
