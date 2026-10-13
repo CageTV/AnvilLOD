@@ -375,6 +375,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Mistakes that cost a test cycle (the output mod still ticked in MO2, DynDOLOD's output enabled): ask before starting.
+        if (generate && Preflight.Check(BuildGameOptions(), _settings.OutputFolder) is { Count: > 0 } issues
+            && MessageBox.Show(this, string.Join("\n\n", issues.Select(i => i.Message)) + "\n\nGenerate anyway?", "Before you generate",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        {
+            StatusText.Text = "Not started: fix the warning, then press Generate again";
+            return;
+        }
+
         var levels = new List<LodLevel>();
         if (_settings.Lod4) levels.Add(LodLevel.Lod4);
         if (_settings.Lod8) levels.Add(LodLevel.Lod8);

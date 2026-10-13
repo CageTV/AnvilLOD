@@ -128,6 +128,11 @@ public static class ScanPipeline
     private static ScanSummary RunLogged(ScanRequest req, IProgress<string>? progress, CancellationToken ct)
     {
 
+        // The same checks the app asks about before it starts; a command-line run (or one the user went ahead with) gets them in the log.
+        if (req.Generate)
+            foreach (var issue in Preflight.Check(req.Game, req.OutputFolder).Where(i => i.Code == Preflight.OutputModEnabled)) // the DynDOLOD one is reported below
+                progress?.Report("WARNING: " + issue.Message);
+
         progress?.Report("Opening load order...");
         var gameOptions = req.OutputFolder is null ? req.Game : req.Game with { ExcludeFolder = req.OutputFolder };
         using var game = GameContext.Open(gameOptions, progress);
