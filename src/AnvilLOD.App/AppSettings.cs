@@ -52,6 +52,7 @@ public sealed class AppSettings
     public int EslRange { get; set; }       // 0 auto-detect from the game, 1 = 2,048 records per ESL, 2 = 4,096 (game 1.6.1130 or newer only)
     public bool NativeEffects { get; set; } // fires, candles, torches, lava and streams as real references too, off by default
     public bool NativeGridObjects { get; set; } // waterfalls, windmill fans and water wheels as real references in AnvilLOD.esp, off by default
+    public bool RenderTreeBillboards { get; set; }   // trees without a TexGen billboard get one drawn from their model (off by default)
     public bool Tree3D { get; set; }            // 3D tree LOD models in object LOD (off by default)
     public bool Tree3DLod8 { get; set; }        // use the 3D models at LOD8 as well
     public string? LastRunSizes { get; set; }   // JSON of the last generation's size by LOD level and layer (SizeCalibration), per preset, for the size estimate

@@ -29,7 +29,7 @@ AnvilLOD scans the load order and writes object LOD blocks (`.bto`), billboard t
 - .NET 10 SDK (Visual Studio 2026, or VS 2022 17.14+ with the .NET 10 SDK installed)
 - Skyrim SE/AE (Mod Organizer 2 instance or a plain Data folder)
 - **Recommended:** DynDOLOD Resources SE and any LOD packs / LOD patches you like (FOLIP, mod-specific LOD). AnvilLOD uses their `_lod` meshes and the `DynDOLOD_SSE_*.ini` rule files they ship.
-- **For tree LOD:** tree billboards, e.g. TexGen output installed as a mod (`textures\terrain\LODGen\…`). TexGen is only a billboard renderer; DynDOLOD itself is never run.
+- **For tree LOD:** tree billboards, e.g. TexGen output installed as a mod (`textures\terrain\LODGen\…`). TexGen is only a billboard renderer; DynDOLOD itself is never run. Trees TexGen has not seen can be drawn by AnvilLOD itself: see [Tree billboards without TexGen](#tree-billboards-without-texgen-opt-in).
 - **For grass LOD:** a grass cache (`grass\*.cgid` from NGIO or FasterNGIO) and TexGen grass billboards. For seasonal grass LOD also the seasonal caches (`...WIN.cgid`, `.SPR`, `.SUM`, `.AUT`, from Grass Cache Helper NG). Set `DynDOLOD-Grass-Mode = 1` in NGIO's `GrassControl.ini` so the real grass ends exactly where the grass LOD starts; with it off there is a bare band between them.
 - **Optional:** a DynDOLOD install (set "DynDOLOD folder" in the app or `--dyndolod`). AnvilLOD reuses its Low/Medium/High rule presets. DynDOLOD itself is never run.
 - **Recommended in game:** [LOD Refresh Bug Fix](https://www.nexusmods.com/skyrimspecialedition/mods/187070) (`SkyrimLODFixes.dll`). It fixes engine bugs where LOD doesn't reset after fast travel or worldspace changes, and a tree LOD / grass culling lock bug. DynDOLOD DLL NG fixes the first of those too, so keep this one if you remove DynDOLOD DLL NG. AnvilLOD's SKSE plugin deliberately doesn't patch the same engine code, so the two don't conflict.
@@ -44,6 +44,9 @@ The **Missing LOD finder** (under "Mod author tools" on the left; or `AnvilLOD a
 - `AnvilLOD Author Report - <plugin>.txt`: every placed object and tree with its status and what was generated.
 
 The tools are behind a confirmation: generated files are a starting point to check in NifSkope and in game, and are only shared with the mod author's permission. Files already in the output folder are kept unless "Overwrite" is ticked, so hand-edited ones survive a rerun.
+
+- **All plugins (tree billboards)** is the first entry of the plugin list (`--plugin "*"` on the command line). It checks every tree in the load order that is placed in a worldspace with LOD and makes a billboard for each one that has none, into one folder. It looks where the scan looks (the folder of every plugin that overrides the tree, not just the one that defines it) and leaves out the small plants TexGen skipped on purpose (they show as "Skipped by TexGen on purpose").
+- **Stand-in tree models** (`--tree-stand-ins`): some mods are released without every model their plugin names (Beyond Skyrim: Bruma and Assets name 30 tree models that are in no archive), so those trees are invisible and cannot get a billboard. This copies the closest existing tree model under the missing name, on your own PC, then makes the billboard. The model is chosen by name in the same folder (`treemaple04` falls back to the nearest-numbered `treemaple`); write pairs `meshes\missing.nif = meshes\existing.nif` in `AnvilLOD Tree Stand-ins.ini` in the output folder to choose it yourself. The copies are for your own use.
 
 ### LOD Mesh Maker
 
@@ -328,9 +331,18 @@ With native effects on, the fires, candles, torches and streams are real referen
 AnvilLOD makes object LOD for every worldspace that has LOD settings, the ones mods add included (Beyond Skyrim: Bruma is `BSHeartland`, 2,380 cells). What matters for them:
 
 - **Skyrim LE (Oldrim) LOD meshes are read now.** Ported content often ships its LOD meshes in the old format (Bruma's `bscyrodiil\lod\...` and `bstamriel\lod\...`: 164 of them were "convert to SSE" errors before). The geometry is read as it is (tangents are worked out from the UVs when the file has none); no conversion is needed.
-- **A mod's own tree LOD is kept when ours would be a partial copy.** When most of a worldspace's trees have no TexGen billboard (TexGen has not been run with that mod's plugins) and the mod ships its own tree LOD, AnvilLOD leaves that worldspace's tree LOD as the mod made it and says so in the log. Run TexGen with the current load order to let AnvilLOD make it.
+- **A mod's own tree LOD is kept when ours would be a partial copy.** When most of a worldspace's trees have no TexGen billboard (TexGen has not been run with that mod's plugins) and the mod ships its own tree LOD, AnvilLOD leaves that worldspace's tree LOD as the mod made it and says so in the log. Run TexGen with the current load order, or tick "Draw missing tree billboards", to let AnvilLOD make it. The small plants TexGen skips on purpose do not count as missing.
+- **Models the mod forgot.** A plugin can name tree models that no archive holds (Bruma and Assets: 30). Those trees are invisible and cannot get LOD; the Mod Author tools' "Stand-in tree models" fills the gap.
+- **Oldrim LOD meshes can be converted to SSE** (LOD Mesh Maker page, bottom; `AnvilLOD convert-lod --source <mod folder> --output <folder>`): the static LOD meshes of a mod folder (loose files and its BSAs) become Skyrim SE meshes under the same paths. AnvilLOD reads LE meshes itself, so this is for other LOD tools and for old mods. Collision is dropped; animated, skinned and particle meshes are left alone; textures are not touched.
 - **Terrain LOD (`.btr`) is never touched**: a mod's own terrain LOD stays.
 - Grass LOD needs a grass cache for the worldspace (NGIO or FasterNGIO).
+
+## Tree billboards without TexGen (opt-in)
+
+Tick **Draw missing tree billboards** on the Trees page (`--render-trees`) and every tree that has no TexGen billboard gets one drawn from its own model and textures: tree mods TexGen has not seen, Oldrim tree mods, new worldspaces. A real TexGen billboard always wins, so nothing TexGen made is replaced; with no TexGen output at all, tree LOD still works.
+- **Which trees:** tall ones (a model at least 256 units high). Trees TexGen listed without a billboard, and anything lower than that, get no LOD, like in TexGen and DynDOLOD. TexGen's own rule is not a plain height (its smallest kept tree is 316 units, its largest skipped one 449), so a few more shrubs than TexGen's may get a billboard.
+- **How it looks:** the front view of the model, alpha-tested with its own textures, 2x supersampled, up to 512 pixels. Checked against TexGen's own billboards for 85 trees: the height is the same (median ratio 1.02) and the vertical offset matches exactly. The picture is a little brighter than TexGen's; the tree LOD brightness setting covers that.
+- **Cache:** the billboards are written to `%LocalAppData%\AnvilLOD\TreeBillboards` in TexGen's file layout and read last, below every mod. A billboard is drawn again only when its model or one of its textures changed. Delete the folder to start over.
 
 ## Textures that don't exist
 

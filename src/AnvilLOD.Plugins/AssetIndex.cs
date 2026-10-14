@@ -131,10 +131,23 @@ public sealed class AssetIndex : IAssetSource
 
     private FileInfo? Loose(string key) => _looseCache.GetOrAdd(key, _looseResolver);
 
+    /// <summary>
+    /// A folder read as the lowest-priority layer (below every mod and archive): files AnvilLOD made itself, such as tree billboards rendered
+    /// without TexGen. Not cached, because those files appear while a run is going on.
+    /// </summary>
+    public string? FallbackRoot { get; set; }
+
+    private FileInfo? Fallback(string key)
+    {
+        if (FallbackRoot is not { } root) return null;
+        var fi = new FileInfo(Path.Combine(root, key.Replace('\\', Path.DirectorySeparatorChar)));
+        return fi.Exists ? fi : null;
+    }
+
     public bool Exists(string dataRelativePath)
     {
         var key = GamePath.Normalize(dataRelativePath);
-        return Loose(key) is not null || _archived.ContainsKey(key);
+        return Loose(key) is not null || _archived.ContainsKey(key) || Fallback(key) is not null;
     }
 
     public bool TryOpen(string dataRelativePath, out Stream stream)
@@ -150,6 +163,11 @@ public sealed class AssetIndex : IAssetSource
             stream = new MemoryStream(e.File.GetBytes(), writable: false);
             return true;
         }
+        if (Fallback(key) is { } fb)
+        {
+            stream = fb.OpenRead();
+            return true;
+        }
         stream = Stream.Null;
         return false;
     }
@@ -159,6 +177,7 @@ public sealed class AssetIndex : IAssetSource
         var key = GamePath.Normalize(dataRelativePath);
         if (Loose(key) is { } fi) return $"L:{fi.Length}:{fi.LastWriteTimeUtc.Ticks}";
         if (_archived.TryGetValue(key, out var e)) return $"A:{e.ArchiveName}:{e.File.Size}";
+        if (Fallback(key) is { } fb) return $"F:{fb.Length}:{fb.LastWriteTimeUtc.Ticks}";
         return null;
     }
 
@@ -167,6 +186,7 @@ public sealed class AssetIndex : IAssetSource
     {
         var key = GamePath.Normalize(dataRelativePath);
         if (Loose(key) is not null) return "loose";
-        return _archived.TryGetValue(key, out var e) ? e.ArchiveName : null;
+        if (_archived.TryGetValue(key, out var e)) return e.ArchiveName;
+        return Fallback(key) is not null ? "AnvilLOD cache" : null;
     }
 }

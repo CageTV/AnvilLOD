@@ -162,6 +162,7 @@ public static class ScanPipeline
                  || p.StartsWith("grass\\", StringComparison.Ordinal) || p.StartsWith("seasons\\", StringComparison.Ordinal)
                  || p.StartsWith("textures\\", StringComparison.Ordinal)); // grass model textures (rendered grass billboards), the textures 3D tree LOD models need, and so the texture audit can tell a BSA texture from a missing one
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
+        if (req.Scan.TreeLod && req.Scan.RenderTreeBillboards) assets.FallbackRoot = TreeBillboardSynth.CacheRoot;   // tree billboards AnvilLOD draws itself: read last, so a real TexGen one wins
         foreach (var skipped in assets.SkippedArchives)
             Warn($"An archive could not be read and was skipped; its files are not used, everything else is ({skipped}).");
         if (assets.ArchiveCount == 0)
@@ -285,6 +286,7 @@ public static class ScanPipeline
         // Trees TexGen listed but gave no billboard were skipped on purpose (small plants; DynDOLOD gives them no LOD either): they are not a gap
         // and must not count towards "this worldspace's trees are mostly missing".
         var texGenListed = ReadTexGenLists(assets);
+        if (scan.TooSmallTreeKeys is { Count: > 0 } tooSmall) texGenListed.UnionWith(tooSmall);   // small plants the renderer left out count like those TexGen skipped
         var realMissingByWs = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         long realMissingTotal = 0;
         if (scan.MissingBillboardsByWorldType is { } byType)

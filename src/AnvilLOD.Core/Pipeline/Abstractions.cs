@@ -33,7 +33,8 @@ public sealed record ScanOptions(
     bool MatchTextures = true,                         // LOD mesh textures follow the full model (alternate textures, snow variants), like DynDOLOD
     bool ParentCopies = false,                         // DynDOLOD's Parent > Child copies around walled cities, drawn by the SKSE plugin
     bool GlowWindows = false,                          // DynDOLOD's window glow meshes (<model>glow_lod_N.nif), drawn by the SKSE plugin and lit at night
-    bool PbrWaterfalls = false);                       // a waterfall whose full model is PBR-patched (textures\pbr\...) is drawn with that model instead of the plain LOD one
+    bool PbrWaterfalls = false,                        // a waterfall whose full model is PBR-patched (textures\pbr\...) is drawn with that model instead of the plain LOD one
+    bool RenderTreeBillboards = false);                // trees without a TexGen billboard get one drawn from their model (TexGen not needed for them); TexGen-skipped small plants stay out
 
 public sealed record ScanResult(
     IReadOnlyDictionary<string, LodGrid> Grids,
@@ -46,7 +47,8 @@ public sealed record ScanResult(
     IReadOnlyList<ParentCopy>? ParentCopies = null,
     ParentCopyStats? ParentCopyStats = null,
     IReadOnlyDictionary<string, long>? MissingBillboardsByWorld = null,   // worldspace -> placed trees that have no billboard
-    IReadOnlyDictionary<string, long>? MissingBillboardsByWorldType = null);   // "worldspace|plugin\model_formid" -> placed count
+    IReadOnlyDictionary<string, long>? MissingBillboardsByWorldType = null,
+    IReadOnlySet<string>? TooSmallTreeKeys = null);   // "plugin;formid" of tree types the billboard renderer left out as too small (same key form as TexGen's lists)   // "worldspace|plugin\model_formid" -> placed count
 
 public sealed record ScanStats(
     int PluginsInLoadOrder,

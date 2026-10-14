@@ -463,6 +463,8 @@
                             <ComboBoxItem Content="100% (default)" />
                             <ComboBoxItem Content="110%" />
                         </ComboBox>
+<CheckBox x:Name="RenderTreesCheck" Content="Draw missing tree billboards (TexGen not needed)"
+                                  ToolTip="Trees without a TexGen billboard get one drawn from their own model and textures, so tree mods TexGen has not seen, Oldrim tree mods and new worldspaces still get tree LOD. Tall trees only: small plants that TexGen skipped on purpose stay without LOD. A real TexGen billboard always wins. Cached in %LOCALAPPDATA%\AnvilLOD\TreeBillboards." />
 <CheckBox x:Name="Tree3DCheck" Content="3D tree LOD (use 3D models where found)"
                                   ToolTip="Trees that have a 3D tree LOD model (DynDOLOD's passthru_lod.nif, found by the CRC32 of the tree's mesh) go into object LOD: the 3D model at LOD4, billboard cards from LOD8 on. Trees without a model keep the billboard tree LOD. Needs the models' textures, including the trunk billboards TexGen renders." />
 <CheckBox x:Name="Tree3DLod8Check" Content="Also use the 3D models at LOD8" Margin="20,2,0,0"
@@ -701,6 +703,30 @@
                                         <DataGridTextColumn Header="Model" Binding="{Binding Model}" Width="320" />
                                     </DataGrid.Columns>
                                 </DataGrid>
+
+                                <Separator Margin="0,18,0,10" />
+                                <TextBlock Text="Convert Oldrim (Skyrim LE) LOD meshes to Skyrim SE" FontWeight="Bold" />
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,6"
+                                           Text="Takes a mod folder (loose meshes and its BSAs) and writes its static LOD meshes as Skyrim SE meshes, same paths, into a new folder. Collision is dropped; animated, skinned and particle meshes are left alone. Textures are not touched. For other LOD tools and for old mods; AnvilLOD reads LE meshes itself." />
+                                <TextBlock Text="Source mod folder" Style="{StaticResource FieldLabel}" />
+                                <DockPanel Width="560" HorizontalAlignment="Left">
+                                    <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="ConvBrowseSrc_Click" />
+                                    <TextBox x:Name="ConvSourceBox" ToolTip="The mod's folder, e.g. mods\Some Oldrim Mod" />
+                                </DockPanel>
+                                <TextBlock Text="Output folder (a new, separate mod)" Style="{StaticResource FieldLabel}" />
+                                <DockPanel Width="560" HorizontalAlignment="Left">
+                                    <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="ConvBrowseOut_Click" />
+                                    <TextBox x:Name="ConvOutBox" ToolTip="Defaults to the source folder's name + (SSE LOD), next to it" />
+                                </DockPanel>
+                                <WrapPanel Margin="0,6,0,0">
+                                    <CheckBox x:Name="ConvAllCheck" Content="Every mesh, not just LOD ones" Margin="0,3,16,3" ToolTip="Off: only meshes in a lod folder or with lod in their name" />
+                                    <CheckBox x:Name="ConvOverwriteCheck" Content="Overwrite existing files" Margin="0,3,16,3" />
+                                </WrapPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                                    <Button x:Name="ConvRunButton" Content="Convert to SE" Style="{StaticResource PrimaryButton}" Click="ConvRun_Click" />
+                                    <Button x:Name="ConvOpenButton" Content="Open output folder" Margin="8,0,0,0" IsEnabled="False" Click="ConvOpen_Click" />
+                                </StackPanel>
+                                <TextBlock x:Name="ConvSummaryText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
                             </StackPanel>
                         </StackPanel>
                                 </StackPanel>

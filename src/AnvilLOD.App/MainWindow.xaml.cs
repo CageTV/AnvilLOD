@@ -86,6 +86,7 @@ public partial class MainWindow : Window
         NativeGridObjectsCheck.IsChecked = _settings.NativeGridObjects;
         NativeEffectsCheck.IsChecked = _settings.NativeEffects;
         EslRangeBox.SelectedIndex = Math.Clamp(_settings.EslRange, 0, 2);
+        RenderTreesCheck.IsChecked = _settings.RenderTreeBillboards;
         Tree3DCheck.IsChecked = _settings.Tree3D;
         Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
         Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
@@ -148,6 +149,7 @@ public partial class MainWindow : Window
         _settings.NativeGridObjects = NativeGridObjectsCheck.IsChecked == true;
         _settings.NativeEffects = NativeEffectsCheck.IsChecked == true;
         _settings.EslRange = Math.Max(0, EslRangeBox.SelectedIndex);
+        _settings.RenderTreeBillboards = RenderTreesCheck.IsChecked == true;
         _settings.Tree3D = Tree3DCheck.IsChecked == true;
         _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
         _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
@@ -420,7 +422,8 @@ public partial class MainWindow : Window
                 GridObjects: _settings.GridObjects,
                 ParentCopies: _settings.ParentCopies,
                 GlowWindows: _settings.GlowWindows,
-                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null),
+                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null,
+                RenderTreeBillboards: _settings.RenderTreeBillboards),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,
             Generate: generate,
@@ -717,6 +720,88 @@ public partial class MainWindow : Window
     }
 
     private void MakerClear_Click(object sender, RoutedEventArgs e) => MakerInputBox.Clear();
+
+    // ---------- Oldrim (Skyrim LE) -> SE LOD mesh converter ----------
+
+    private void ConvBrowseSrc_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFolderDialog { Title = "Select the Oldrim mod's folder (loose meshes and/or its BSAs)" };
+        if (Directory.Exists(ConvSourceBox.Text)) d.InitialDirectory = ConvSourceBox.Text;
+        if (d.ShowDialog(this) != true) return;
+        ConvSourceBox.Text = d.FolderName;
+        if (string.IsNullOrWhiteSpace(ConvOutBox.Text))
+            ConvOutBox.Text = d.FolderName.TrimEnd('\\', '/') + " (SSE LOD)";
+    }
+
+    private void ConvBrowseOut_Click(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFolderDialog { Title = "Select an empty folder for the converted meshes (a new MO2 mod)" };
+        if (Directory.Exists(ConvOutBox.Text)) d.InitialDirectory = ConvOutBox.Text;
+        if (d.ShowDialog(this) == true) ConvOutBox.Text = d.FolderName;
+    }
+
+    private void ConvOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (Blank(ConvOutBox.Text) is { } dir && Directory.Exists(dir))
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
+    }
+
+    private void ConvRun_Click(object sender, RoutedEventArgs e) => _ = RunConvertAsync();
+
+    private async Task RunConvertAsync()
+    {
+        var source = Blank(ConvSourceBox.Text);
+        var output = Blank(ConvOutBox.Text);
+        if (source is null || !Directory.Exists(source) || output is null)
+        {
+            MessageBox.Show(this, "Choose the Oldrim mod's folder and an output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (_settings.OutputFolder is { } lodOut && Path.GetFullPath(output).TrimEnd('\\').Equals(Path.GetFullPath(lodOut).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show(this, "Use a separate folder, not your LOD output folder.", "AnvilLOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var req = new AnvilLOD.Plugins.Authoring.ConvertRequest(source, output, ConvAllCheck.IsChecked == true, ConvOverwriteCheck.IsChecked == true);
+        SetBusy(true);
+        LogBox.Clear();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+        var progress = new Progress<string>(m =>
+        {
+            ProgressText.Text = m;
+            ConvSummaryText.Text = m;
+            LogBox.AppendText($"[{_elapsed.Elapsed:mm\\:ss\\.f}] {m}{Environment.NewLine}");
+            LogBox.ScrollToEnd();
+        });
+        try
+        {
+            var r = await Task.Run(() => AnvilLOD.Plugins.Authoring.OldrimLodConverter.Run(req, progress, ct), ct);
+            ConvSummaryText.Text = $"{r.Found:N0} meshes checked: {r.Converted:N0} converted, {r.AlreadySse:N0} already Skyrim SE, {r.Skipped:N0} left alone. Report: {r.ReportFile}. "
+                + AnvilLOD.Plugins.Authoring.OldrimLodConverter.Warning;
+            ConvOpenButton.IsEnabled = true;
+            StatusText.Text = $"Oldrim conversion finished in {r.Elapsed.TotalSeconds:F0}s";
+            ProgressText.Text = "Done";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Cancelled";
+            ProgressText.Text = "Cancelled";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Failed — see Log";
+            ConvSummaryText.Text = ex.Message;
+            LogBox.AppendText(Environment.NewLine + "ERROR: " + ex + Environment.NewLine);
+            MessageBox.Show(this, ex.Message, "Oldrim converter", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            SetBusy(false);
+            _cts.Dispose();
+            _cts = null;
+        }
+    }
 
     private void BrowseMakerOut_Click(object sender, RoutedEventArgs e)
     {

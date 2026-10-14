@@ -175,6 +175,11 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var missingByWorld = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
         var missingByWorldType = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);   // "worldspace|plugin\model_formid"
         var runtimeIds = RuntimeFormIds.FromLoadOrder(_game.LoadOrder);
+        // Tree billboards without TexGen (opt-in): rendered from the model into AnvilLOD's cache, which the asset index reads last.
+        var treeSynth = options.TreeLod && options.RenderTreeBillboards ? new TreeBillboardSynth(_assets) : null;
+        var texGenListed = new Lazy<HashSet<string>>(() => _assets is AssetIndex ai ? TexGenLists.Read(ai) : []);
+        int renderedTrees = 0;
+        var tooSmallTrees = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
 
         TreeBillboard? ReadTree(FormKey fk)
         {
@@ -193,16 +198,32 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             }
             var origin = GamePath.Join("textures", "terrain", "lodgen", fk.ModKey.FileName.String.ToLowerInvariant());
             if (!folders.Contains(origin)) folders.Add(origin);
-            foreach (var folder in folders)
-                foreach (var (dds, firstView) in new[] { (name + ".dds", false), (name + "_1.dds", true) })
-                {
-                    var ddsPath = GamePath.Join(folder, dds);
-                    if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
-                    using var reader = new StreamReader(st);
-                    var bb = TreeBillboard.Parse(ddsPath, reader.ReadToEnd(), firstView);
-                    if (bb is not null) return bb;
-                }
-            return null;
+            TreeBillboard? Find()
+            {
+                foreach (var folder in folders)
+                    foreach (var (dds, firstView) in new[] { (name + ".dds", false), (name + "_1.dds", true) })
+                    {
+                        var ddsPath = GamePath.Join(folder, dds);
+                        if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
+                        using var reader = new StreamReader(st);
+                        var bb = TreeBillboard.Parse(ddsPath, reader.ReadToEnd(), firstView);
+                        if (bb is not null) return bb;
+                    }
+                return null;
+            }
+            var found = Find();
+            string? why = null;
+            // No TexGen billboard: draw one from the tree's own model, unless TexGen listed the tree and left it out on purpose (too small).
+            if (found is null && treeSynth is not null
+                && !texGenListed.Value.Contains(TexGenLists.Key($"{fk.ModKey.FileName}\\{name}"))
+                && treeSynth.TryRender(model.DataRelativePath.Path, fk.ModKey.FileName.String.ToLowerInvariant(), name, out why))
+            {
+                Interlocked.Increment(ref renderedTrees);
+                found = Find();
+            }
+            else if (found is null && treeSynth is not null && why == TreeBillboardSynth.TooSmall)
+                tooSmallTrees[TexGenLists.Key($"{fk.ModKey.FileName}\\{name}")] = 0;   // a small plant: no LOD on purpose, not a gap
+            return found;
         }
         bool IsTree(FormKey fk) => linkCache.TryResolve<ITreeGetter>(fk, out _);
         var isTreeCache = new ConcurrentDictionary<FormKey, bool>();
@@ -758,6 +779,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 dynStandIns++;
             }
         if (dynStandIns > 0) progress?.Report($"Dynamic LOD: {dynStandIns:N0} of them are city stand-ins (ChildworldMatches), hidden inside the loaded cells while you are in the city");
+        if (renderedTrees > 0)
+            progress?.Report($"Tree billboards: {renderedTrees:N0} tree types had no TexGen billboard, so AnvilLOD drew them from their models (cache: {TreeBillboardSynth.CacheRoot}).");
         if (options.ParentCopies)
             progress?.Report($"Parent > Child copies: {parentCopies.Count:N0} references ({string.Join(", ", parentCopiesByChild.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value:N0}"))}); "
                 + $"left out: {pcNoLod:N0} without LOD, {pcSwitchable:N0} switchable, {pcIgnored:N0} by the ignore list, {pcNavmesh:N0} in navmesh cells, {pcStandIn:N0} city stand-ins listed in ChildworldMatches, {pcFlat:N0} flat ground pieces (roads)");
@@ -766,7 +789,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             options.ParentCopies ? parentCopies : null,
             options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions, parentCellWater) : null,
             missingByWorld.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
-            missingByWorldType.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
+            missingByWorldType.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            tooSmallTrees.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>

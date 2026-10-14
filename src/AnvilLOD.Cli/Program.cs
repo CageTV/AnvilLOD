@@ -22,6 +22,11 @@ public static class Program
                                          --budget recommended|off|<LOD0,LOD1,LOD2> triangle budget for the LOD meshes (default
                                          recommended, by model size; see lodmaker)
 
+          AnvilLOD convert-lod --source <mod folder> --output <folder> [--all-meshes] [--overwrite]
+                                         Skyrim LE (Oldrim) -> SE: converts the static LOD meshes of a mod folder (loose files and its BSAs)
+                                         to Skyrim SE meshes under the same paths in --output. Collision is dropped; animated, skinned and
+                                         particle meshes are left alone. --all-meshes converts every mesh, not just LOD ones.
+
           AnvilLOD lodmaker --input <file|folder> [--input ...] (--output <folder> | --mo2 <instance> --new-mod <name>) [options]
                                          LOD Mesh Maker: make LOD meshes (name_lod_0/1/2.nif, simplified, no collision, the
                                          model's own textures) from full models, plus a DynDOLOD-format rule file.
@@ -85,6 +90,9 @@ public static class Program
           --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
           --mountain-inset <units>  The same for mountain LOD (default 0 = off)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
+          --render-trees         Trees without a TexGen billboard get one drawn from their own model, so TexGen is not needed
+                                 for them (tall trees only; small plants TexGen skipped on purpose stay without LOD).
+                                 The billboards are cached in %LOCALAPPDATA%\AnvilLOD\TreeBillboards; a real TexGen one wins.
           --tree-3d              Use 3D tree LOD models (DynDOLOD passthru_lod.nif, matched by the CRC32 of the
                                  tree's mesh) in object LOD: 3D at LOD4, billboard cards from LOD8 on.
                                  Trees without a model keep billboard tree LOD.
@@ -184,6 +192,7 @@ public static class Program
                 "generate" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: true),
                 "author" => RunAuthor(Checked(CliArgs.Parse(args[1..]))),
                 "lodmaker" => RunLodMaker(Checked(CliArgs.Parse(args[1..]))),
+                "convert-lod" => RunConvertLod(Checked(CliArgs.Parse(args[1..]))),
                 _ => Fail($"Unknown command '{args[0]}'.\n\n{Usage}"),
             };
         }
@@ -214,7 +223,8 @@ public static class Program
                 Tree3D: Tree3DFromArgs(a),
                 MatchTextures: !a.Has("no-match-textures"),
                 ParentCopies: a.Has("parent-copies"),
-                GlowWindows: a.Has("glow-windows")),
+                GlowWindows: a.Has("glow-windows"),
+                RenderTreeBillboards: a.Has("render-trees")),
             OutputFolder: outputFolder,
             CleanOutput: !a.Has("keep-output"),
             Generate: generate,
@@ -340,6 +350,18 @@ public static class Program
             throw new CliArgException($"--budget must be recommended, off, or up to three numbers LOD0,LOD1,LOD2 (got '{v}').");
         while (nums.Count < 3) nums.Add(0);
         return (AnvilLOD.Meshes.Authoring.BudgetMode.Custom, nums);
+    }
+
+    private static int RunConvertLod(CliArgs a)
+    {
+        var source = a.Get("source") ?? throw new CliArgException("convert-lod needs --source <mod folder>.");
+        var output = a.Get("output") ?? throw new CliArgException("convert-lod needs --output <folder> (a new, separate mod folder).");
+        var total = Stopwatch.StartNew();
+        Console.WriteLine("WARNING: " + AnvilLOD.Plugins.Authoring.OldrimLodConverter.Warning);
+        var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));
+        var r = AnvilLOD.Plugins.Authoring.OldrimLodConverter.Run(new AnvilLOD.Plugins.Authoring.ConvertRequest(source, output, a.Has("all-meshes"), a.Has("overwrite")), sync);
+        Console.WriteLine($"Report: {r.ReportFile}");
+        return 0;
     }
 
     private static int RunLodMaker(CliArgs a)
