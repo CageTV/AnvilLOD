@@ -48,11 +48,6 @@ public class NativeGridObjectsTests
     [Theory]
     [InlineData(@"meshes\dyndolod\lod\effectsxfirewithembers01_dyndolod_lod.nif", NativeGridObjects.Kinds.Fire, true)]
     [InlineData(@"meshes\clutter\woodfires\campfire01burning.nif", NativeGridObjects.Kinds.Fire, true)]
-    [InlineData(@"meshes\clutter\common\candlelanternwithcandle01.nif", NativeGridObjects.Kinds.Candle, true)]
-    [InlineData(@"meshes\clutter
-uins
-uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
-    [InlineData(@"meshes\dlc02\clutter\dlc2darkelflantern06.nif", NativeGridObjects.Kinds.Candle, true)]
     [InlineData(@"meshes\dyndolod\lod\effectsxlavafall01_dyndolod_lod.nif", NativeGridObjects.Kinds.Lava, false)]
     [InlineData(@"meshes\dyndolod\lod\water	undrastreamtransition01_dyndolod_lod.nif", NativeGridObjects.Kinds.Stream, false)]
     [InlineData(@"meshes\effectsxrapids.nif", NativeGridObjects.Kinds.Stream, true)]
@@ -64,6 +59,13 @@ uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
         Assert.Equal(movable, pick.Movable);
         Assert.True(pick.Near);
     }
+
+    [Theory]
+    [InlineData(@"meshes\clutter\common\candlelanternwithcandle01.nif")]
+    [InlineData(@"meshes\dlc02\clutter\dlc2darkelflantern06.nif")]
+    [InlineData(@"meshes\clutteruinsuinsfloorcandlelampsmon.nif")]
+    public void Candles_and_lanterns_are_never_picked_nobody_sees_them_from_a_distance(string mesh)
+        => Assert.Empty(NativeGridObjects.Select([Grid(mesh, grid: DynamicGrid.Near)], NativeGridObjects.Kinds.All));
 
     [Fact]
     public void Water_planes_stay_with_the_plugin_when_the_fake_water_option_is_on_but_other_streams_do_not()
@@ -88,7 +90,7 @@ uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
     {
         // 3,360 references over 100 models: two full plugins, not three (a 1,600 cap would have made a nearly empty third).
         var picks = Enumerable.Range(0, 3360)
-            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\candles\candle{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
+            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\woodfires\campfire{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
             .ToList();
         var chunks = UndersidePluginWriter.PackEffects(picks).ToList();
         Assert.Equal(2, chunks.Count);
@@ -101,7 +103,7 @@ uinsfloorcandlelampsmon.nif", NativeGridObjects.Kinds.Candle, true)]
     public void Large_range_packs_up_to_4088_records_per_plugin()
     {
         var picks = Enumerable.Range(0, 6000)
-            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\candles\candle{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
+            .Select(i => NativeGridObjects.Select([Grid($@"meshes\clutter\woodfires\campfire{i % 100}.nif", grid: DynamicGrid.Near)], NativeGridObjects.Kinds.Effects)[0])
             .ToList();
         Assert.Equal(2, UndersidePluginWriter.PackEffects(picks, large: true).Count());
         Assert.Equal(4, UndersidePluginWriter.PackEffects(picks, large: false).Count());   // 6,000 refs + 100 bases per plugin: 1,940 per 2,040

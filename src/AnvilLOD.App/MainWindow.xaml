@@ -561,7 +561,7 @@
                             <StackPanel x:Name="AuthorPanel" IsEnabled="False">
                                 <TextBlock Text="Plugin" Style="{StaticResource FieldLabel}" />
                                 <ComboBox x:Name="AuthorPluginBox" IsEditable="True" IsTextSearchEnabled="True" Width="420" HorizontalAlignment="Left"
-                                          ToolTip="The plugin to check, e.g. The Archwood.esp" SelectionChanged="AuthorPlugin_Changed" LostFocus="AuthorPlugin_LostFocus" />
+                                          ToolTip="The plugin to check, e.g. The Archwood.esp. Or pick &quot;All plugins (tree billboards)&quot; to make billboards for every tree type in the load order that has none" SelectionChanged="AuthorPlugin_Changed" LostFocus="AuthorPlugin_LostFocus" />
 
                                 <TextBlock Text="Output folder (a new, separate mod)" Style="{StaticResource FieldLabel}" />
                                 <DockPanel Width="560" HorizontalAlignment="Left">
@@ -573,6 +573,7 @@
                                 <WrapPanel>
                                     <CheckBox x:Name="AuthorMeshesCheck" Content="LOD meshes" IsChecked="True" Margin="0,3,16,3" ToolTip="Simplified name_lod_0/1/2.nif for big objects without LOD" />
                                     <CheckBox x:Name="AuthorBillboardsCheck" Content="Tree billboards" IsChecked="True" Margin="0,3,16,3" ToolTip="TexGen-style billboards (.dds + .txt) for trees and big plants without one" />
+                                    <CheckBox x:Name="AuthorStandInsCheck" Content="Stand-in tree models" Margin="0,3,16,3" ToolTip="For trees whose model file is missing from the mod (so the tree is invisible): copy the closest existing tree model under the missing name, then make its billboard. The copies are made on your PC for your own use; do not share them. Put pairs in &quot;AnvilLOD Tree Stand-ins.ini&quot; in the output folder to choose the model yourself." />
                                     <CheckBox x:Name="AuthorRulesCheck" Content="Rule file" IsChecked="True" Margin="0,3,16,3" ToolTip="DynDOLOD\DynDOLOD_SSE_&lt;plugin&gt;.ini for the generated meshes (works with AnvilLOD and DynDOLOD)" />
                                     <CheckBox x:Name="AuthorOverwriteCheck" Content="Overwrite existing files" Margin="0,3,16,3" ToolTip="Off: files already in the output folder (maybe hand-edited) are kept" />
                                     <CheckBox x:Name="AuthorBudgetCheck" Content="Triangle budget (recommended)" IsChecked="True" Margin="0,3,16,3" ToolTip="Keeps each generated LOD mesh within the triangles that SE/AE LOD meshes of the same size use (measured from DynDOLOD Resources SE and LOD Model Library). Off: only the simplifier's error limit applies, so dense models stay heavy." />

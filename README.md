@@ -322,3 +322,20 @@ The Water page has a **Water opacity** slider (the water sheets around the walle
 ## Fires, candles and streams (AnvilLOD Effects.esp)
 
 With native effects on, the fires, candles, torches and streams are real references in `AnvilLOD Effects.esp`. They start disabled and the SKSE plugin switches on only the ones within **fEffectsDistance** (20,000 units by default, 5 cells; a slider on the Water & Animated Objects page) of you. Enabling hundreds of them across the map crashed the renderer when the camera turned toward them, so do not raise it much.
+
+## Worlds added by mods (Bruma and others)
+
+AnvilLOD makes object LOD for every worldspace that has LOD settings, the ones mods add included (Beyond Skyrim: Bruma is `BSHeartland`, 2,380 cells). What matters for them:
+
+- **Skyrim LE (Oldrim) LOD meshes are read now.** Ported content often ships its LOD meshes in the old format (Bruma's `bscyrodiil\lod\...` and `bstamriel\lod\...`: 164 of them were "convert to SSE" errors before). The geometry is read as it is (tangents are worked out from the UVs when the file has none); no conversion is needed.
+- **A mod's own tree LOD is kept when ours would be a partial copy.** When most of a worldspace's trees have no TexGen billboard (TexGen has not been run with that mod's plugins) and the mod ships its own tree LOD, AnvilLOD leaves that worldspace's tree LOD as the mod made it and says so in the log. Run TexGen with the current load order to let AnvilLOD make it.
+- **Terrain LOD (`.btr`) is never touched**: a mod's own terrain LOD stays.
+- Grass LOD needs a grass cache for the worldspace (NGIO or FasterNGIO).
+
+## Textures that don't exist
+
+A LOD mesh can name a texture that exists nowhere (some creek LOD from a water mod whose texture was never shipped). Skyrim then ends up with a null texture and some builds crash in the lighting shader instead of drawing purple. After Generate, AnvilLOD writes a 4x4 stand-in at the missing path into its output (a plain colour picked from the name, a flat normal map for a normal map), lists every missing texture in the log, and also checks the DDS header of every texture the LOD meshes use ("Unloadable texture: ..." for one the game cannot load). Nothing that exists is ever replaced; the output is cleared on each run, so install the real texture and generate again.
+
+## Fires and candles
+
+Native effects write fires, torches, braziers, lava and streams. Candles and lanterns are left out: small lights nobody sees from a distance.

@@ -13,6 +13,7 @@ public sealed class NifFile
     public const uint Version = 0x14020007;
     public const uint UserVersion = 12;
     public const uint BsVersionSse = 100;
+    public const uint BsVersionLe = 83;
 
     public byte[] Data { get; }
     public uint BsVersion { get; }
@@ -48,10 +49,10 @@ public sealed class NifFile
         uint numBlocks = r.U32();
         if (userVersion != UserVersion) throw new NotSupportedException($"NIF user version {userVersion} is not supported (need 12).");
         uint bsVersion = r.U32();
-        if (bsVersion != BsVersionSse)
-            throw new NotSupportedException(bsVersion == 83
-                ? "This is a Skyrim LE (Oldrim) mesh. Convert it to SSE format (e.g. with Cathedral Assets Optimizer)."
-                : $"NIF BS version {bsVersion} is not supported (need 100 / Skyrim SE).");
+        // Skyrim SE (100) and Skyrim LE / Oldrim (83): the header, nodes and shader blocks are laid out the same; only the geometry differs
+        // (NiTriShape + NiTriShapeData instead of BSTriShape vertex buffers), which NifGeometryReader reads for both.
+        if (bsVersion != BsVersionSse && bsVersion != BsVersionLe)
+            throw new NotSupportedException($"NIF BS version {bsVersion} is not supported (need 100 / Skyrim SE or 83 / Skyrim LE).");
 
         r.ExportString(); // author
         r.ExportString(); // process script

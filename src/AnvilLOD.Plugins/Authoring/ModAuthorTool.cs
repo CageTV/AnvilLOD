@@ -28,7 +28,8 @@ public sealed record AuthorRequest(
     string? DynDolodFolder = null,
     LodPreset Preset = LodPreset.High,
     BudgetMode Budget = BudgetMode.Recommended,       // triangle budget for the generated LOD meshes (see LodBudgets)
-    IReadOnlyList<int>? CustomBudget = null);          // with Custom: the most triangles at LOD 0, 1 and 2 (0 = no limit)
+    IReadOnlyList<int>? CustomBudget = null,           // with Custom: the most triangles at LOD 0, 1 and 2 (0 = no limit)
+    bool TreeStandIns = false);                        // trees whose model file exists nowhere: copy the closest existing tree model under that name (see TreeStandIns)
 
 /// <summary>One row of the author report.</summary>
 public sealed record AuthorItem(
@@ -58,6 +59,9 @@ public sealed record AuthorResult(
 /// </summary>
 public static class ModAuthorTool
 {
+    /// <summary>Plugin name that means "every tree in the load order that has no billboard" (trees only, no objects, no rule file).</summary>
+    public const string AllPlugins = "*";
+
     public const string Warning =
         "These files are generated automatically from the mod's own models and textures. They are a starting point: " +
         "check them in NifSkope and in game before using them, and only share them with the mod author's permission.";
@@ -81,10 +85,17 @@ public static class ModAuthorTool
         var sw = Stopwatch.StartNew();
         progress?.Report("Opening load order...");
         using var game = GameContext.Open(req.Game with { ExtraLooseRoots = ["textures"], ExcludeFolder = req.OutputFolder }, progress);
-        var listing = game.LoadOrder.ListedOrder.FirstOrDefault(l => string.Equals(l.ModKey.FileName.String, req.Plugin.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (listing?.Mod is not { } mod)
-            throw new InvalidOperationException($"{req.Plugin} is not in the load order (or could not be loaded).");
-        var pluginName = listing.ModKey.FileName.String;
+        bool allPlugins = req.Plugin.Trim() == AllPlugins;
+        ISkyrimModGetter? mod = null;
+        var pluginName = "All plugins";
+        if (!allPlugins)
+        {
+            var listing = game.LoadOrder.ListedOrder.FirstOrDefault(l => string.Equals(l.ModKey.FileName.String, req.Plugin.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (listing?.Mod is not { } found)
+                throw new InvalidOperationException($"{req.Plugin} is not in the load order (or could not be loaded).");
+            mod = found;
+            pluginName = listing.ModKey.FileName.String;
+        }
 
         progress?.Report("Indexing meshes, textures and LOD settings...");
         var assets = game.BuildAssets(p => p.StartsWith("meshes\\", StringComparison.Ordinal) || p.StartsWith("textures\\", StringComparison.Ordinal)
@@ -101,8 +112,16 @@ public static class ModAuthorTool
             foreach (var r in records)
                 if (linkCache.TryResolve<T>(r.FormKey, out var win)) bases[r.FormKey] = win;
         }
-        Add(mod.Statics); Add(mod.MoveableStatics); Add(mod.Activators); Add(mod.Furniture);
-        Add(mod.Doors); Add(mod.Containers); Add(mod.Trees);
+        if (allPlugins)
+        {
+            foreach (var l in game.LoadOrder.ListedOrder)
+                if (l.Mod is { } m) Add(m.Trees);
+        }
+        else
+        {
+            Add(mod!.Statics); Add(mod.MoveableStatics); Add(mod.Activators); Add(mod.Furniture);
+            Add(mod.Doors); Add(mod.Containers); Add(mod.Trees);
+        }
         progress?.Report($"{pluginName}: {bases.Count:N0} object and tree records");
 
         // 2) Where they're placed: worldspaces with LOD only.
@@ -127,6 +146,28 @@ public static class ModAuthorTool
         int meshesWritten = 0, billboardsWritten = 0;
         var textureCache = new ConcurrentDictionary<string, (byte[], int, int)?>(StringComparer.OrdinalIgnoreCase);
         var pluginKey = LodRules.PluginKey(pluginName);
+        // Trees TexGen listed without a billboard were left out on purpose (too small); DynDOLOD gives them no LOD either.
+        var texGenListed = TexGenLists.Read(assets);
+        progress?.Report($"TexGen's lists name {texGenListed.Count:N0} trees and plants");
+        int standInsWritten = 0;
+        (List<string> Available, Dictionary<string, string> Overrides)? standInPool = null;
+        (List<string> Available, Dictionary<string, string> Overrides) BuildStandInPool()
+        {
+            // Candidates: the models of every tree record in the load order whose file does exist. A hand-written mapping in the output folder wins.
+            var available = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var l in game.LoadOrder.ListedOrder)
+                if (l.Mod is { } m)
+                    foreach (var t in m.Trees)
+                        if (t.Model?.File is { IsNull: false } mf)
+                        {
+                            var p = GamePath.Normalize(mf.DataRelativePath.Path.StartsWith("meshes", StringComparison.OrdinalIgnoreCase) ? mf.DataRelativePath.Path : "meshes\\" + mf.DataRelativePath.Path);
+                            if (assets.Exists(p)) available.Add(p);
+                        }
+            var iniPath = Path.Combine(req.OutputFolder, TreeStandIns.IniName);
+            var overrides = File.Exists(iniPath) ? TreeStandIns.ParseIni(File.ReadAllText(iniPath)) : new Dictionary<string, string>();
+            progress?.Report($"Stand-in models: {available.Count:N0} existing tree models to choose from, {overrides.Count} hand-written pairs");
+            return (available.ToList(), overrides);
+        }
 
         foreach (var (fk, rec) in bases.OrderBy(kv => (rec: kv.Value is ITreeGetter ? 1 : 0, kv.Value.EditorID ?? "")))
         {
@@ -141,6 +182,35 @@ public static class ModAuthorTool
             }
             var full = GamePath.Normalize(modelPath.StartsWith("meshes", StringComparison.OrdinalIgnoreCase) ? modelPath : "meshes\\" + modelPath);
             var (mesh, problem) = ReadMeshChecked(assets, full);
+            string standIn = "";
+            if (mesh is null && rec is ITreeGetter && req.TreeStandIns && problem == "Model file missing")
+            {
+                // The mod was released without this model. Copy the closest tree model that does exist under the missing name, so the tree is drawn
+                // (it is invisible now) and gets a billboard. The copy is made here on the user's machine; nothing of the mod is redistributed.
+                standInPool ??= BuildStandInPool();
+                var pick = TreeStandIns.Choose(full, standInPool.Value.Available, standInPool.Value.Overrides);
+                if (pick is null || !assets.Exists(pick))
+                {
+                    items.Add(new AuthorItem("Tree", fk.ToString(), rec.EditorID, full, count, 0, "Model file missing, no stand-in found", $"Add a line to {TreeStandIns.IniName}: {full} = <existing model>"));
+                    continue;
+                }
+                var (sMesh, sProblem) = ReadMeshChecked(assets, pick);
+                if (sMesh is null)
+                {
+                    items.Add(new AuthorItem("Tree", fk.ToString(), rec.EditorID, full, count, 0, "Model file missing, stand-in unusable: " + sProblem, ""));
+                    continue;
+                }
+                var target = Path.Combine(req.OutputFolder, full);
+                if (req.Overwrite || !File.Exists(target))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    if (assets.TryOpen(pick, out var src))
+                        using (src) using (var dst = File.Create(target)) src.CopyTo(dst);
+                    standInsWritten++;
+                }
+                mesh = sMesh;
+                standIn = $"Stand-in model: copy of {pick}. ";
+            }
             if (mesh is null)
             {
                 items.Add(new AuthorItem(rec is ITreeGetter ? "Tree" : "Object", fk.ToString(), rec.EditorID, full, count, 0, problem!, ""));
@@ -148,7 +218,10 @@ public static class ModAuthorTool
             }
 
             if (rec is ITreeGetter)
-                items.Add(CheckTree(fk, rec, full, mesh, count));
+            {
+                var treeItem = CheckTree(fk, rec, full, mesh, count);
+                items.Add(standIn.Length == 0 ? treeItem : treeItem with { Action = standIn + treeItem.Action });
+            }
             else
                 items.Add(CheckObject(fk, rec, full, mesh, count));
         }
@@ -175,7 +248,7 @@ public static class ModAuthorTool
         Directory.CreateDirectory(req.OutputFolder);
         File.WriteAllText(reportFile, Report(pluginName, req, items, meshesWritten, billboardsWritten, ruleFile));
         sw.Stop();
-        progress?.Report($"Done: {meshesWritten} LOD meshes, {billboardsWritten} billboards{(ruleFile is null ? "" : ", rule file")} in {sw.Elapsed.TotalSeconds:F0}s");
+        progress?.Report($"Done: {meshesWritten} LOD meshes, {billboardsWritten} billboards{(standInsWritten > 0 ? $", {standInsWritten} stand-in models" : "")}{(ruleFile is null ? "" : ", rule file")} in {sw.Elapsed.TotalSeconds:F0}s");
         return new AuthorResult(items, meshesWritten, billboardsWritten, ruleFile, reportFile, sw.Elapsed);
 
         // ---------- objects ----------
@@ -253,9 +326,18 @@ public static class ModAuthorTool
             var folder = GamePath.Join("textures", "terrain", "lodgen", fk.ModKey.FileName.String.ToLowerInvariant());
             var stem = Path.GetFileNameWithoutExtension(full).ToLowerInvariant();
             var name = $"{stem}_{fk.ID:x8}";
-            bool has = (assets.Exists(GamePath.Join(folder, name + ".dds")) || assets.Exists(GamePath.Join(folder, name + "_1.dds")))
-                       && assets.Exists(GamePath.Join(folder, name + ".txt"));
+            // Same places the scanner looks: the folder of every plugin in the record's override chain (TexGen files a billboard under the winner), then the original's.
+            var folders = new List<string> { folder };
+            foreach (var ctx in linkCache.ResolveAllContexts<ITree, ITreeGetter>(fk))
+            {
+                var f = GamePath.Join("textures", "terrain", "lodgen", ctx.ModKey.FileName.String.ToLowerInvariant());
+                if (!folders.Contains(f)) folders.Add(f);
+            }
+            bool has = folders.Any(fo => (assets.Exists(GamePath.Join(fo, name + ".dds")) || assets.Exists(GamePath.Join(fo, name + "_1.dds")))
+                                         && assets.Exists(GamePath.Join(fo, name + ".txt")));
             if (has) return new AuthorItem("Tree", fk.ToString(), rec.EditorID, full, count, height, "Has billboard", "");
+            if (texGenListed.Contains(TexGenLists.Key($"{fk.ModKey.FileName}\\{stem}_{fk.ID:x8}")))
+                return new AuthorItem("Tree", fk.ToString(), rec.EditorID, full, count, height, "Skipped by TexGen on purpose (too small)", "");
             if (height < req.MinTreeHeight)
                 return new AuthorItem("Tree", fk.ToString(), rec.EditorID, full, count, height, "Small, no billboard needed", "");
             string action = "";

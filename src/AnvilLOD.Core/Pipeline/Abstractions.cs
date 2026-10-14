@@ -44,7 +44,9 @@ public sealed record ScanResult(
     IReadOnlyList<DynamicLodReference>? Dynamic = null,
     IReadOnlyDictionary<string, TextureVariant>? TextureVariants = null,   // by LodReference.TextureVariant
     IReadOnlyList<ParentCopy>? ParentCopies = null,
-    ParentCopyStats? ParentCopyStats = null);
+    ParentCopyStats? ParentCopyStats = null,
+    IReadOnlyDictionary<string, long>? MissingBillboardsByWorld = null,   // worldspace -> placed trees that have no billboard
+    IReadOnlyDictionary<string, long>? MissingBillboardsByWorldType = null);   // "worldspace|plugin\model_formid" -> placed count
 
 public sealed record ScanStats(
     int PluginsInLoadOrder,

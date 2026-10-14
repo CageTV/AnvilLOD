@@ -172,6 +172,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         // 2b) Trees: billboard per TREE base (TexGen/LODGen naming), runtime FormIDs from the load order.
         var treeCache = new ConcurrentDictionary<FormKey, TreeBillboard?>();
         var missingBillboards = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var missingByWorld = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        var missingByWorldType = new ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);   // "worldspace|plugin\model_formid"
         var runtimeIds = RuntimeFormIds.FromLoadOrder(_game.LoadOrder);
 
         TreeBillboard? ReadTree(FormKey fk)
@@ -492,6 +494,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                             ? $"{baseKey.Value.ModKey.FileName}\\{Path.GetFileNameWithoutExtension(mf.DataRelativePath.Path)}_{baseKey.Value.ID:x8}"
                             : baseKey.Value.ToString();
                         missingBillboards.AddOrUpdate(key, 1, (_, n) => n + 1);
+                        missingByWorld.AddOrUpdate(wsId, 1, (_, n) => n + 1);
+                        missingByWorldType.AddOrUpdate(wsId + "|" + key, 1, (_, n) => n + 1);
                         return;
                     }
                     var m3 = tree3d is null ? null : tree3dCache.GetOrAdd(baseKey.Value, Find3D);
@@ -760,7 +764,9 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         return new ScanResult(grids, refs, stats, trees, missingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase), dynamic,
             options.MatchTextures ? variants.ToDictionary(kv => kv.Key, kv => kv.Value) : null,
             options.ParentCopies ? parentCopies : null,
-            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions, parentCellWater) : null);
+            options.ParentCopies ? new ParentCopyStats(parentCopiesByChild, pcInRegion, pcNoLod, pcSwitchable, pcIgnored, pcNavmesh, parentCopyRegions, parentCellWater) : null,
+            missingByWorld.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+            missingByWorldType.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>Initial enable state of references, following enable-parent chains.</summary>

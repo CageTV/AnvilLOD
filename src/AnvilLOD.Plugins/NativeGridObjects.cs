@@ -105,6 +105,9 @@ public static class NativeGridObjects
             }
             var kind = KindOf(lower);
             if (kind == Kinds.None || (kinds & kind) == 0) continue;
+            // Candles and lanterns are small lights nobody can see from a distance (a DynDOLOD list has about 580 of them): leaving them out keeps
+            // the persistent references down, and the real ones are there inside the loaded cells anyway.
+            if (kind == Kinds.Candle) continue;
             // A water plane (stream, creek, pond) is a shader-only STAT; the stand-in option replaces them in the plugin instead.
             bool plane = lower.Contains("\\water\\") || lower.Contains("creek");
             if (plane && waterStandIns) continue;

@@ -311,6 +311,7 @@ public static class Program
             plugin, output,
             LodMeshes: !a.Has("no-meshes"),
             Billboards: !a.Has("no-billboards"),
+            TreeStandIns: a.Has("tree-stand-ins"),
             RuleFile: !a.Has("no-rules"),
             MinObjectSize: F("min-size", 400f),
             MinTreeHeight: F("min-tree-height", 256f),

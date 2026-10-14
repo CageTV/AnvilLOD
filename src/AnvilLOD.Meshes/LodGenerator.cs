@@ -342,6 +342,54 @@ public sealed class LodGenerator
         FindMissingTextures(_meshes.Values.Where(l => l.IsValueCreated && l.Value is not null).Select(l => l.Value!),
             tex => _assets.Exists(tex) || File.Exists(Path.Combine(outputFolder, tex)));
 
+    /// <summary>
+    /// Opens every texture the loaded LOD meshes name (all nine slots) and checks its DDS header. A texture the engine can't create is
+    /// worse than a missing one: the shader that uses it dereferences a null texture and the game crashes. Key = texture, value = the
+    /// problem and the first mesh that uses it.
+    /// </summary>
+    public IReadOnlyDictionary<string, (string Problem, string FirstMesh)> AuditTextureFiles(string outputFolder)
+    {
+        var used = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var l in _meshes.Values)
+        {
+            if (!l.IsValueCreated || l.Value is not { } mesh) continue;
+            foreach (var part in mesh.Parts)
+                foreach (var raw in part.Material.Textures)
+                {
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    var tex = raw.Replace('/', '\\').TrimStart('\\');
+                    if (!tex.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) tex = "textures\\" + tex;
+                    used.TryAdd(tex, mesh.Path);
+                }
+        }
+        var bad = new System.Collections.Concurrent.ConcurrentDictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase);
+        Parallel.ForEach(used, kv =>
+        {
+            try
+            {
+                Stream? stream = null;
+                var local = Path.Combine(outputFolder, kv.Key);
+                if (File.Exists(local)) stream = File.OpenRead(local);
+                else if (_assets.TryOpen(kv.Key, out var s)) stream = s;
+                if (stream is null) return;   // missing textures are AuditTextures' business
+                using (stream)
+                {
+                    var head = new byte[148];
+                    int n = 0;
+                    while (n < head.Length) { int r = stream.Read(head, n, head.Length - n); if (r <= 0) break; n += r; }
+                    long length = stream.CanSeek ? stream.Length : n;
+                    var problem = DdsHeader.Problem(head.AsSpan(0, n), length);
+                    if (problem is not null) bad[kv.Key] = (problem, kv.Value);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                bad[kv.Key] = ("could not be read: " + ex.Message, kv.Value);
+            }
+        });
+        return bad.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>The pure part of <see cref="AuditTextures"/>: slots 0 (diffuse) and 1 (normal) of every part's material.</summary>
     public static IReadOnlyDictionary<string, (string FirstMesh, int Meshes)> FindMissingTextures(IEnumerable<LodMesh> meshes, Func<string, bool> exists)
     {

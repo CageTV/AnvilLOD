@@ -152,8 +152,9 @@ public static class BtoBuilder
             w.Set(shader, b => WriteShader(b, c.Material, texSet, c.HasColors));
             w.Set(texSet, b =>
             {
-                b.Write((uint)c.Material.Textures.Count);
-                foreach (var t in c.Material.Textures) NifWriter.WriteSizedString(b, t);
+                var slots = ShaderGuard.TextureSlots(c.Material.Textures);
+                b.Write((uint)slots.Length);
+                foreach (var t in slots) NifWriter.WriteSizedString(b, t);
             });
             if (alpha >= 0)
                 w.Set(alpha, b =>
@@ -190,8 +191,9 @@ public static class BtoBuilder
         // passthru shape of such a type is written as the default type; tree LOD models are all default-type.
         b.Write(0u);                          // shader type: default
         NifWriter.WriteObjectNet(b, -1);
-        b.Write(m.ShaderFlags1);
-        b.Write(m.ShaderFlags2 | (colors ? 0x20u : 0u));
+        var (flags1, flags2) = ShaderGuard.Safe(m, colors);
+        b.Write(flags1);
+        b.Write(flags2);
         b.Write(pt?.UvOffsetX ?? 0f); b.Write(pt?.UvOffsetY ?? 0f);   // uv offset
         b.Write(pt?.UvScaleX ?? 1f); b.Write(pt?.UvScaleY ?? 1f);     // uv scale
         b.Write(texSet);

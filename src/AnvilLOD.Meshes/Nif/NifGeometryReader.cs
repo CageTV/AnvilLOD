@@ -65,7 +65,7 @@ public static class NifGeometryReader
         foreach (var root in nif.Roots)
             Walk(nif, root, Matrix4x4.Identity, parts, warnings, visited, passthru, waterAsLit);
 
-        bool anyShape = nif.Blocks.Any(b => ShapeTypes.Contains(b.Type) || b.Type is "NiTriShape" or "NiTriStrips");
+        bool anyShape = nif.Blocks.Any(b => ShapeTypes.Contains(b.Type) || b.Type is "NiTriShape" or "BSLODTriShape" or "NiTriStrips");
         return new LodMesh { Path = path, Parts = parts, Warnings = warnings, NoShapesInFile = !anyShape };
     }
 
@@ -144,9 +144,22 @@ public static class NifGeometryReader
                 warnings.Add($"Shape {block.Index} ({block.Type}) could not be read: {ex.Message}");
             }
         }
-        else if (block.Type is "NiTriShape" or "NiTriStrips")
+        else if (block.Type is "NiTriShape" or "BSLODTriShape")
         {
-            warnings.Add($"{block.Type} shapes are Skyrim LE format and are skipped; convert the mesh to SSE.");
+            // Skyrim LE (Oldrim) geometry: the same shader and alpha blocks, but the vertices live in a NiTriShapeData block.
+            try
+            {
+                var part = ReadLeShape(nif, block, parent, warnings, passthru, waterAsLit);
+                if (part is not null) parts.Add(part);
+            }
+            catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException or InvalidDataException)
+            {
+                warnings.Add($"Shape {block.Index} ({block.Type}) could not be read: {ex.Message}");
+            }
+        }
+        else if (block.Type == "NiTriStrips")
+        {
+            warnings.Add("NiTriStrips shapes are not supported and are skipped; convert the mesh to triangle lists.");
         }
     }
 
@@ -240,6 +253,169 @@ public static class NifGeometryReader
             Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit,
             Colors = col, Triangles = tris,
         };
+    }
+
+    /// <summary>
+    /// A Skyrim LE (Oldrim) shape: NiTriShape (or BSLODTriShape) with a NiTriShapeData block. Tangents come from the data block when it has
+    /// them, otherwise they are worked out from the UVs (LE keeps them in an extra data block we don't read).
+    /// </summary>
+    private static LodMeshPart? ReadLeShape(NifFile nif, NifBlock block, Matrix4x4 parent, List<string> warnings, bool passthru, bool waterAsLit)
+    {
+        var r = nif.ReaderFor(block);
+        var av = ReadAvObject(nif, ref r);
+        if ((av.Flags & 1) != 0) return null;
+
+        int dataRef = r.I32();
+        int skin = r.I32();
+        uint numMaterials = r.U32();
+        r.Skip((int)numMaterials * 8);   // material names and extra data
+        r.I32();                         // active material
+        r.U8();                          // material needs update
+        int shaderRef = r.I32();
+        int alphaRef = r.I32();
+
+        if (skin >= 0) { warnings.Add($"Skinned shape '{av.Name}' skipped."); return null; }
+        if (dataRef < 0 || dataRef >= nif.Blocks.Count || nif.Blocks[dataRef].Type != "NiTriShapeData") return null;
+
+        var material = ReadMaterial(nif, shaderRef, alphaRef, passthru, waterAsLit);
+        if (material is null) { warnings.Add($"Shape '{av.Name}' has no lighting shader; skipped."); return null; }
+        bool water = waterAsLit && ReferenceEquals(material, FakeWaterMaterial);
+        if (water) warnings.Add(WaterPlaneWarning + av.Name);
+
+        var d = nif.ReaderFor(nif.Blocks[dataRef]);
+        d.I32();                          // group id
+        int numVerts = d.U16();
+        d.U8(); d.U8();                   // keep and compress flags
+        bool hasVerts = d.U8() != 0;
+        if (!hasVerts || numVerts == 0) return null;
+        var src = new Vector3[numVerts];
+        for (int i = 0; i < numVerts; i++) src[i] = new Vector3(d.F32(), d.F32(), d.F32());
+        ushort vectorFlags = d.U16();
+        d.U32();                          // material CRC (Skyrim LE geometry data carries one)
+        bool hasNormals = d.U8() != 0;
+        var srcN = new Vector3[numVerts];
+        Vector3[]? srcT = null, srcB = null;
+        if (hasNormals)
+        {
+            for (int i = 0; i < numVerts; i++) srcN[i] = new Vector3(d.F32(), d.F32(), d.F32());
+            if ((vectorFlags & 0x1000) != 0)
+            {
+                srcT = new Vector3[numVerts]; srcB = new Vector3[numVerts];
+                for (int i = 0; i < numVerts; i++) srcT[i] = new Vector3(d.F32(), d.F32(), d.F32());
+                for (int i = 0; i < numVerts; i++) srcB[i] = new Vector3(d.F32(), d.F32(), d.F32());
+            }
+        }
+        d.Skip(16);                       // bounding sphere
+        bool hasColors = d.U8() != 0;
+        uint[]? col = null;
+        if (hasColors)
+        {
+            col = new uint[numVerts];
+            for (int i = 0; i < numVerts; i++)
+            {
+                byte cr = ToByte(d.F32()), cg = ToByte(d.F32()), cb = ToByte(d.F32()), ca = ToByte(d.F32());
+                col[i] = (uint)(ca << 24 | cb << 16 | cg << 8 | cr);
+            }
+        }
+        int numUvSets = vectorFlags & 0x3F;
+        var uv = new Vector2[numVerts];
+        for (int set = 0; set < numUvSets; set++)
+            for (int i = 0; i < numVerts; i++)
+            {
+                var uvv = new Vector2(d.F32(), d.F32());
+                if (set == 0) uv[i] = uvv;
+            }
+        d.U16();                          // consistency flags
+        d.I32();                          // additional data
+
+        // NiTriShapeData
+        int numTris = d.U16();
+        d.U32();                          // number of triangle points
+        bool hasTris = d.U8() != 0;
+        if (!hasTris || numTris == 0) return null;
+        var tris = new ushort[numTris * 3];
+        for (int i = 0; i < tris.Length; i++) tris[i] = d.U16();
+        foreach (var idx in tris)
+            if (idx >= numVerts) throw new InvalidDataException("Triangle index out of range.");
+
+        if (!hasNormals) srcN = FaceNormals(src, tris);
+        if (srcT is null || srcB is null) (srcT, srcB) = TangentsFromUv(src, uv, srcN, tris);
+
+        var world = av.Local * parent;
+        var normalMatrix = Transforms.RotationOnly(world);
+        var pos = new Vector3[numVerts];
+        var nrm = new Vector3[numVerts];
+        var tan = new Vector3[numVerts];
+        var bit = new Vector3[numVerts];
+        for (int i = 0; i < numVerts; i++)
+        {
+            pos[i] = Vector3.Transform(src[i], world);
+            nrm[i] = Transforms.SafeNormalize(Vector3.TransformNormal(srcN[i], normalMatrix), Vector3.UnitZ);
+            tan[i] = Transforms.SafeNormalize(Vector3.TransformNormal(srcT[i], normalMatrix), Vector3.UnitX);
+            bit[i] = Transforms.SafeNormalize(Vector3.TransformNormal(srcB[i], normalMatrix), Vector3.UnitY);
+        }
+        if (water)
+        {
+            col = new uint[numVerts];
+            for (int i = 0; i < numVerts; i++)
+            {
+                col[i] = FakeWaterColor;
+                nrm[i] = Vector3.UnitZ; tan[i] = Vector3.UnitX; bit[i] = Vector3.UnitY;
+                uv[i] *= FakeWaterUvTiling;
+            }
+        }
+
+        return new LodMeshPart
+        {
+            Name = av.Name,
+            Material = material,
+            Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit,
+            Colors = col, Triangles = tris,
+        };
+    }
+
+    private static byte ToByte(float f) => (byte)Math.Clamp((int)MathF.Round(f * 255f), 0, 255);
+
+    private static Vector3[] FaceNormals(Vector3[] pos, ushort[] tris)
+    {
+        var n = new Vector3[pos.Length];
+        for (int t = 0; t + 2 < tris.Length; t += 3)
+        {
+            var fn = Vector3.Cross(pos[tris[t + 1]] - pos[tris[t]], pos[tris[t + 2]] - pos[tris[t]]);
+            n[tris[t]] += fn; n[tris[t + 1]] += fn; n[tris[t + 2]] += fn;
+        }
+        for (int i = 0; i < n.Length; i++) n[i] = Transforms.SafeNormalize(n[i], Vector3.UnitZ);
+        return n;
+    }
+
+    /// <summary>Per-vertex tangent and bitangent from the UV layout, made orthogonal to the normal.</summary>
+    private static (Vector3[] Tangents, Vector3[] Bitangents) TangentsFromUv(Vector3[] pos, Vector2[] uv, Vector3[] nrm, ushort[] tris)
+    {
+        var tan = new Vector3[pos.Length];
+        var bit = new Vector3[pos.Length];
+        for (int t = 0; t + 2 < tris.Length; t += 3)
+        {
+            int a = tris[t], b = tris[t + 1], c = tris[t + 2];
+            var e1 = pos[b] - pos[a]; var e2 = pos[c] - pos[a];
+            var d1 = uv[b] - uv[a]; var d2 = uv[c] - uv[a];
+            float det = d1.X * d2.Y - d2.X * d1.Y;
+            if (MathF.Abs(det) < 1e-12f) continue;
+            float inv = 1f / det;
+            var tv = (e1 * d2.Y - e2 * d1.Y) * inv;
+            var bv = (e2 * d1.X - e1 * d2.X) * inv;
+            tan[a] += tv; tan[b] += tv; tan[c] += tv;
+            bit[a] += bv; bit[b] += bv; bit[c] += bv;
+        }
+        for (int i = 0; i < pos.Length; i++)
+        {
+            var n = nrm[i];
+            var t = tan[i] - n * Vector3.Dot(n, tan[i]);
+            t = Transforms.SafeNormalize(t, Vector3.UnitX);
+            var b = Transforms.SafeNormalize(Vector3.Cross(n, t), Vector3.UnitY);
+            if (Vector3.Dot(b, bit[i]) < 0) b = -b;
+            tan[i] = t; bit[i] = b;
+        }
+        return (tan, bit);
     }
 
     private static LodMaterial? ReadMaterial(NifFile nif, int shaderRef, int alphaRef, bool passthru, bool waterAsLit)

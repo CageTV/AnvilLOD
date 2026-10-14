@@ -33,8 +33,9 @@ public static class LodNifWriter
             w.Set(shader, b => BtoBuilder.WriteShader(b, p.Material, texSet, colors));
             w.Set(texSet, b =>
             {
-                b.Write((uint)p.Material.Textures.Count);
-                foreach (var t in p.Material.Textures) NifWriter.WriteSizedString(b, t);
+                var slots = ShaderGuard.TextureSlots(p.Material.Textures);
+                b.Write((uint)slots.Length);
+                foreach (var t in slots) NifWriter.WriteSizedString(b, t);
             });
             if (alpha >= 0)
                 w.Set(alpha, b =>

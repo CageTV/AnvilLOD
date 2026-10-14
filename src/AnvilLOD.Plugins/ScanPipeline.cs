@@ -279,12 +279,49 @@ public static class ScanPipeline
         TreeCardSource? cards = null;
         Tree3DSource? tree3d = null;
         Tree3DStats? tree3dStats = null;
-        IReadOnlyList<TreeReference>? bttTrees = scan.Trees;
+        // A custom worldspace (Bruma) ships its own pre-generated tree LOD. When most of its trees have no TexGen billboard (TexGen has not seen its
+        // plugins), ours would be a partial copy that empties the mod's complete one: leave that worldspace's tree LOD as the mod made it.
+        var keepTreeWorlds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Trees TexGen listed but gave no billboard were skipped on purpose (small plants; DynDOLOD gives them no LOD either): they are not a gap
+        // and must not count towards "this worldspace's trees are mostly missing".
+        var texGenListed = ReadTexGenLists(assets);
+        var realMissingByWs = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        long realMissingTotal = 0;
+        if (scan.MissingBillboardsByWorldType is { } byType)
+            foreach (var (k, n) in byType)
+            {
+                int bar = k.IndexOf('|');
+                if (bar < 0 || texGenListed.Contains(TexGenKey(k[(bar + 1)..]))) continue;
+                realMissingByWs[k[..bar]] = realMissingByWs.GetValueOrDefault(k[..bar]) + n;
+                realMissingTotal += n;
+            }
+        else
+        {
+            foreach (var (ws, n) in scan.MissingBillboardsByWorld ?? new Dictionary<string, long>()) realMissingByWs[ws] = n;
+            realMissingTotal = scan.MissingBillboards?.Values.Sum() ?? 0;
+        }
+        if (req.Scan.TreeLod && scan.MissingBillboardsByWorld is { Count: > 0 } && scan.Trees is not null)
+        {
+            var foundByWs = scan.Trees.GroupBy(t => t.Worldspace, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => (long)g.Count(), StringComparer.OrdinalIgnoreCase);
+            foreach (var (ws, missing) in realMissingByWs.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                long found = foundByWs.GetValueOrDefault(ws);
+                if (missing < 500 || found >= 0.8 * (found + missing)) continue;
+                bool shipsOwn = assets.EnumeratePaths(GamePath.Join("meshes", "terrain", ws, "trees") + "\\").Any(p => p.EndsWith(".btt", StringComparison.OrdinalIgnoreCase));
+                if (!shipsOwn) continue;   // nothing of the mod's to keep: ours is all there would be
+                keepTreeWorlds.Add(ws);
+                Warn($"Tree LOD for {ws} not written: {missing:N0} of {found + missing:N0} of its trees have no TexGen billboard, so the tree LOD that is already installed for it is kept as it is "
+                     + "(ours would cover only part of the trees). Run TexGen with the current load order to let AnvilLOD make it.");
+            }
+        }
+        var sceneTrees = keepTreeWorlds.Count == 0 ? scan.Trees : scan.Trees?.Where(t => !keepTreeWorlds.Contains(t.Worldspace)).ToList();
+        IReadOnlyList<TreeReference>? bttTrees = sceneTrees;
         var objectLodWorlds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Tree billboards come from TexGen's output, named after each tree's model. When most trees have none (a tree mod added or changed after TexGen ran),
         // writing tree LOD would leave the distance bare: our few trees, and the vanilla tree LOD emptied to make room for them. Keep the vanilla tree LOD instead.
-        long treesFound = scan.Trees?.Count ?? 0, treesMissing = scan.MissingBillboards?.Values.Sum() ?? 0;
+        long keptMissing = keepTreeWorlds.Sum(ws => realMissingByWs.GetValueOrDefault(ws));
+        long treesFound = sceneTrees?.Count ?? 0, treesMissing = realMissingTotal - keptMissing;
         bool treeLodUnusable = req.Scan.TreeLod && treesMissing >= 1000 && treesFound < 0.25 * (treesFound + treesMissing);
         if (treeLodUnusable)
         {
@@ -299,7 +336,7 @@ public static class ScanPipeline
             progress?.Report("Tree types without a billboard, most placed first: "
                              + string.Join(", ", scan.MissingBillboards!.OrderByDescending(k => k.Value).Take(8).Select(kv => $"{kv.Key} ({kv.Value:N0})")));
         }
-        if (req.Scan.TreeLod && !treeLodUnusable && scan.Trees is { Count: > 0 } allTrees)
+        if (req.Scan.TreeLod && !treeLodUnusable && sceneTrees is { Count: > 0 } allTrees)
         {
             var in3d = new HashSet<TreeReference>(ReferenceEqualityComparer.Instance);
             var t3 = req.Scan.Tree3D ?? Tree3DSettings.Off;
@@ -399,7 +436,6 @@ public static class ScanPipeline
         int deleted = 0;
         // TexGen lists every tree/grass it considered; the ones listed without a billboard were skipped on
         // purpose (small shrubs, thickets, rock grass). DynDOLOD gives those no LOD either, so that's not an error.
-        var texGenListed = ReadTexGenLists(assets);
         var skippedByTexGen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Classify(IReadOnlyDictionary<string, long>? missing, string what, string fix)
         {
@@ -685,10 +721,26 @@ public static class ScanPipeline
                 {
                     foreach (var kv in texMissing.OrderByDescending(k => k.Value.Meshes).Take(25))
                         progress?.Report($"Missing texture: {kv.Key} (used by {kv.Value.Meshes:N0} LOD mesh{(kv.Value.Meshes == 1 ? "" : "es")}, first {kv.Value.FirstMesh})");
-                    Warn($"{texMissing.Count:N0} textures named by LOD meshes exist nowhere (loose, BSA or output) and will draw purple. Most used: "
-                         + string.Join(", ", texMissing.OrderByDescending(k => k.Value.Meshes).Take(3).Select(k => k.Key)) + ". All are listed above in the log.");
+                    int stubs = 0;
+                    foreach (var kv in texMissing)
+                    {
+                        // A missing texture draws purple, and some game builds crash on it in the lighting shader. A plain stand-in at the same path
+                        // fixes both; it is only written where nothing exists (the output is cleared on every run, and installing the real one wins on the next).
+                        try { StubTextures.Write(output, kv.Key); stubs++; }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                    }
+                    Warn($"{texMissing.Count:N0} textures named by LOD meshes exist nowhere (loose, BSA or output). Plain stand-ins were written to the output for {stubs:N0} of them so the game neither draws them purple nor crashes on them. Most used: "
+                         + string.Join(", ", texMissing.OrderByDescending(k => k.Value.Meshes).Take(3).Select(k => k.Key)) + ". All are listed above in the log; install the mod that ships the real ones and generate again.");
                 }
                 else progress?.Report("Texture audit: every texture named by the LOD meshes exists.");
+                var texBad = generator.AuditTextureFiles(output);
+                if (texBad.Count > 0)
+                {
+                    foreach (var kv in texBad.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase).Take(25))
+                        progress?.Report($"Unloadable texture: {kv.Key}: {kv.Value.Problem} (used by LOD mesh {kv.Value.FirstMesh})");
+                    Warn($"{texBad.Count:N0} textures named by LOD meshes cannot be loaded by the game (a shader using one crashes the game): "
+                         + string.Join(", ", texBad.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase).Take(3).Select(k => $"{k.Key} ({k.Value.Problem})")) + ". All are listed above in the log.");
+                }
             }
             try
             {
@@ -747,12 +799,7 @@ public static class ScanPipeline
             tree3dStats);
 
         // "plugin.esm\\model_000a7329" -> "plugin.esm;000a7329"
-        static string TexGenKey(string missingKey)
-        {
-            int slash = missingKey.IndexOf('\\');
-            int us = missingKey.LastIndexOf('_');
-            return slash < 0 || us < slash ? missingKey : $"{missingKey[..slash]};{missingKey[(us + 1)..]}";
-        }
+        static string TexGenKey(string missingKey) => TexGenLists.Key(missingKey);
 
         // A billboard TexGen made for the same tree record under another model name ("plugin\model_formid" is what is missing).
         static string? StaleTexGenBillboard(AssetIndex assets, string missingKey)
@@ -772,23 +819,7 @@ public static class ScanPipeline
         }
 
         // TexGen_SSE_Tree_Billboards.txt / TexGen_SSE_Grass_Billboards.txt: "plugin;FORMID;EditorID[,Complex]"
-        static HashSet<string> ReadTexGenLists(AssetIndex assets)
-        {
-            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var path in assets.EnumeratePaths("textures\\terrain\\lodgen\\"))
-            {
-                var name = Path.GetFileName(path);
-                if (!name.StartsWith("texgen_", StringComparison.Ordinal) || !name.EndsWith("_billboards.txt", StringComparison.Ordinal)) continue;
-                if (!assets.TryOpen(path, out var st)) continue;
-                using var reader = new StreamReader(st);
-                while (reader.ReadLine() is { } line)
-                {
-                    var parts = line.Split(';');
-                    if (parts.Length >= 2) set.Add($"{parts[0].Trim()};{parts[1].Trim()}");
-                }
-            }
-            return set;
-        }
+        static HashSet<string> ReadTexGenLists(AssetIndex assets) => TexGenLists.Read(assets);
 
         static string? ResolveRulesFolder(string? dyndolod) => LodRules.FindInstallRulesFolder(dyndolod);
 

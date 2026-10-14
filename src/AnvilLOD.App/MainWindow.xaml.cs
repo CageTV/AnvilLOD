@@ -536,6 +536,7 @@ public partial class MainWindow : Window
                 plugins = Mo2Instance.Open(_settings.Mo2Instance, TypedLocations()).OpenProfile(_settings.Mo2Profile).EnabledPlugins;
             else if (_settings.PluginsTxt is not null && File.Exists(_settings.PluginsTxt))
                 plugins = File.ReadAllLines(_settings.PluginsTxt).Where(l => l.StartsWith('*')).Select(l => l[1..].Trim());
+            AuthorPluginBox.Items.Add("All plugins (tree billboards)");   // trees only: every tree type in the load order without a billboard
             foreach (var p in plugins.OrderBy(p => p, StringComparer.OrdinalIgnoreCase)) AuthorPluginBox.Items.Add(p);
         }
         catch (Exception ex)
@@ -582,6 +583,7 @@ public partial class MainWindow : Window
         CaptureSettings();
         _settings.Save();
         var plugin = Blank(AuthorPluginBox.Text);
+        if (plugin is not null && plugin.StartsWith("All plugins", StringComparison.OrdinalIgnoreCase)) plugin = AnvilLOD.Plugins.Authoring.ModAuthorTool.AllPlugins;
         var output = Blank(AuthorOutBox.Text);
         if (plugin is null || output is null)
         {
@@ -602,6 +604,7 @@ public partial class MainWindow : Window
             plugin, output,
             LodMeshes: generate && AuthorMeshesCheck.IsChecked == true,
             Billboards: generate && AuthorBillboardsCheck.IsChecked == true,
+            TreeStandIns: generate && AuthorStandInsCheck.IsChecked == true,
             RuleFile: generate && AuthorRulesCheck.IsChecked == true,
             MinObjectSize: Num(AuthorMinSizeBox, 400f),
             MinTreeHeight: Num(AuthorMinTreeBox, 256f),
