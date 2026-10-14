@@ -35,6 +35,7 @@ add_commonlibsse_plugin(${PROJECT_NAME}
         src/IniFile.cpp
         src/Menu.cpp
         src/LodLayers.cpp
+        src/Adaptive.cpp
 )
 
 if(ANVILLOD_RUNTIME_LINE STREQUAL "14")

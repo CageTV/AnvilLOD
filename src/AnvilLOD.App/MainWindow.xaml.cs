@@ -95,6 +95,7 @@ public partial class MainWindow : Window
         DetailedShipsCheck.IsChecked = _settings.DetailedShips;
         AnimatedShipsCheck.IsChecked = _settings.AnimatedShips;
         CsGrassLodCheck.IsChecked = _settings.CsGrassLod;
+        TargetSizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(TargetSizeChoices, _settings.TargetSizeGb));
         IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
         MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
@@ -156,6 +157,7 @@ public partial class MainWindow : Window
         _settings.DetailedShips = DetailedShipsCheck.IsChecked == true;
         _settings.AnimatedShips = AnimatedShipsCheck.IsChecked == true;
         _settings.CsGrassLod = CsGrassLodCheck.IsChecked == true;
+        _settings.TargetSizeGb = TargetSizeChoices[Math.Clamp(TargetSizeBox.SelectedIndex, 0, TargetSizeChoices.Length - 1)];
         _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;

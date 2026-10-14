@@ -73,6 +73,8 @@ namespace AnvilLOD
 					nearGridDistance = std::stof(value);
 				} else if (EqualsNoCase(key, "fFarGridDistance")) {
 					farGridDistance = std::stof(value);
+				} else if (EqualsNoCase(key, "fEffectsDistance")) {
+					effectsDistance = std::clamp(std::stof(value), 4096.0f, 200000.0f);
 				} else if (EqualsNoCase(key, "bDriveSequences")) {
 					driveSequences = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bTickManagers")) {
@@ -85,6 +87,12 @@ namespace AnvilLOD
 					animateWater = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "fWaterScrollSpeed")) {
 					waterScrollSpeed = std::clamp(std::stof(value), 0.0f, 0.5f);
+				} else if (EqualsNoCase(key, "fWaterOpacity")) {
+					waterOpacity = std::clamp(std::stof(value), 0.05f, 2.0f);
+				} else if (EqualsNoCase(key, "bAdaptiveQuality")) {
+					adaptiveQuality = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "iAdaptiveTargetFps")) {
+					adaptiveTargetFps = std::clamp(static_cast<std::int32_t>(std::stol(value)), 20, 144);
 				} else if (EqualsNoCase(key, "bUndersides")) {
 					undersides = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bGlowWindows")) {
@@ -128,15 +136,23 @@ namespace AnvilLOD
 			{ "bWaterPlanes", waterPlanes ? "1" : "0" },
 			{ "fNearGridDistance", std::format("{:.0f}", nearGridDistance) },
 			{ "fFarGridDistance", std::format("{:.0f}", farGridDistance) },
+			{ "fEffectsDistance", std::format("{:.0f}", effectsDistance) },
 			{ "bAnimateExperimental", animate ? "1" : "0" },
 			{ "bTickManagers", tickManagers ? "1" : "0" },
 			{ "bDriveSequences", driveSequences ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
 			{ "bAnimateWater", animateWater ? "1" : "0" },
 			{ "fWaterScrollSpeed", std::format("{:.3f}", waterScrollSpeed) },
+			{ "fWaterOpacity", std::format("{:.2f}", waterOpacity) },
+			{ "bAdaptiveQuality", adaptiveQuality ? "1" : "0" },
+			{ "iAdaptiveTargetFps", std::to_string(adaptiveTargetFps) },
 			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bGlowWindows", glowWindows ? "1" : "0" },
 			{ "fGlowIntensity", std::format("{:.2f}", glowIntensity) },
+			{ "fGlowDuskStart", std::format("{:.1f}", glowDuskStart) },
+			{ "fGlowDuskEnd", std::format("{:.1f}", glowDuskEnd) },
+			{ "fGlowDawnStart", std::format("{:.1f}", glowDawnStart) },
+			{ "fGlowDawnEnd", std::format("{:.1f}", glowDawnEnd) },
 			{ "bParentCopies", parentCopies ? "1" : "0" },
 			{ "bParentCopyAllCells", parentCopyAllCells ? "1" : "0" },
 			{ "iParentCopyExtraCells", std::to_string(parentCopyExtraCells) },

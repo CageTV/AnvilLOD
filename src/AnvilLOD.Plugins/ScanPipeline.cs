@@ -281,7 +281,25 @@ public static class ScanPipeline
         Tree3DStats? tree3dStats = null;
         IReadOnlyList<TreeReference>? bttTrees = scan.Trees;
         var objectLodWorlds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (req.Scan.TreeLod && scan.Trees is { Count: > 0 } allTrees)
+
+        // Tree billboards come from TexGen's output, named after each tree's model. When most trees have none (a tree mod added or changed after TexGen ran),
+        // writing tree LOD would leave the distance bare: our few trees, and the vanilla tree LOD emptied to make room for them. Keep the vanilla tree LOD instead.
+        long treesFound = scan.Trees?.Count ?? 0, treesMissing = scan.MissingBillboards?.Values.Sum() ?? 0;
+        bool treeLodUnusable = req.Scan.TreeLod && treesMissing >= 1000 && treesFound < 0.25 * (treesFound + treesMissing);
+        if (treeLodUnusable)
+        {
+            bttTrees = null;
+            var examples = new List<string>();
+            foreach (var kv in scan.MissingBillboards!.OrderByDescending(k => k.Value))
+            {
+                if (StaleTexGenBillboard(assets, kv.Key) is { } hint) { examples.Add(hint); if (examples.Count == 3) break; }
+            }
+            Warn($"Tree LOD not written: {treesMissing:N0} of {treesFound + treesMissing:N0} trees have no TexGen billboard, so the vanilla tree LOD is left as it is (writing ours would leave the distance without trees). "
+                 + "Re-run TexGen with the current load order" + (examples.Count > 0 ? "; for example " + string.Join("; ", examples) : "") + ".");
+            progress?.Report("Tree types without a billboard, most placed first: "
+                             + string.Join(", ", scan.MissingBillboards!.OrderByDescending(k => k.Value).Take(8).Select(kv => $"{kv.Key} ({kv.Value:N0})")));
+        }
+        if (req.Scan.TreeLod && !treeLodUnusable && scan.Trees is { Count: > 0 } allTrees)
         {
             var in3d = new HashSet<TreeReference>(ReferenceEqualityComparer.Instance);
             var t3 = req.Scan.Tree3D ?? Tree3DSettings.Off;
@@ -528,6 +546,30 @@ public static class ScanPipeline
                     }
                 }
             }
+            if (req.Scan.ParentCopies && parentCopies is { Count: > 0 })
+            {
+                // A skinned model (a cloth banner or flag) drawn from a copy has no skeleton to take its bones from, so its vertices explode into
+                // giant sheets across the sky (Whiterun's tower banners, 2026-10-13). The plugin refuses them too; leaving them out here keeps the list clean and says so.
+                var skinned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var model in parentCopies.Select(c => GamePath.Normalize(c.Model)).Where(m => !m.Contains("\\anvillod\\", StringComparison.Ordinal) && !m.StartsWith("anvillod\\", StringComparison.Ordinal)).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var rel = model.StartsWith("meshes\\", StringComparison.Ordinal) ? model : "meshes\\" + model;
+                    try
+                    {
+                        if (!assets.TryOpen(rel, out var ns)) continue;
+                        byte[] nb;
+                        using (ns) { using var ms = new MemoryStream(); ns.CopyTo(ms); nb = ms.ToArray(); }
+                        if (AnvilLOD.Meshes.Nif.NifGeometryReader.Read(rel, nb).Warnings.Any(w => w.StartsWith("Skinned shape", StringComparison.Ordinal))) skinned.Add(model);
+                    }
+                    catch (Exception ex) when (ex is IndexOutOfRangeException or ArgumentException or InvalidDataException or NotSupportedException or IOException) { }
+                }
+                if (skinned.Count > 0)
+                {
+                    int before = parentCopies.Count;
+                    parentCopies = [.. parentCopies.Where(c => !skinned.Contains(GamePath.Normalize(c.Model)))];
+                    progress?.Report($"Parent > Child copies: {before - parentCopies.Count:N0} references left out because their model is skinned (cloth, it would stretch across the sky): {string.Join(", ", skinned.OrderBy(s => s, StringComparer.Ordinal).Take(8))}{(skinned.Count > 8 ? ", ..." : "")}");
+                }
+            }
             if (req.Scan.ParentCopies && parentCopies is { Count: > 0 } pcs)
             {
                 int written = ParentCopyWriter.Write(output, pcs);
@@ -710,6 +752,23 @@ public static class ScanPipeline
             int slash = missingKey.IndexOf('\\');
             int us = missingKey.LastIndexOf('_');
             return slash < 0 || us < slash ? missingKey : $"{missingKey[..slash]};{missingKey[(us + 1)..]}";
+        }
+
+        // A billboard TexGen made for the same tree record under another model name ("plugin\model_formid" is what is missing).
+        static string? StaleTexGenBillboard(AssetIndex assets, string missingKey)
+        {
+            int slash = missingKey.IndexOf('\\'), us = missingKey.LastIndexOf('_');
+            if (slash < 0 || us < slash) return null;
+            var plugin = missingKey[..slash].ToLowerInvariant();
+            var stem = missingKey[(slash + 1)..us].ToLowerInvariant();
+            var suffix = "_" + missingKey[(us + 1)..].ToLowerInvariant() + ".dds";
+            foreach (var path in assets.EnumeratePaths("textures\\terrain\\lodgen\\" + plugin + "\\"))
+            {
+                var name = Path.GetFileName(path).ToLowerInvariant();
+                if (name.EndsWith(suffix, StringComparison.Ordinal) && name.Length > suffix.Length && name[..^suffix.Length] != stem)
+                    return $"{missingKey[..slash]} {missingKey[(us + 1)..]}: TexGen's billboard is for the model '{name[..^suffix.Length]}', the tree now uses '{stem}'";
+            }
+            return null;
         }
 
         // TexGen_SSE_Tree_Billboards.txt / TexGen_SSE_Grass_Billboards.txt: "plugin;FORMID;EditorID[,Complex]"

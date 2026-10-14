@@ -56,6 +56,15 @@ public sealed class ShipLodSource : ISyntheticMeshSource
         return built is not null && level >= 0 && level < built.Count ? built[level] : null;
     }
 
+    /// <summary>The texture exists as named, or as the same path under textures\pbr\ (a PBR patch that moved it).</summary>
+    private bool TextureExists(string? texture)
+    {
+        if (string.IsNullOrWhiteSpace(texture)) return false;
+        var t = texture.Replace('/', '\\').Trim().TrimStart('\\');
+        if (!t.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) t = "textures\\" + t;
+        return _assets.Exists(t) || _assets.Exists("textures\\pbr\\" + t["textures\\".Length..]);
+    }
+
     private IReadOnlyList<LodMesh?>? BuildLevels(string modelPath)
     {
         try
@@ -65,6 +74,12 @@ public sealed class ShipLodSource : ISyntheticMeshSource
             using (s) { using var ms = new MemoryStream(); s.CopyTo(ms); bytes = ms.ToArray(); }
             var full = NifGeometryReader.Read(modelPath, bytes);
             if (full.Parts.Count == 0) return null;
+            // A shape whose diffuse texture exists nowhere (a template texture a ship pack never filled in, like a ship's name plate) would draw
+            // purple in LOD: leave that shape out.
+            var usable = full.Parts.Where(p => TextureExists(p.Material.Textures.Count > 0 ? p.Material.Textures[0] : null)).ToList();
+            if (usable.Count == 0) return null;
+            if (usable.Count != full.Parts.Count)
+                full = new LodMesh { Path = full.Path, Parts = usable, Warnings = full.Warnings, NoShapesInFile = false };
 
             var (min, max) = LodMeshAuthor.Bounds(full);
             var size = max - min;

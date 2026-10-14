@@ -229,7 +229,10 @@ public static class UndersidePluginWriter
                 var r = n.Source.Ref;
                 // Disabled to begin with when the vanilla reference is (initially disabled or switched by an enable parent): the
                 // SKSE plugin enables it with the source (AnvilLOD.native).
-                bool startDisabled = n.Source.InitiallyDisabled || n.Source.ParentPlugin is not null;
+                // The fires, candles and streams of AnvilLOD Effects.esp always start disabled: persistent references are all loaded when the world is,
+                // wherever they are, and hundreds of particle systems across the map crashed the renderer (Riften, 2026-10-13). The SKSE plugin
+                // enables only the ones close to the player.
+                bool startDisabled = n.Effect || n.Source.InitiallyDisabled || n.Source.ParentPlugin is not null;
                 var placed = new PlacedObject(esp)
                 {
                     EditorID = $"AnvilLOD_{id}_Grid{++nativeRefs}",

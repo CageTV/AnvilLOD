@@ -19,6 +19,13 @@ public sealed record SizeCalibration(
 
 public sealed record SizeEstimate(long Base, long? Seasons, string Note);
 
+/// <summary>Settings that fit a size target (see <see cref="SizeEstimator.FitToTarget"/>).</summary>
+/// <param name="Reached">False when even the leanest choice is over the target: the leanest is returned.</param>
+public sealed record SizeFit(int Percent, bool GrassOn, bool Tree3D, bool Lod8, SizeEstimate Estimate, bool Reached)
+{
+    public long Total => Estimate.Base + (Estimate.Seasons ?? 0);
+}
+
 public static class SizeEstimator
 {
     // Measured on a real list (Tamriel, objects + grass, no seasons): total object LOD megabytes at each grass density.
@@ -78,6 +85,37 @@ public static class SizeEstimator
         long? seasonBytes = !seasons ? 0 : c.SeasonTotal > 0 ? (long)(c.SeasonTotal * scale) : null;
         var note = unknown.Count > 0 ? $"Left out of the estimate because your last run had none to measure: {string.Join(", ", unknown)}." : "";
         return new SizeEstimate((long)newBase, seasonBytes, note);
+    }
+
+    /// <summary>
+    /// The richest settings whose estimated size fits <paramref name="targetBytes"/>, among the ones that are no richer than what the user has
+    /// now (grass is never turned on or raised, 3D trees never turned on). "Richest" weighs grass density by its step in <paramref name="percentChoices"/>,
+    /// 3D trees at LOD4 as worth about three of those steps and at LOD8 as one and a half more; among equals the smaller wins. Seasons are
+    /// not touched (they are a feature, not a quality level): their size follows the base size, as in <see cref="Estimate"/>.
+    /// </summary>
+    public static SizeFit FitToTarget(SizeCalibration c, long targetBytes, IReadOnlyList<int> percentChoices, int percent, bool grassOn, bool tree3d, bool lod8, bool seasons)
+    {
+        var grassOptions = new List<(int Percent, bool On, double Score)>();
+        if (grassOn)
+            for (int i = 0; i < percentChoices.Count; i++)
+                if (percentChoices[i] <= percent) grassOptions.Add((percentChoices[i], true, i + 1));
+        grassOptions.Add((percent, false, 0));
+
+        SizeFit? best = null, leanest = null;
+        double bestScore = double.MinValue;
+        foreach (var g in grassOptions)
+            foreach (var trees in tree3d ? new[] { true, false } : new[] { false })
+                foreach (var eight in trees && lod8 ? new[] { true, false } : new[] { false })
+                {
+                    var e = Estimate(c, g.Percent, g.On, trees, eight, seasons);
+                    if (e is null) continue;
+                    var fit = new SizeFit(g.Percent, g.On, trees, eight, e, e.Base + (e.Seasons ?? 0) <= targetBytes);
+                    if (leanest is null || fit.Total < leanest.Total) leanest = fit;
+                    if (!fit.Reached) continue;
+                    double score = g.Score + (trees ? 3.5 : 0) + (eight ? 1.5 : 0);
+                    if (best is null || score > bestScore || (score == bestScore && fit.Total < best.Total)) { best = fit; bestScore = score; }
+                }
+        return best ?? leanest! with { Reached = false };
     }
 
     public static string Format(long bytes) => bytes >= 1L << 30 ? $"{bytes / 1073741824.0:F1} GB" : $"{bytes / 1048576.0:F0} MB";

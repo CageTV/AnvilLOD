@@ -1,5 +1,6 @@
 #include "Menu.h"
 
+#include "Adaptive.h"
 #include "Controller.h"
 #include "LodDistances.h"
 #include "LodLayers.h"
@@ -205,6 +206,11 @@ namespace AnvilLOD::Menu
 			}
 			Smf::Checkbox("Window glow at night", &s.glowWindows);
 			Smf::SliderFloat("Glow intensity", &s.glowIntensity, 0.0f, 3.0f, "%.2f");
+			Smf::SliderFloat("Glow starts fading in (hour)", &s.glowDuskStart, 12.0f, 23.0f, "%.1f");
+			Smf::SliderFloat("Glow fully on (hour)", &s.glowDuskEnd, 12.0f, 24.0f, "%.1f");
+			Smf::SliderFloat("Glow starts fading out (hour)", &s.glowDawnStart, 0.0f, 12.0f, "%.1f");
+			Smf::SliderFloat("Glow fully off (hour)", &s.glowDawnEnd, 0.0f, 12.0f, "%.1f");
+			Smf::TextDisabled("    Game hours (24 h clock): the windows brighten between the first two and fade between the last two.");
 			Smf::Separator();
 			Smf::Checkbox("Draw Parent > Child copies", &s.parentCopies);
 			Smf::Checkbox("Also where the city worldspace has no cell (experimental)", &s.parentCopyAllCells);
@@ -234,6 +240,8 @@ namespace AnvilLOD::Menu
 			Smf::TextDisabled("    Water planes, creeks, rapids, fires (DynDOLOD \"Near LOD\"). 4096 = one cell.");
 			Smf::SliderFloat("Far grid distance", &s.farGridDistance, 20000.0f, 400000.0f, "%.0f");
 			Smf::TextDisabled("    Waterfalls, windmills, water wheels, ships (DynDOLOD \"Far LOD\" / \"Far Full\").");
+			Smf::SliderFloat("Fires, candles and streams distance", &s.effectsDistance, 8192.0f, 60000.0f, "%.0f");
+			Smf::TextDisabled("    The real fires, candles and streams of AnvilLOD Effects.esp are only on this close to you (more crashed the renderer).");
 			Smf::Checkbox("Animate them (EXPERIMENTAL - may crash)", &s.animate);
 			Smf::TextDisabled("    Waterfall flow and windmill blades. Takes effect for objects drawn after the change (use Redraw now).");
 			int fps = static_cast<int>(s.animationFps);
@@ -241,6 +249,8 @@ namespace AnvilLOD::Menu
 			Smf::Checkbox("Animate the water around the walled cities", &s.animateWater);
 			Smf::TextDisabled("    Slowly scrolls the water texture of the river and pond water drawn around Whiterun, Windhelm, Solitude and Riften.");
 			Smf::SliderFloat("Water flow speed", &s.waterScrollSpeed, 0.0f, 0.1f, "%.3f");
+			if (Smf::SliderFloat("Water opacity", &s.waterOpacity, 0.05f, 2.0f, "%.2f")) c.WaterOpacityChanged();
+			Smf::TextDisabled("    Multiplies how solid the city water sheets are, at once. 1.00 is as generated; lower shows more of the ground through the water.");
 			Smf::Separator();
 			if (Smf::Button("Redraw now")) {
 				c.Refresh();
@@ -288,6 +298,39 @@ namespace AnvilLOD::Menu
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
 		}
 
+		void __stdcall RenderAdaptive()
+		{
+			auto& s = Settings::Get();
+			auto& a = Adaptive::Get();
+			Smf::TextWrapped("Adaptive quality lowers the distant landscape's cost by itself when the game runs below the frame rate you want, and raises it "
+							 "again when there is plenty of headroom. It steps through the four presets of the Quality Layers page (Max, High, Medium, Low), "
+							 "so grass and 3D trees at the far levels go first. It needs a few seconds under the target before it acts, and waits longer "
+							 "each time a step back up is followed by another step down.");
+			Smf::Separator();
+#if ANVILLOD_RUNTIME_LINE == 14
+			Smf::TextDisabled("Not available in Skyrim VR: the frame rate can't be read there.");
+#else
+			Smf::Checkbox("Adaptive quality", &s.adaptiveQuality);
+			Smf::SliderInt("Target frame rate", &s.adaptiveTargetFps, 20, 144);
+			Smf::TextDisabled("    With frame generation on, generated frames count too: set the target to what you want to see on screen.");
+			Smf::Separator();
+			if (!a.Available()) {
+				Smf::TextDisabled("The frame rate can't be read in this game: adaptive quality does nothing.");
+			} else {
+				Smf::Text("Frame rate now: %.0f", a.Fps());
+				Smf::Text("Quality now: %s", Adaptive::LevelName(a.Level()));
+			}
+			if (Smf::Button("Back to Max now")) {
+				a.Reset();
+				g_status = "Layers back to Max.";
+			}
+			Smf::SameLine();
+			if (Smf::Button("Save to AnvilLOD.ini##adaptive")) g_status = s.Save() ? "Saved." : "Could not write AnvilLOD.ini.";
+			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());
+			Smf::TextDisabled("While it is on it takes over the layer checkboxes; turning it off puts them back to Max.");
+#endif
+		}
+
 		void __stdcall RenderAbout()
 		{
 			Smf::Text("AnvilLOD %s", ANVILLOD_VERSION_STRING);
@@ -320,6 +363,7 @@ namespace AnvilLOD::Menu
 					 && Smf::AddSectionItem("AnvilLOD/Dynamic LOD", RenderDynamic)
 					 && Smf::AddSectionItem("AnvilLOD/Quality Layers", RenderQualityLayers)
 					 && Smf::AddSectionItem("AnvilLOD/Water & Animated Objects", RenderGridObjects)
+					 && Smf::AddSectionItem("AnvilLOD/Adaptive Quality", RenderAdaptive)
 					 && Smf::AddSectionItem("AnvilLOD/About", RenderAbout);
 		logger::info("SKSE Menu Framework {:.1f}: {}", Smf::Version(), ok ? "AnvilLOD pages added" : "AddSectionItem not exported, menu off");
 	}

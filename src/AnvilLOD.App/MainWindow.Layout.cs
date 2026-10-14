@@ -260,6 +260,33 @@ public partial class MainWindow
             + "An estimate: the real size depends on your list. " + est.Note;
     }
 
+    private static readonly int[] TargetSizeChoices = [0, 2, 3, 4, 6, 8, 12, 16, 24];
+
+    /// <summary>Sets grass density and 3D trees to the richest choice whose estimated size fits the picked target.</summary>
+    private void TargetFit_Click(object sender, RoutedEventArgs e)
+    {
+        int gb = TargetSizeChoices[Math.Clamp(TargetSizeBox.SelectedIndex, 0, TargetSizeChoices.Length - 1)];
+        if (gb == 0) { EstimateDetail.Text = "Pick a size to fit to first."; return; }
+        var calibration = LoadCalibration();
+        if (calibration is null)
+        {
+            EstimateDetail.Text = "Generate once first: AnvilLOD works the sizes out from your own list, so it can fit them to a target.";
+            return;
+        }
+        var c = CurrentChoices();
+        var fit = SizeEstimator.FitToTarget(calibration, gb * 1073741824L, GrassDensityChoices, c.Percent, c.GrassOn, c.Tree3D, c.Lod8, c.Seasons);
+        GrassLodCheck.IsChecked = fit.GrassOn;
+        GrassDensityBox.SelectedIndex = GrassDensityIndex(fit.Percent);
+        Tree3DCheck.IsChecked = fit.Tree3D;
+        Tree3DLod8Check.IsChecked = fit.Lod8;
+        UpdateEstimate();
+        var what = $"grass {(fit.GrassOn ? fit.Percent + "%" : "off")}, 3D trees {(!fit.Tree3D ? "off" : fit.Lod8 ? "at LOD4 and LOD8" : "at LOD4 only")}";
+        EstimateDetail.Text = (fit.Reached
+                ? $"Fitted to {gb} GB: {what}, about {SizeEstimator.Format(fit.Total)}. "
+                : $"Even the leanest choice is about {SizeEstimator.Format(fit.Total)}, over {gb} GB: {what}. Seasons, objects and tree billboards are not part of the choices. ")
+            + EstimateDetail.Text;
+    }
+
     /// <summary>After a generation: remember what it was made of, so the next one can be estimated.</summary>
     private void RecordSizeCalibration(ScanSummary summary, string? outputFolder)
     {

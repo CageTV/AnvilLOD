@@ -46,6 +46,8 @@ New-Item -ItemType Directory -Force -Path $release | Out-Null
 $toolZip = Join-Path $release "AnvilLOD-$version.zip"
 # Run logs of the app (it writes AnvilLOD.App.log next to itself, with this machine's paths) never go into a download.
 Get-ChildItem $toolDist -Filter "*.log" -File | Remove-Item -Force
+# The scan cache (AnvilLOD.scan.json) holds this machine's load order and paths: it never goes into a download either.
+Get-ChildItem $toolDist -Filter "*.scan.json" -File -Recurse | Remove-Item -Force
 Copy-Item "$PSScriptRoot\README.md" $toolDist -Force
 Copy-Item "$PSScriptRoot\LICENSE.txt" $toolDist -Force
 New-Zip $toolDist $toolZip

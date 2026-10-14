@@ -265,6 +265,9 @@ namespace AnvilLOD
 			item.opposite = (e.flags & NativeEntry::kOpposite) != 0;
 			item.initiallyDisabled = (e.flags & NativeEntry::kInitiallyDisabled) != 0;
 			item.nearOnly = (e.flags & NativeEntry::kNear) != 0;
+			// The fires, candles and streams of AnvilLOD Effects.esp: hundreds of particle systems enabled all over the map (the far grid) crashed
+			// the renderer when the player turned toward them (Riften, 2026-10-13), so these are only ever enabled close to the player.
+			item.effects = file.strings[e.nativePlugin].rfind("AnvilLOD Effects", 0) == 0;
 			item.x = e.x;
 			item.y = e.y;
 			_nearNatives += item.nearOnly ? 1 : 0;
@@ -473,7 +476,7 @@ namespace AnvilLOD
 			std::thread([this] {
 				for (;;) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(66));
-					if (!Settings::Get().animateWater || _waterShown == 0) {
+					if (_waterShown == 0 || (!Settings::Get().animateWater && !_waterOpacityDirty)) {
 						continue;
 					}
 					if (_waterQueued.exchange(true)) {
@@ -531,6 +534,9 @@ namespace AnvilLOD
 		const float py = outside ? player->GetPositionY() : 0.0f;
 		const float nearOn = Settings::Get().nearGridDistance;
 		const float nearOff = nearOn * 1.1f;
+		const float kEffectsDistance = Settings::Get().effectsDistance;  // about five cells by default: the loaded area plus a little
+		constexpr int   kMaxTogglesPerUpdate = 6;
+		int           toggles = 0;
 		for (const auto& n : _natives) {
 			bool wanted;
 			if (const auto* src = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.source)) {
@@ -546,17 +552,29 @@ namespace AnvilLOD
 			if (!ref || ref->IsDeleted()) {
 				continue;
 			}
-			if (wanted && n.nearOnly) {
+			if (wanted && (n.nearOnly || n.effects)) {
 				const float dx = n.x - px;
 				const float dy = n.y - py;
-				const float limit = ref->IsDisabled() ? nearOn : nearOff;
+				const float on = n.effects ? std::min(nearOn, kEffectsDistance) : nearOn;
+				const float limit = ref->IsDisabled() ? on : on * 1.1f;
 				wanted = outside && dx * dx + dy * dy <= limit * limit;
 			}
 			if (wanted == ref->IsDisabled()) {
-				if (wanted) {
-					EnableRef(ref);
+				// Each switch loads or unloads the object's 3D while the renderer may be walking its geometry lists: a few at a time are
+				// harmless, hundreds crossing the near distance as the player flies about crashed the renderer (Riften, 2026-10-13). So
+				// only a handful per update; the rest follow on the next ones.
+				if (toggles >= kMaxTogglesPerUpdate) {
+					wanted = !ref->IsDisabled();  // not switched yet: it stays as it is
 				} else {
-					ref->Disable();
+					++toggles;
+					if (Settings::Get().verboseLog) {
+						logger::info("native {} {:08X} at {:.0f},{:.0f}", wanted ? "ON " : "off", n.native, n.x, n.y);
+					}
+					if (wanted) {
+						EnableRef(ref);
+					} else {
+						ref->Disable();
+					}
 				}
 			}
 			enabled += wanted ? 1 : 0;
@@ -659,6 +677,31 @@ namespace AnvilLOD
 		return IsEnabled(a_item);
 	}
 
+	namespace
+	{
+		/// A skinned shape (a cloth banner or flag that moves with bones) drawn from a clone has no skeleton to take its bones from: its
+		/// vertices end up wherever the garbage bone transforms put them, like exploding body armor (Whiterun's tower flags, 2026-10-13).
+		bool HasSkinnedShape(RE::NiAVObject* a_object, int a_depth = 0)
+		{
+			if (!a_object || a_depth > 64) {
+				return false;
+			}
+			if (auto* geom = a_object->AsGeometry()) {
+				if (geom->GetGeometryRuntimeData().skinInstance) {
+					return true;
+				}
+			}
+			if (auto* node = a_object->AsNode()) {
+				for (auto& child : node->GetChildren()) {
+					if (HasSkinnedShape(child.get(), a_depth + 1)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+	}
+
 	RE::NiNode* Controller::Template(std::uint32_t a_mesh)
 	{
 		if (auto it = _templates.find(a_mesh); it != _templates.end()) {
@@ -678,6 +721,11 @@ namespace AnvilLOD
 		}
 		if (rc != RE::BSResource::ErrorCode::kNone || !model) {
 			logger::warn("Dynamic LOD: could not load {}", path);
+			_failedMeshes.insert(a_mesh);
+			return nullptr;
+		}
+		if (HasSkinnedShape(model.get())) {
+			logger::info("Dynamic LOD: {} has skinned shapes (a cloth banner or flag); it can't be drawn from a clone, so it is left out", path);
 			_failedMeshes.insert(a_mesh);
 			return nullptr;
 		}
@@ -850,6 +898,7 @@ namespace AnvilLOD
 		}
 		if (!a_item.scrollProps.empty()) {
 			++_waterShown;
+			_waterOpacityDirty = true;  // a newly drawn sheet gets the current opacity
 		}
 	}
 
@@ -861,11 +910,22 @@ namespace AnvilLOD
 		// pattern toward +U, so the water flows with the river (V stays put).
 		const float u = -std::fmod(t * s.waterScrollSpeed, 1.0f);
 		const float v = 0.0f;
+		const bool  scroll = s.animateWater;
+		const float opacity = s.waterOpacity;
+		const bool  applyOpacity = _waterOpacityDirty.exchange(false);
 		for (auto i : _shown) {
 			for (auto* prop : _items[i].scrollProps) {
-				if (prop && prop->material) {
+				if (!prop || !prop->material) {
+					continue;
+				}
+				if (scroll) {
 					prop->material->texCoordOffset[0] = RE::NiPoint2(u, v);
 					prop->material->texCoordOffset[1] = RE::NiPoint2(u, v);
+				}
+				if (applyOpacity) {
+					// The mesh's own opacity is read once per material (clones share it); the setting multiplies it.
+					const auto base = _waterAlphaBase.try_emplace(prop->material, prop->QMaterialAlpha()).first->second;
+					prop->SetMaterialAlpha(std::clamp(base * opacity, 0.0f, 1.0f));
 				}
 			}
 		}
@@ -1024,7 +1084,25 @@ namespace AnvilLOD
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
 		auto*       world = player ? player->GetWorldspace() : nullptr;
-		if (!_natives.empty() && player && player->Is3DLoaded()) {
+		// A teleport (a worldspace change, or a jump of many cells in the same one) is the moment the engine tears down the old surroundings and
+		// builds the new ones. Switching real references on and off then (the fires and candles around the place the player left are all turned
+		// off at once, thousands of objects are drawn on arrival) freed objects the renderer was still using: coc from Whiterun to Riften
+		// crashed it every time, 2026-10-13 (SkyrimSE.exe+155ECC4). So nothing is touched until the new place has settled.
+		const RE::FormID wid = world ? world->GetFormID() : 0;
+		const auto       here = player ? player->GetPosition() : RE::NiPoint3{};
+		const auto       now = std::chrono::steady_clock::now();
+		if (wid != _lastPlayerWorld || (_hasLastPos && std::abs(here.x - _lastPos.x) + std::abs(here.y - _lastPos.y) > 20000.0f)) {
+			_lastPlayerWorld = wid;
+			_settleUntil = now + std::chrono::seconds(6);
+		}
+		_lastPos = here;
+		_hasLastPos = player != nullptr;
+		auto* ui = RE::UI::GetSingleton();
+		if (!player || !player->Is3DLoaded() || (ui && ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME))) {
+			_settleUntil = std::max(_settleUntil, now + std::chrono::seconds(3));
+		}
+		const bool settling = now < _settleUntil;
+		if (!_natives.empty() && player && player->Is3DLoaded() && !settling) {
 			UpdateNative();
 		}
 		if (_glowCount > 0) {
@@ -1103,6 +1181,14 @@ namespace AnvilLOD
 			logger::info("Glow: world {:08X} cell {},{}: {} world lists, {} glow windows in them, {} wanted now (not yet drawn), {} drawn, glow {:.0f}%, {} objects shown of {} allowed",
 				playerWorld, pcx, pcy, lists.size(), glowInLists, glowWanted, _glowShown.load(), _glowFactor * 100.0f, _shown.size(), settings.maxShown);
 		}
+		// A teleport into another worldspace (coc from Whiterun to Riften crashed the renderer twice, 2026-10-13) is the one moment the engine is
+		// rebuilding the world while thousands of objects would be attached to it at once: draw nothing new until the player's 3D is loaded and a
+		// few seconds have passed, then bring objects in a batch per update instead of all in one frame.
+		if (settling) {
+			return;
+		}
+		constexpr std::size_t kShowsPerUpdate = 600;
+		std::size_t           shownNow = 0;
 		std::ranges::sort(wanted);
 		for (const auto& [distance, i] : wanted) {
 			auto& item = _items[i];
@@ -1112,6 +1198,9 @@ namespace AnvilLOD
 					_capWarned = true;
 				}
 				return;
+			}
+			if (++shownNow > kShowsPerUpdate) {
+				return;  // the rest next update
 			}
 			Show(item);
 			if (item.node) {

@@ -499,6 +499,22 @@
                                 <TextBlock Text="ESTIMATED OUTPUT SIZE" Style="{StaticResource SectionHeader}" Margin="0,0,0,4" />
                                 <TextBlock x:Name="EstimateDetail" TextWrapping="Wrap" Foreground="{StaticResource Text}"
                                            Text="Generate once and AnvilLOD can estimate the size of your next generation from your own list." />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Fit to" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox x:Name="TargetSizeBox" Width="110" SelectedIndex="0"
+                                              ToolTip="Pick the most disk space you want the LOD to take, then press Fit. AnvilLOD picks the richest grass density and 3D tree setting whose estimate fits, never turning on anything you have off. Seasons are left as they are. Needs one generation first, so it can measure your list.">
+                                        <ComboBoxItem Content="No target" />
+                                        <ComboBoxItem Content="2 GB" />
+                                        <ComboBoxItem Content="3 GB" />
+                                        <ComboBoxItem Content="4 GB" />
+                                        <ComboBoxItem Content="6 GB" />
+                                        <ComboBoxItem Content="8 GB" />
+                                        <ComboBoxItem Content="12 GB" />
+                                        <ComboBoxItem Content="16 GB" />
+                                        <ComboBoxItem Content="24 GB" />
+                                    </ComboBox>
+                                    <Button x:Name="TargetFitButton" Content="Fit my settings" Margin="8,0,0,0" Padding="10,2" Click="TargetFit_Click" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12"

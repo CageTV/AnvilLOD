@@ -39,6 +39,8 @@ namespace AnvilLOD
 		std::size_t NativeEnabledCount() const { return _nativeEnabled; }
 		/// Drops every drawn object so the next update redraws with current settings.
 		void Refresh() { _refresh = true; }
+		/// The water opacity setting changed: the water copies drawn now pick it up on the next water tick.
+		void WaterOpacityChanged() { _waterOpacityDirty = true; }
 
 	private:
 		struct Item
@@ -100,6 +102,7 @@ namespace AnvilLOD
 			bool       opposite{ false };
 			bool       initiallyDisabled{ false };
 			bool       nearOnly{ false };  // only enabled within the near grid distance
+			bool       effects{ false };   // from AnvilLOD Effects.esp (fires, candles, streams): only ever enabled close to the player
 			float      x{ 0 };
 			float      y{ 0 };
 		};
@@ -124,8 +127,14 @@ namespace AnvilLOD
 		std::atomic<bool>                                           _animQueued{ false };
 		std::atomic<bool>                                           _waterQueued{ false };
 		std::atomic<std::size_t>                                    _waterShown{ 0 };  // water copies drawn now (their texture scrolls)
+		std::atomic<bool>                                           _waterOpacityDirty{ true };  // the opacity setting has to be applied to the water copies
+		std::unordered_map<const void*, float>                      _waterAlphaBase;  // per water material: its opacity as the mesh has it, before our multiplier
 		std::atomic<bool>                                           _refresh{ false };
 		std::chrono::steady_clock::time_point                       _holdUntil{};
+		RE::FormID                                                 _lastPlayerWorld{ 0 };
+		RE::NiPoint3                                               _lastPos{};
+		bool                                                       _hasLastPos{ false };
+		std::chrono::steady_clock::time_point                       _settleUntil{};  // after a worldspace change nothing new is drawn until the new world has settled
 		std::size_t                                                 _gridCount{ 0 };
 		std::size_t                                                 _copyCount{ 0 };
 		std::size_t                                                 _glowCount{ 0 };

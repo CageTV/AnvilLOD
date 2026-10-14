@@ -176,6 +176,27 @@ LOD is drawn with vanilla shaders, which don't do PBR. A LOD mesh that uses a te
 - The conversion darkens the PBR colours (a gentle power curve and DynDOLOD's default PBR scale of 0.65) because the PBR albedo is meant for linear lighting. It is an approximation fitted to TexGen's own output, so tune **PBR LOD texture brightness** (`--pbr-lod-brightness`, 100 = default) in game: lower it if the LOD looks brighter than the real objects. Changing the option or the brightness rebuilds every block.
 - Tree LOD (billboards and 3D models) isn't covered yet.
 
+## Ships
+
+Moored ships in object LOD (LOD4 and LOD8) are made from the real ship models you have installed, simplified to a triangle budget that grows with the ship's size, instead of the very coarse stock LOD meshes (a longboat is about 250 triangles there, 2,800 here). **Detailed ships** is on by default (`--no-detailed-ships` turns it off). Nothing is shipped with the tool: the meshes are made on your machine, so a ship replacer and replacer textures follow into LOD automatically.
+
+- Rigging, sails and masts stay; the shield rows and other decoration go first when a ship is over budget. A paint overlay and a floor copy that sit exactly on another surface are lifted a little so they do not fight it, and the LOD is sunk 3 units into its own surface so the real, bumpier deck wins where both are drawn.
+- It recognises ships from the base game (`meshes\dungeons\ship\`) and from Ships and Boats of Tamriel and the mods built on it (`meshes\bstamriel\dungeons\ships\`: Red Wave Corsairs, DK's Realistic Nord Ships, Solitude Dock Additions, ...), and models PGPatcher redirects to `meshes\_pgpatcher_dups\`. Interior pieces and anything under 600 units long are not taken for ships.
+- A ship with no LOD at all (a mod added it without LOD files) gets one made from its model when the DynDOLOD rules ask for LOD for it. The log lists them: `Detailed ships: N ship models drawn from their real models (...)`.
+- Run PGPatcher before Generate.
+
+**Opaque LOD textures.** The engine's LOD shader alpha-tests a shape's diffuse alpha even when the shape has no alpha property, so a texture whose alpha channel holds something else (the vanilla ship hull keeps gloss there) came out full of holes. Generate points such shapes at opaque copies under `textures\anvillod\opaque\`; your own textures are never changed.
+
+## Animated Ships
+
+With Vicn's Animated Ships in the load order: its wrecks that only bob up and down get ship LOD built from their model (DynDOLOD's rule for the mod leaves them out of LOD), and its sailing ships are drawn beyond the loaded cells as real references in `AnvilLOD.esp`, which the engine animates; the SKSE plugin switches them on and off with the originals, so they follow the mod's own schedule. Needs the native waterfalls, windmills and water wheels option (`--native-grid-objects`). **Animated Ships** is on by default (`--no-animated-ships`); it does nothing without the mod.
+
+## Community Shaders Grass Optimizations
+
+With the Grass Optimizations feature installed, Generate writes `meshes\LOD\Grass\<model>_LOD0.nif` (middle distance) and `_LOD1.nif` (far) for your grass models, which the feature swaps in over distance. They are your installed grass models simplified (about half of the triangles for the middle tier, about a fifth, at most 64, for the far tier), keeping the model's own texture, UVs, normals and vertex colours, so nothing else changes and no grass mod's files are rewritten. A grass type with no file keeps its full mesh. Models that are already tiny, have several shapes, are in the old Skyrim LE format or have another vertex layout are left alone, as are tiers your grass mod ships itself. Turn on mesh LODs in the feature's settings in the Community Shaders menu. On by default; `--no-cs-grass` turns it off; does nothing when the feature is not installed.
+
+AnvilLOD's own grass LOD (the grass in the LOD4 blocks) is unchanged. The feature's author recommends NGIO's extended grass distance plus these LOD meshes instead of grass in the blocks, so if you use extended grass, consider unticking **Grass LOD**.
+
 ## Presets
 
 The three tabs above the options (top right of the options box) are presets. Each one remembers every setting: output folder, worldspaces, LOD levels, the DynDOLOD folder and rule preset, and all the options. Click a tab to switch (the column slides over to the new preset), double-click a tab to rename it. The preset you leave is saved first, and a preset that was never used starts as a copy of what is on screen, so switching never loses anything. Use them for, say, a fast test setup and a full release setup.
@@ -283,3 +304,19 @@ AnvilLOD contains no DynDOLOD code and ships no DynDOLOD assets. Like xLODGen, i
 Grass, 3D trees and tree cards are written into their own shapes in every LOD block, each under a node named for its layer and LOD level (`AL:grass:4`, `AL:tree3d:8`...). The AnvilLOD SKSE plugin finds them in the loaded LOD and can hide or show each one per LOD level, so you can generate at the quality your best case needs and lower it in game, like a graphics setting. Open **SKSE Menu Framework, AnvilLOD, Quality Layers**: presets Max, High, Medium and Low, or tick each layer and level yourself, and **Save to AnvilLOD.ini** to keep it (`[Layers]`, e.g. `bShow_grass_16=0`; the file is re-read while the game runs).
 
 Hiding a layer saves drawing cost (triangles, overdraw, frame rate). The hidden data stays loaded, so disk space, memory and load time are set by what you generated: set grass density, 3D trees and seasons to the most your PC can really run, not the maximum on offer. The **Grass and size** page shows an estimate of the size of the next generation, scaled from your last one.
+
+## Fit to a size
+
+Next to the size estimate on the **Grass and size** page, pick a target (2 to 24 GB) and press **Fit my settings**: AnvilLOD picks the richest grass density and 3D tree setting whose estimated size fits, never turning on anything you have off and never raising grass. Seasons are left as they are, and their copies count toward the total. It needs one generation first so it can measure your own list.
+
+## Adaptive quality (SKSE plugin)
+
+The in-game menu has an **Adaptive Quality** page (off by default). While it is on, the plugin reads the frame rate from the swap chain's present counter once a second and steps the quality layers down one preset (Max, High, Medium, Low) when the rate stays under your target for eight seconds, and back up when there is plenty of headroom for a minute or more; a step up that is followed by another step down makes the next one wait longer. Menus and loading screens are ignored. With frame generation on, generated frames count too. Not available in Skyrim VR.
+
+## Live tuning
+
+The Water page has a **Water opacity** slider (the water sheets around the walled cities, changes at once) and the Dynamic LOD page has the hours the window glow fades in and out. **Save to AnvilLOD.ini** keeps them (`fWaterOpacity`, `fGlowDuskStart`, `fGlowDuskEnd`, `fGlowDawnStart`, `fGlowDawnEnd`).
+
+## Fires, candles and streams (AnvilLOD Effects.esp)
+
+With native effects on, the fires, candles, torches and streams are real references in `AnvilLOD Effects.esp`. They start disabled and the SKSE plugin switches on only the ones within **fEffectsDistance** (20,000 units by default, 5 cells; a slider on the Water & Animated Objects page) of you. Enabling hundreds of them across the map crashed the renderer when the camera turned toward them, so do not raise it much.

@@ -16,12 +16,14 @@ namespace AnvilLOD
 		bool          waterPlanes{ true };          // includes meshes with the water shader (lakes, pools, streams)
 		float         nearGridDistance{ 40000.0f }; // "Near LOD" objects
 		float         farGridDistance{ 120000.0f }; // "Far LOD" / "Far Full" objects
+		float         effectsDistance{ 20000.0f };  // fires, candles and streams of AnvilLOD Effects.esp are only enabled this close to the player
 		bool          driveSequences{ true };       // play the transform sequences of drawn clones ourselves (windmill blades, water wheels)
 		bool          tickManagers{ true };         // also tick controller managers of drawn clones (windmill blades, water wheels)
 		bool          animate{ false };             // EXPERIMENTAL: keep grid objects animated (bAnimateExperimental)
 		std::uint32_t animationFps{ 30 };           // update ticks per second while animate is on
 		bool          animateWater{ true };         // scroll the texture of the water copies around the walled cities (the engine never animates a model a plugin attaches)
 		float         waterScrollSpeed{ 0.012f };   // water texture tiles per second
+		float         waterOpacity{ 1.0f };         // multiplies the opacity of the water copies around the walled cities (live, from the menu)
 
 		// Terrain underside of child worldspaces (AnvilLOD.underside), drawn only while the player is in that worldspace
 		bool          undersides{ true };
@@ -35,6 +37,10 @@ namespace AnvilLOD
 		float         glowDuskEnd{ 20.5f };    // ... to full here
 		float         glowDawnStart{ 4.5f };   // and fades out from here ...
 		float         glowDawnEnd{ 6.5f };     // ... to nothing here
+
+		// Adaptive quality (Adaptive.cpp): steps the quality layers down while the frame rate stays under the target
+		bool          adaptiveQuality{ false };
+		std::int32_t  adaptiveTargetFps{ 40 };
 
 		bool          parentCopies{ true };
 		std::int32_t  parentCopyExtraCells{ 0 };    // draw copies this many cells beyond the loaded ones too (to find how far the engine hides the parent's LOD)

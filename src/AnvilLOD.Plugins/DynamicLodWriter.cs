@@ -119,6 +119,8 @@ public static class DynamicLodWriter
         ; How far "Near LOD" grid objects (water planes, creeks, fires) and "Far LOD" ones (waterfalls, windmills, ships) are drawn
         fNearGridDistance=40000
         fFarGridDistance=120000
+        ; The real fires, candles and streams of AnvilLOD Effects.esp are only switched on this close to the player (hundreds across the map crashed the renderer)
+        fEffectsDistance=20000
         ; EXPERIMENTAL: keep them animated (waterfall flow, windmill blades). Can crash; off by default
         bAnimateExperimental=0
         iAnimationFps=30

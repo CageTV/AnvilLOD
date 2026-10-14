@@ -180,16 +180,26 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             var model = tree.Model?.File;
             if (model is null || model.IsNull) return null;
             var stem = Path.GetFileNameWithoutExtension(model.DataRelativePath.Path.Replace('\\', '/')).ToLowerInvariant();
-            var folder = GamePath.Join("textures", "terrain", "lodgen", fk.ModKey.FileName.String.ToLowerInvariant());
             var name = $"{stem}_{fk.ID:x8}";
-            foreach (var (dds, firstView) in new[] { (name + ".dds", false), (name + "_1.dds", true) })
+            // TexGen puts a billboard in the folder of the plugin that wins the record (a tree mod that overrides a vanilla tree gets its billboards
+            // under its own name), and a billboard pack may be made for any plugin in the chain: the winner first, the original plugin last.
+            var folders = new List<string>();
+            foreach (var ctx in linkCache.ResolveAllContexts<ITree, ITreeGetter>(fk))
             {
-                var ddsPath = GamePath.Join(folder, dds);
-                if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
-                using var reader = new StreamReader(st);
-                var bb = TreeBillboard.Parse(ddsPath, reader.ReadToEnd(), firstView);
-                if (bb is not null) return bb;
+                var f = GamePath.Join("textures", "terrain", "lodgen", ctx.ModKey.FileName.String.ToLowerInvariant());
+                if (!folders.Contains(f)) folders.Add(f);
             }
+            var origin = GamePath.Join("textures", "terrain", "lodgen", fk.ModKey.FileName.String.ToLowerInvariant());
+            if (!folders.Contains(origin)) folders.Add(origin);
+            foreach (var folder in folders)
+                foreach (var (dds, firstView) in new[] { (name + ".dds", false), (name + "_1.dds", true) })
+                {
+                    var ddsPath = GamePath.Join(folder, dds);
+                    if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
+                    using var reader = new StreamReader(st);
+                    var bb = TreeBillboard.Parse(ddsPath, reader.ReadToEnd(), firstView);
+                    if (bb is not null) return bb;
+                }
             return null;
         }
         bool IsTree(FormKey fk) => linkCache.TryResolve<ITreeGetter>(fk, out _);
@@ -217,6 +227,11 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             var match = Tree3DModels.Resolve(modelPath, Tree3DModels.Crc32(bytes), tree3d.PlainNameFallback, Exists);
             if (match is null && !tree3d.PlainNameFallback && Exists(Tree3DModels.PlainPath(modelPath)))
                 Interlocked.Increment(ref nameOnlyTypes);
+            // A tree mod's own LOD models, named like any object's LOD mesh (<tree>_LOD_0.nif next to the model: Skyrim 3D Trees and Plants
+            // ships them), when there is no DynDOLOD-style one. Accepted by name, so under the same setting as the plain-name models.
+            if (match is null && tree3d.PlainNameFallback && _resolver?.Index.Find(modelPath) is { } named
+                && named.FirstOrDefault(p => !string.IsNullOrEmpty(p)) is { } namedPath)
+                match = new Tree3DModels.Match(namedPath, Tree3DModels.MatchKind.NamedLod);
             return match;
         }
 
@@ -397,6 +412,10 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 {
                     if (treeCache.GetOrAdd(baseKey.Value, ReadTree) is null) { pcNoLod++; continue; }   // no billboard = DynDOLOD has no LOD for it either
                     if (linkCache.TryResolve<ITreeGetter>(baseKey.Value, out var tree) && tree.Model?.File is { IsNull: false } tf) model = tf.DataRelativePath.Path;
+                    // A tree's own LOD model (3D tree LOD) is a plain, light mesh; the full tree model carries leaf animation nodes and wind shaders that the
+                    // plugin's copies were never meant to draw by the thousand (around Riften's wall: crash in the render thread). Use the LOD model when there is one.
+                    if (tree3d is not null && model is not null && tree3dCache.GetOrAdd(baseKey.Value, Find3D) is { } lodModel)
+                        model = lodModel.Path;
                 }
                 else
                 {
@@ -479,7 +498,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                     var tr = new TreeReference(r.FormKey.ToString(), wsId,
                         new Vector3(tp.Position.X, tp.Position.Y, tp.Position.Z), tp.Rotation.Z, r.Scale ?? 1f,
                         runtimeIds.Resolve(r.FormKey), bb, ObjectLod: copy is not null,
-                        Model3D: m3?.Path, Model3DByName: m3?.Kind == Tree3DModels.MatchKind.PlainName);
+                        Model3D: m3?.Path, Model3DByName: m3?.Kind is Tree3DModels.MatchKind.PlainName or Tree3DModels.MatchKind.NamedLod);
                     if (copy is not null)
                     {
                         copiedTrees.Add(tr);

@@ -30,6 +30,7 @@ public sealed class GrassLodSource : ISyntheticMeshSource
     private readonly float _sizeScale;
     private readonly RuntimeFormIds _runtime;
     private readonly Dictionary<FormKey, string> _grassModel = [];               // winning GRAS -> normalized model
+    private readonly Dictionary<FormKey, List<ModKey>> _grassChain = [];        // winning GRAS -> the plugins that define or override it, winner first
     private readonly Dictionary<string, FormKey> _firstByModel = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<(string Model, uint Id), GrassBillboard?> _billboards = new();
     private readonly ConcurrentDictionary<string, long> _missing = new(StringComparer.OrdinalIgnoreCase);
@@ -59,6 +60,7 @@ public sealed class GrassLodSource : ISyntheticMeshSource
             var model = NormalizeModel(file.DataRelativePath.Path);
             _grassModel[g.FormKey] = model;
             _firstByModel.TryAdd(model, g.FormKey);
+            _grassChain[g.FormKey] = [.. game.LinkCache.ResolveAllContexts<IGrass, IGrassGetter>(g.FormKey).Select(c => c.ModKey)];
         }
     }
 
@@ -196,19 +198,29 @@ public sealed class GrassLodSource : ISyntheticMeshSource
         var stem = Path.GetFileNameWithoutExtension(model.Replace('\\', '/'));
         if (fk is { } key)
         {
-            var folder = GamePath.Join("textures", "terrain", "lodgen", key.ModKey.FileName.String.ToLowerInvariant());
+            // The folder of the plugin that wins the record first (TexGen names it after that plugin), the original plugin last.
+            var folders = new List<string>();
+            if (_grassChain.TryGetValue(key, out var chain))
+                foreach (var m in chain)
+                {
+                    var f = GamePath.Join("textures", "terrain", "lodgen", m.FileName.String.ToLowerInvariant());
+                    if (!folders.Contains(f)) folders.Add(f);
+                }
+            var originFolder = GamePath.Join("textures", "terrain", "lodgen", key.ModKey.FileName.String.ToLowerInvariant());
+            if (!folders.Contains(originFolder)) folders.Add(originFolder);
             var name = $"{stem}_{key.ID:x8}";
-            foreach (var (dds, firstView) in new[] { (name + "_1.dds", true), (name + ".dds", false) })
-            {
-                var ddsPath = GamePath.Join(folder, dds);
-                if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
-                string text;
-                using (var reader = new StreamReader(st)) text = reader.ReadToEnd();
-                var tb = TreeBillboard.Parse(ddsPath, text, firstView);
-                if (tb is null) continue;
-                var normal = ddsPath[..^4] + "_n.dds";
-                return new GrassBillboard(ddsPath, _assets.Exists(normal) ? normal : null, tb.Width, tb.Height, tb.ShiftZ);
-            }
+            foreach (var folder in folders)
+                foreach (var (dds, firstView) in new[] { (name + "_1.dds", true), (name + ".dds", false) })
+                {
+                    var ddsPath = GamePath.Join(folder, dds);
+                    if (!_assets.Exists(ddsPath) || !_assets.TryOpen(GamePath.Join(folder, name + ".txt"), out var st)) continue;
+                    string text;
+                    using (var reader = new StreamReader(st)) text = reader.ReadToEnd();
+                    var tb = TreeBillboard.Parse(ddsPath, text, firstView);
+                    if (tb is null) continue;
+                    var normal = ddsPath[..^4] + "_n.dds";
+                    return new GrassBillboard(ddsPath, _assets.Exists(normal) ? normal : null, tb.Width, tb.Height, tb.ShiftZ);
+                }
         }
 
         // No TexGen billboard (TexGen skips grass whose record has no bounds, e.g. Realistic Grass Field's main types):

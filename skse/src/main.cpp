@@ -1,3 +1,4 @@
+#include "Adaptive.h"
 #include "Controller.h"
 #include "LodDistances.h"
 #include "LodLayers.h"
@@ -36,6 +37,7 @@ namespace
 			controller.Start();
 			AnvilLOD::Layers::Get().Load();
 			AnvilLOD::Layers::Get().Start();
+			AnvilLOD::Adaptive::Get().Start();
 			AnvilLOD::Menu::Register();
 			break;
 		case SKSE::MessagingInterface::kPostLoadGame:
