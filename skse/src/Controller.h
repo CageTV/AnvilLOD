@@ -18,6 +18,7 @@ namespace AnvilLOD
 
 		/// kDataLoaded: read AnvilLOD.dyn and resolve plugin + local FormIDs against the current load order.
 		void OnDataLoaded();
+		void ClearCityNoGrass();
 		/// Game loaded / new game: drop everything we attached, it's rebuilt on the next update.
 		void Reset();
 		/// Starts the background timer that queues Update() on the main thread.
@@ -80,6 +81,8 @@ namespace AnvilLOD
 		void PrepareGlow(Item& a_item);
 		void ApplyGlow();
 		void PrepareScroll(Item& a_item);
+		void ForceFadeIn(Item& a_item);
+		int  _fadeLogs{ 0 };
 		void ScrollWater();
 		void Update();
 		void Animate();
@@ -131,10 +134,6 @@ namespace AnvilLOD
 		std::unordered_map<const void*, float>                      _waterAlphaBase;  // per water material: its opacity as the mesh has it, before our multiplier
 		std::atomic<bool>                                           _refresh{ false };
 		std::chrono::steady_clock::time_point                       _holdUntil{};
-		RE::FormID                                                 _lastPlayerWorld{ 0 };
-		RE::NiPoint3                                               _lastPos{};
-		bool                                                       _hasLastPos{ false };
-		std::chrono::steady_clock::time_point                       _settleUntil{};  // after a worldspace change nothing new is drawn until the new world has settled
 		std::size_t                                                 _gridCount{ 0 };
 		std::size_t                                                 _copyCount{ 0 };
 		std::size_t                                                 _glowCount{ 0 };

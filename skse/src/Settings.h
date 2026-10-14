@@ -27,6 +27,7 @@ namespace AnvilLOD
 
 		// Terrain underside of child worldspaces (AnvilLOD.underside), drawn only while the player is in that worldspace
 		bool          undersides{ true };
+		bool          cityGrass{ true };            // real grass in the walled cities' child worldspaces (clears their NoGrass flag when the game loads; needs a restart)
 
 		// Parent > Child copies (AnvilLOD.copies): the objects around Whiterun, Solitude, Windhelm and Riften that their child
 		// worldspaces leave out, drawn while the player is in the city and the object is inside the loaded cells

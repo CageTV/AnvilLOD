@@ -93,6 +93,8 @@ namespace AnvilLOD
 					adaptiveQuality = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "iAdaptiveTargetFps")) {
 					adaptiveTargetFps = std::clamp(static_cast<std::int32_t>(std::stol(value)), 20, 144);
+				} else if (EqualsNoCase(key, "bCityGrass")) {
+					cityGrass = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bUndersides")) {
 					undersides = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bGlowWindows")) {
@@ -146,6 +148,7 @@ namespace AnvilLOD
 			{ "fWaterOpacity", std::format("{:.2f}", waterOpacity) },
 			{ "bAdaptiveQuality", adaptiveQuality ? "1" : "0" },
 			{ "iAdaptiveTargetFps", std::to_string(adaptiveTargetFps) },
+			{ "bCityGrass", cityGrass ? "1" : "0" },
 			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bGlowWindows", glowWindows ? "1" : "0" },
 			{ "fGlowIntensity", std::format("{:.2f}", glowIntensity) },

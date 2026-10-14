@@ -238,6 +238,8 @@ The walled cities (Whiterun, Solitude, Windhelm, Riften, and Dragonsreach's porc
 - **Where it draws:** by default only in cells the city worldspace has (where the engine hides Tamriel's LOD and the object is simply missing). **Also where the city worldspace has no cell** (`bParentCopyAllCells=1`, in the in-game menu too) draws them everywhere in the loaded cells, which may show a model on top of its own LOD.
 - **Limits:** the copies are drawn models, not references: no collision, no activation, probably no shadows. Rock piles that swap textures (snow, moss, tundra variants) show the model's default textures; the log counts them. Off by default.
 - `bParentCopies=0` in `AnvilLOD.ini` turns the drawing off without regenerating.
+- **Real grass around the walls (`bCityGrass=1`, on by default).** Whiterun's worldspace switches the real grass off (NoGrass) but uses the parent's terrain, so the cells the game keeps loaded around you showed bare dirt in a square that followed you. The plugin clears that flag in memory when the game starts (nothing is written to disk; it needs a restart, and the menu has a checkbox).
+- Every object the plugin draws starts fully opaque. The engine fades a model's root node by the distance to the camera, using settings its own reference loading sets up; a clone attached by the plugin never gets them and used to start at zero, so the copies were invisible inside the square around the player and appeared as you walked away.
 
 ## Terrain underside (opt-in)
 

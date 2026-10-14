@@ -229,8 +229,38 @@ namespace AnvilLOD
 		return instance;
 	}
 
+	/// A walled city's child worldspace (Whiterun) is flagged NoGrass and uses the parent's land: inside the cells the game keeps loaded around
+	/// the player there is real terrain with its grass switched off, and the baked-grass LOD terrain is hidden, so the ground reads as bare
+	/// dirt in a square that follows the player (Whiterun, 2026-10-14). Clearing the flag in memory lets the game draw grass there like in the
+	/// open country: no plugin, nothing written to disk.
+	void Controller::ClearCityNoGrass()
+	{
+		if (!Settings::Get().cityGrass) {
+			return;
+		}
+		auto* data = RE::TESDataHandler::GetSingleton();
+		if (!data) {
+			return;
+		}
+		int cleared = 0;
+		for (auto* ws : data->GetFormArray<RE::TESWorldSpace>()) {
+			if (!ws || !ws->parentWorld || !ws->parentUseFlags.any(RE::TESWorldSpace::ParentUseFlag::kUseLandData)) {
+				continue;
+			}
+			if (ws->flags.any(RE::TESWorldSpace::Flag::kNoGrass)) {
+				ws->flags.reset(RE::TESWorldSpace::Flag::kNoGrass);
+				++cleared;
+				logger::info("Real grass switched on in {} (a child worldspace that uses its parent's land)", ws->GetFormEditorID() ? ws->GetFormEditorID() : "?");
+			}
+		}
+		if (cleared == 0) {
+			logger::info("Real grass in walled cities: no child worldspace had the NoGrass flag");
+		}
+	}
+
 	void Controller::OnDataLoaded()
 	{
+		ClearCityNoGrass();
 		LoadDynamic();
 		LoadUndersides();  // after the dynamic file: they share the mesh string table
 		LoadCopies();
@@ -535,8 +565,6 @@ namespace AnvilLOD
 		const float nearOn = Settings::Get().nearGridDistance;
 		const float nearOff = nearOn * 1.1f;
 		const float kEffectsDistance = Settings::Get().effectsDistance;  // about five cells by default: the loaded area plus a little
-		constexpr int   kMaxTogglesPerUpdate = 6;
-		int           toggles = 0;
 		for (const auto& n : _natives) {
 			bool wanted;
 			if (const auto* src = RE::TESForm::LookupByID<RE::TESObjectREFR>(n.source)) {
@@ -560,21 +588,13 @@ namespace AnvilLOD
 				wanted = outside && dx * dx + dy * dy <= limit * limit;
 			}
 			if (wanted == ref->IsDisabled()) {
-				// Each switch loads or unloads the object's 3D while the renderer may be walking its geometry lists: a few at a time are
-				// harmless, hundreds crossing the near distance as the player flies about crashed the renderer (Riften, 2026-10-13). So
-				// only a handful per update; the rest follow on the next ones.
-				if (toggles >= kMaxTogglesPerUpdate) {
-					wanted = !ref->IsDisabled();  // not switched yet: it stays as it is
+				if (Settings::Get().verboseLog) {
+					logger::info("native {} {:08X} at {:.0f},{:.0f}", wanted ? "ON " : "off", n.native, n.x, n.y);
+				}
+				if (wanted) {
+					EnableRef(ref);
 				} else {
-					++toggles;
-					if (Settings::Get().verboseLog) {
-						logger::info("native {} {:08X} at {:.0f},{:.0f}", wanted ? "ON " : "off", n.native, n.x, n.y);
-					}
-					if (wanted) {
-						EnableRef(ref);
-					} else {
-						ref->Disable();
-					}
+					ref->Disable();
 				}
 			}
 			enabled += wanted ? 1 : 0;
@@ -808,6 +828,7 @@ namespace AnvilLOD
 
 		RE::NiUpdateData update{ animate ? Seconds() : 0.0f, RE::NiUpdateData::Flag::kNone };
 		node->Update(update);
+		ForceFadeIn(a_item);  // after the update: it may recompute the fade
 	}
 
 	namespace
@@ -877,6 +898,24 @@ namespace AnvilLOD
 		for (auto& [prop, base] : a_item.glowProps) {
 			prop->emissiveMult = base * scale;
 		}
+	}
+
+	/// A model's root node is a BSFadeNode, and the engine fades it by the distance to the camera with settings its own reference loading
+	/// sets up (a fade of 500 to 1000 units). A clone attached by the plugin never gets that setup and starts at currentFade 0: fully
+	/// transparent close to the camera, solid farther out, which hid every copy inside the square around the player (Whiterun, 2026-10-14).
+	/// Make the node opaque; the values of the first few are logged.
+	void Controller::ForceFadeIn(Item& a_item)
+	{
+		auto* fade = a_item.node ? a_item.node->AsFadeNode() : nullptr;
+		if (!fade) {
+			return;
+		}
+		auto& rd = fade->GetRuntimeData();
+		if (_fadeLogs < 8) {
+			++_fadeLogs;
+			logger::info("Fade node of {}: currentFade={:.3f} unk128={:.3f} unk12C={:.3f} unk140={:.3f} unk14C={:.3f} unk150={:#x}", _meshes[a_item.mesh], rd.currentFade, rd.unk128, rd.unk12C, rd.unk140, rd.unk14C, rd.unk150);
+		}
+		rd.currentFade = 1.0f;
 	}
 
 	/// The water copies are plain lit sheets: scrolling their material's texture offset (the same for every sheet, so neighbours line up)
@@ -1084,25 +1123,7 @@ namespace AnvilLOD
 		}
 		auto*       player = RE::PlayerCharacter::GetSingleton();
 		auto*       world = player ? player->GetWorldspace() : nullptr;
-		// A teleport (a worldspace change, or a jump of many cells in the same one) is the moment the engine tears down the old surroundings and
-		// builds the new ones. Switching real references on and off then (the fires and candles around the place the player left are all turned
-		// off at once, thousands of objects are drawn on arrival) freed objects the renderer was still using: coc from Whiterun to Riften
-		// crashed it every time, 2026-10-13 (SkyrimSE.exe+155ECC4). So nothing is touched until the new place has settled.
-		const RE::FormID wid = world ? world->GetFormID() : 0;
-		const auto       here = player ? player->GetPosition() : RE::NiPoint3{};
-		const auto       now = std::chrono::steady_clock::now();
-		if (wid != _lastPlayerWorld || (_hasLastPos && std::abs(here.x - _lastPos.x) + std::abs(here.y - _lastPos.y) > 20000.0f)) {
-			_lastPlayerWorld = wid;
-			_settleUntil = now + std::chrono::seconds(6);
-		}
-		_lastPos = here;
-		_hasLastPos = player != nullptr;
-		auto* ui = RE::UI::GetSingleton();
-		if (!player || !player->Is3DLoaded() || (ui && ui->IsMenuOpen(RE::LoadingMenu::MENU_NAME))) {
-			_settleUntil = std::max(_settleUntil, now + std::chrono::seconds(3));
-		}
-		const bool settling = now < _settleUntil;
-		if (!_natives.empty() && player && player->Is3DLoaded() && !settling) {
+		if (!_natives.empty() && player && player->Is3DLoaded()) {
 			UpdateNative();
 		}
 		if (_glowCount > 0) {
@@ -1181,14 +1202,6 @@ namespace AnvilLOD
 			logger::info("Glow: world {:08X} cell {},{}: {} world lists, {} glow windows in them, {} wanted now (not yet drawn), {} drawn, glow {:.0f}%, {} objects shown of {} allowed",
 				playerWorld, pcx, pcy, lists.size(), glowInLists, glowWanted, _glowShown.load(), _glowFactor * 100.0f, _shown.size(), settings.maxShown);
 		}
-		// A teleport into another worldspace (coc from Whiterun to Riften crashed the renderer twice, 2026-10-13) is the one moment the engine is
-		// rebuilding the world while thousands of objects would be attached to it at once: draw nothing new until the player's 3D is loaded and a
-		// few seconds have passed, then bring objects in a batch per update instead of all in one frame.
-		if (settling) {
-			return;
-		}
-		constexpr std::size_t kShowsPerUpdate = 600;
-		std::size_t           shownNow = 0;
 		std::ranges::sort(wanted);
 		for (const auto& [distance, i] : wanted) {
 			auto& item = _items[i];
@@ -1198,9 +1211,6 @@ namespace AnvilLOD
 					_capWarned = true;
 				}
 				return;
-			}
-			if (++shownNow > kShowsPerUpdate) {
-				return;  // the rest next update
 			}
 			Show(item);
 			if (item.node) {

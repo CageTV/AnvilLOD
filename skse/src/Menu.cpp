@@ -212,6 +212,8 @@ namespace AnvilLOD::Menu
 			Smf::SliderFloat("Glow fully off (hour)", &s.glowDawnEnd, 0.0f, 12.0f, "%.1f");
 			Smf::TextDisabled("    Game hours (24 h clock): the windows brighten between the first two and fade between the last two.");
 			Smf::Separator();
+			Smf::Checkbox("Real grass in the walled cities' surroundings (restart needed)", &s.cityGrass);
+			Smf::TextDisabled("    Whiterun's worldspace switches the real grass off, so the ground around the walls is bare dirt. This turns it back on, as in the open country. Takes effect the next time the game starts; Save to AnvilLOD.ini keeps it.");
 			Smf::Checkbox("Draw Parent > Child copies", &s.parentCopies);
 			Smf::Checkbox("Also where the city worldspace has no cell (experimental)", &s.parentCopyAllCells);
 			int extraCells = s.parentCopyExtraCells;
