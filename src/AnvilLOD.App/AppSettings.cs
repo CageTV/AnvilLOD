@@ -66,6 +66,7 @@ public sealed class AppSettings
     public bool DetailedShips { get; set; } = true;   // whole ships in object LOD from simplified copies of their real models
     public int IceInset { get; set; } = 6;           // units, 0-24: glacier/ice LOD pulled inside its surface (0 = off)
     public int MountainInset { get; set; } = 0;      // units, 0-24: the same for mountain LOD (experimental)
+    public int ObjectInset { get; set; } = 0;        // units, 0-24: the same for every other object in LOD4/LOD8 (experimental)
     public bool DynamicLod { get; set; } = true;
     public bool GridObjects { get; set; } = true;
     public bool ParentCopies { get; set; }

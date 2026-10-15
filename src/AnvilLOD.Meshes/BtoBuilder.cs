@@ -96,6 +96,7 @@ public static class BtoBuilder
             placed++;
             var category = categorize?.Invoke(path!) ?? LodLayers.Objects;
             float pull = inset is not null && (int)quad.Level <= LodInset.MaxLevel ? inset(path!) : 0f;
+            bool flatGuard = pull > 0f && LodInset.IsGenericObject(path!);   // only the generic object inset leaves flat pieces alone
 
             foreach (var part in mesh.Parts)
             {
@@ -112,7 +113,7 @@ public static class BtoBuilder
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
                     list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName });
-                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull);
+                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull, flatGuard);
             }
         }
 
@@ -152,7 +153,7 @@ public static class BtoBuilder
             w.Set(shader, b => WriteShader(b, c.Material, texSet, c.HasColors));
             w.Set(texSet, b =>
             {
-                var slots = ShaderGuard.TextureSlots(c.Material.Textures);
+                var slots = ShaderGuard.BakedSlots(c.Material.Textures);
                 b.Write((uint)slots.Length);
                 foreach (var t in slots) NifWriter.WriteSizedString(b, t);
             });
@@ -239,7 +240,7 @@ public static class BtoBuilder
         public int TriangleCount => _indexCount / 3;
 
         /// <returns>Number of triangles dropped because they were buried under the terrain.</returns>
-        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment, float inset = 0f)
+        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment, float inset = 0f, bool skipFlat = false)
         {
             var world = new Vector3[p.VertexCount];
             for (int i = 0; i < world.Length; i++) world[i] = Vector3.Transform(p.Positions[i], m);
@@ -253,7 +254,7 @@ public static class BtoBuilder
                 if (!keep[t]) culled++;
             }
 
-            if (inset > 0f)
+            if (inset > 0f && !(skipFlat && LodInset.IsFlat(world, inset)))
             {
                 var worldNormals = new Vector3[p.VertexCount];
                 for (int i = 0; i < worldNormals.Length; i++) worldNormals[i] = Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ);

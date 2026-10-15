@@ -441,6 +441,18 @@
                             <ComboBoxItem Content="16 units" />
                             <ComboBoxItem Content="24 units" />
                         </ComboBox>
+<TextBlock Text="Object LOD inset (smooth swap)" Margin="0,2,0,2" />
+<ComboBox x:Name="ObjectInsetBox" SelectedIndex="0" Margin="0,0,0,6"
+                                  ToolTip="Pulls every other object in LOD4/LOD8 (buildings, walls, rocks) a few units inside its own surface. In the ring where the full model has loaded and the LOD is still drawn, the full model is then the nearer surface, so the swap shows less flicker. Flat pieces (roads, floor slabs) are left alone. Off by default: try 2 or 4 units if you see objects flicker or shimmer as they load in.">
+                            <ComboBoxItem Content="0 (off, default)" />
+                            <ComboBoxItem Content="2 units" />
+                            <ComboBoxItem Content="4 units" />
+                            <ComboBoxItem Content="6 units" />
+                            <ComboBoxItem Content="8 units" />
+                            <ComboBoxItem Content="12 units" />
+                            <ComboBoxItem Content="16 units" />
+                            <ComboBoxItem Content="24 units" />
+                        </ComboBox>
 <CheckBox x:Name="IncludeDisabledCheck" Content="Include initially disabled references" />
 <CheckBox x:Name="IncludeEnableParentCheck" Content="Include enable-parented references that start enabled" IsChecked="True" ToolTip="Parented references that start disabled (quest-built or rebuilt places such as Helgen Reborn) are always left out of static LOD." />
                         </StackPanel>

@@ -89,6 +89,11 @@ public sealed class ChildWorldCopies
 
     public static readonly ChildWorldCopies None = new();
 
+    private readonly Dictionary<string, string> _blockedBy = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Child worldspaces whose copies the DynDOLOD config switches off because a plugin is loaded (NoScanIfPluginExists: Open Cities, SR Exterior Cities, ...), with that plugin. Such a mod makes the city part of the parent worldspace, so its references are already the parent's own.</summary>
+    public IReadOnlyDictionary<string, string> BlockedBy => _blockedBy;
+
     public IReadOnlyCollection<ChildWorldCopy> Worlds => _byChild.Values;
 
     /// <summary>The same configuration without the child-to-parent copies (walled cities in the parent's LOD turned off).</summary>
@@ -97,6 +102,7 @@ public sealed class ChildWorldCopies
         var c = new ChildWorldCopies();
         foreach (var kv in _parentByChild) c._parentByChild[kv.Key] = kv.Value;
         foreach (var s in _standIns) c._standIns.Add(s);
+        foreach (var kv in _blockedBy) c._blockedBy[kv.Key] = kv.Value;
         return c;
     }
     /// <summary>Child worldspaces that get copies of their parent's references (ScanParent=1).</summary>
@@ -136,6 +142,8 @@ public sealed class ChildWorldCopies
                 result._byChild[child] = c;
             if (ParseParentCopy(child, text, loaded, Path.GetFileName(file)) is { } pc)
                 result._parentByChild[child] = pc;
+            if (FindBlocker(text, loaded) is { } blocker)
+                result._blockedBy[child] = blocker;
         }
         var matches = Path.Combine(configsFolder, $"DynDOLOD_{gameMode}_ChildworldMatches.txt");
         if (File.Exists(matches))
@@ -168,6 +176,21 @@ public sealed class ChildWorldCopies
             values.TryGetValue("NoCellsWithNAVM", out var nav) && nav == "1",
             List(ignore).Select(s => s.ToLowerInvariant()).ToList(),
             source);
+    }
+
+    /// <summary>The loaded plugin that a childworld ini's NoScanIfPluginExists names (the first one found), or null.</summary>
+    public static string? FindBlocker(string content, IReadOnlySet<string> pluginsLoaded)
+    {
+        foreach (var raw in content.Split((char)10))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line[0] == ';') continue;
+            int eq = line.IndexOf('=');
+            if (eq <= 0 || !line[..eq].Trim().Equals("NoScanIfPluginExists", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var name in List(line[(eq + 1)..].Trim()))
+                if (pluginsLoaded.Contains(name)) return name;
+        }
+        return null;
     }
 
     /// <summary>Parses the Parent &gt; Child part of one childworld ini; null if ScanParent isn't 1 or a blocking plugin is loaded.</summary>

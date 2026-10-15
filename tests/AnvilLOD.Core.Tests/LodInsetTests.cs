@@ -88,4 +88,38 @@ public class LodInsetTests
         Assert.Equal(994f, ZAt(LodLevel.Lod8), 1);
         Assert.Equal(1000f, ZAt(LodLevel.Lod16), 1);
     }
+
+    [Fact]
+    public void Other_objects_get_the_object_inset_only_when_it_is_on()
+    {
+        Assert.Equal(3f, LodInset.For("lod\\whiterun\\whiterunwall_lod_0.nif", 0f, 0f, 0f, objects: 3f));
+        Assert.Equal(0f, LodInset.For("lod\\whiterun\\whiterunwall_lod_0.nif", 0f, 0f, 0f, objects: 0f));
+        Assert.Equal(6f, LodInset.For("lod\\ice\\glacierslab01_lod_0.nif", 6f, 0f, 0f, objects: 3f));   // a category's own inset still wins
+    }
+
+    [Fact]
+    public void Only_generic_objects_skip_flat_pieces()
+    {
+        Assert.True(LodInset.IsGenericObject(@"lod\whiterun\whiterunwall_lod_0.nif"));
+        Assert.False(LodInset.IsGenericObject(@"lod\ice\glacierslab01_lod_0.nif"));
+        Assert.False(LodInset.IsGenericObject(@"dlc01\lod\mountains\dlc1mountainridge02cave_lod_1.nif"));
+    }
+
+    [Fact]
+    public void A_flat_piece_is_recognised_and_a_tall_wall_is_not()
+    {
+        var road = new[] { new Vector3(0, 0, 0), new Vector3(100, 0, 0), new Vector3(0, 100, 2), new Vector3(100, 100, 2) };
+        var wall = new[] { new Vector3(0, 0, 0), new Vector3(0, 100, 0), new Vector3(0, 0, 60), new Vector3(0, 100, 60) };
+        Assert.True(LodInset.IsFlat(road, 4f));
+        Assert.False(LodInset.IsFlat(wall, 4f));
+    }
+
+    [Fact]
+    public void A_tall_wall_is_pulled_in()
+    {
+        var wall = new[] { new Vector3(0, 0, 0), new Vector3(0, 100, 0), new Vector3(0, 0, 60), new Vector3(0, 100, 60) };
+        var nrm = new[] { Vector3.UnitX, Vector3.UnitX, Vector3.UnitX, Vector3.UnitX };
+        LodInset.Apply(wall, nrm, 3f);
+        Assert.All(wall, p => Assert.Equal(-3f, p.X, 3));
+    }
 }

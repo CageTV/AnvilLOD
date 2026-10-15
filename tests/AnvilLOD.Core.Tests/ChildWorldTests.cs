@@ -98,4 +98,20 @@ public class ChildWorldTests
         Assert.True(rules.IgnoresWorld("JKs Skyrim.esp", "SolitudeWorld"));
         Assert.Equal(0, rules.Count);
     }
+
+    [Fact]
+    public void FindBlocker_NamesTheLoadedPluginThatSwitchesTheCopiesOff()
+    {
+        var ini = string.Join((char)10, "[Tamriel]", "ScanChild=1", "NoScanIfPluginExists=Open Cities Skyrim.esp,SR Exterior Cities.esp, Alternate Skyrim.esp");
+        var loaded = new HashSet<string>(["Skyrim.esm", "sr exterior cities.esp"], StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("SR Exterior Cities.esp", ChildWorldCopies.FindBlocker(ini, loaded));
+        Assert.Null(ChildWorldCopies.FindBlocker(ini, new HashSet<string>(["Skyrim.esm"], StringComparer.OrdinalIgnoreCase)));
+    }
+
+    [Fact]
+    public void FindBlocker_IgnoresACommentedLine()
+    {
+        var ini = string.Join((char)10, "; NoScanIfPluginExists=SR Exterior Cities.esp", "[Tamriel]", "ScanChild=1");
+        Assert.Null(ChildWorldCopies.FindBlocker(ini, new HashSet<string>(["SR Exterior Cities.esp"], StringComparer.OrdinalIgnoreCase)));
+    }
 }

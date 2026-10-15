@@ -654,6 +654,8 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         // 3c) Child copies: drop the ones the parent already has (same base or same LOD mesh within 32 units), e.g.
         //     city walls that exist in both worldspaces. Placeholders with a different model (Dragonsreach's
         //     WRCastleMainBuilding01LOD) are handled by the rules, which take them out of LOD.
+        if (_childCopies.BlockedBy.Count > 0)
+            progress?.Report("Walled cities: " + string.Join("; ", _childCopies.BlockedBy.GroupBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase).Select(g => $"{g.Key} is loaded, so {string.Join(", ", g.Select(kv => kv.Key))} get no child-worldspace copies (the mod makes the city part of the parent worldspace; its objects are the parent's own references and get object LOD there)")));
         if (_childCopies.Worlds.Count > 0)
             progress?.Report($"Child worldspaces: {(childSeen.Count == 0 ? "no references seen in any configured child worldspace" : string.Join(", ", childSeen.Select(kv => $"{kv.Key} {kv.Value:N0} refs")))}; "
                 + $"{copiedRefs.Count:N0} LOD refs and {copiedTrees.Count:N0} trees kept before de-duplication");

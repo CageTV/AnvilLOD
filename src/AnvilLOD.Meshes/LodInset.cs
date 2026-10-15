@@ -22,17 +22,36 @@ public static class LodInset
     /// <summary>Faces looking down (buried in the ground or underneath) stay where they are: pulling them up opens a gap to the terrain.</summary>
     private const float DownFacing = -0.3f;
 
-    /// <summary>The inset in units for a mesh path (0 = none): <paramref name="ice"/> for glacier/ice LOD, <paramref name="mountains"/> for mountain LOD.</summary>
-    public static float For(string meshPath, float ice, float mountains, float ships = 0f)
+    /// <summary>A generic object's shape whose height is under this many times the inset is treated as flat and left alone.</summary>
+    public const float FlatExtentFactor = 4f;
+
+    /// <summary>True when a mesh path gets the generic object inset: not ice, glacier, mountain or ship LOD, which have their own.</summary>
+    public static bool IsGenericObject(string meshPath)
+        => For(meshPath, 1f, 1f, 1f, 0f) == 0f;
+
+    /// <summary>
+    /// True for a flat piece (a road, a floor slab, a plank on the ground): it has nothing to pull inside, and moving it down would sink it
+    /// under the terrain. Only the generic object inset skips these.
+    /// </summary>
+    public static bool IsFlat(Vector3[] positions, float distance)
     {
-        if (ice <= 0f && mountains <= 0f && ships <= 0f) return 0f;
+        float minZ = float.MaxValue, maxZ = float.MinValue;
+        foreach (var p in positions) { minZ = MathF.Min(minZ, p.Z); maxZ = MathF.Max(maxZ, p.Z); }
+        return maxZ - minZ < FlatExtentFactor * distance;
+    }
+
+    /// <summary>The inset in units for a mesh path (0 = none): <paramref name="ice"/> for glacier/ice LOD, <paramref name="mountains"/> for mountain LOD.</summary>
+    public static float For(string meshPath, float ice, float mountains, float ships = 0f, float objects = 0f)
+    {
+        if (ice <= 0f && mountains <= 0f && ships <= 0f && objects <= 0f) return 0f;
         if (ships > 0f && meshPath.StartsWith(AnvilLOD.Core.Lod.ShipLodModels.Prefix, StringComparison.Ordinal)) return ships;
         var p = meshPath.Replace('\\', '/').ToLowerInvariant();
         if (ice > 0f && (p.Contains("/lod/ice/") || p.Contains("/lod/glaciers/") || p.Contains("/lod/icecastle/") || p.StartsWith("lod/ice/", StringComparison.Ordinal)))
             return ice;
         if (mountains > 0f && (p.Contains("/lod/mountains/") || p.StartsWith("lod/mountains/", StringComparison.Ordinal)))
             return mountains;
-        return 0f;
+        // Every other object: the same few units, so the ring where the loaded full model and the LOD are both drawn shows the full model.
+        return objects > 0f ? objects : 0f;
     }
 
     /// <summary>

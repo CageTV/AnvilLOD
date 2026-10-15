@@ -99,6 +99,7 @@ public partial class MainWindow : Window
         TargetSizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(TargetSizeChoices, _settings.TargetSizeGb));
         IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
         MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
+        ObjectInsetBox.SelectedIndex = InsetIndex(_settings.ObjectInset);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
         ParentCopiesCheck.IsChecked = _settings.ParentCopies;
@@ -162,6 +163,7 @@ public partial class MainWindow : Window
         _settings.TargetSizeGb = TargetSizeChoices[Math.Clamp(TargetSizeBox.SelectedIndex, 0, TargetSizeChoices.Length - 1)];
         _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
+        _settings.ObjectInset = InsetChoices[Math.Clamp(ObjectInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
         _settings.ParentCopies = ParentCopiesCheck.IsChecked == true;
@@ -435,6 +437,7 @@ public partial class MainWindow : Window
             CsGrassLod: _settings.CsGrassLod,
             IceInset: _settings.IceInset,
             MountainInset: _settings.MountainInset,
+            ObjectInset: _settings.ObjectInset,
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
             NativeGridObjects: _settings.NativeGridObjects,

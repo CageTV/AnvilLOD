@@ -99,4 +99,27 @@ public class ShaderGuardTests
         }
         finally { try { Directory.Delete(dir, true); } catch (IOException) { } }
     }
+
+    [Fact]
+    public void BakedSlots_AShapeWithoutANormalMapGetsTheFlatNormal()
+    {
+        var slots = ShaderGuard.BakedSlots([@"textures\lod\creeks\mxcreek_blue.dds"]);
+        Assert.Equal(ShaderGuard.Slots, slots.Length);
+        Assert.Equal(@"textures\lod\creeks\mxcreek_blue.dds", slots[0]);
+        Assert.Equal(@"textures\default_n.dds", slots[1]);
+        Assert.All(slots.Skip(2), s => Assert.Equal("", s));
+    }
+
+    [Fact]
+    public void BakedSlots_AnExistingNormalMapIsKept()
+    {
+        var slots = ShaderGuard.BakedSlots([@"textures\a.dds", @"textures\a_n.dds"]);
+        Assert.Equal(@"textures\a_n.dds", slots[1]);
+    }
+
+    [Fact]
+    public void BakedSlots_NoDiffuseMeansNothingIsInvented()
+    {
+        Assert.All(ShaderGuard.BakedSlots([]), s => Assert.Equal("", s));
+    }
 }

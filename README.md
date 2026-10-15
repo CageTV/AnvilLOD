@@ -356,6 +356,16 @@ Tick **Draw missing tree billboards** on the Trees page (`--render-trees`) and e
 
 A LOD mesh can name a texture that exists nowhere (some creek LOD from a water mod whose texture was never shipped). Skyrim then ends up with a null texture and some builds crash in the lighting shader instead of drawing purple. After Generate, AnvilLOD writes a 4x4 stand-in at the missing path into its output (a plain colour picked from the name, a flat normal map for a normal map), lists every missing texture in the log, and also checks the DDS header of every texture the LOD meshes use ("Unloadable texture: ..." for one the game cannot load). Nothing that exists is ever replaced; the output is cleared on each run, so install the real texture and generate again.
 
+**A baked shape with no normal map** (Water for ENB's creek water, the foam planes of its creek LOD, other effect-like planes) gets the vanilla flat normal `textures\default_n.dds` in its normal slot. The standard LOD shader reads that slot, and an empty one crashed the game while drawing such a shape out of an object LOD block (a user's `BSSubIndexTriShape "obj"` with `textures\lod\creeks\mxcreek_blue.dds`, on a list without DynDOLOD's rule files, where nothing marks the creeks as grid objects and they are baked into the blocks). Shapes that have a normal map are untouched.
+
+## Walled cities made part of Tamriel (SR Exterior Cities, Open Cities)
+
+Mods such as SR Exterior Cities (it moves the five hold cities into Tamriel's own cells, no loading screens) and Open Cities make the city part of the parent worldspace. DynDOLOD's `childworld` configs name them under `NoScanIfPluginExists`, and AnvilLOD reads that: with one of them loaded there are no Child > Parent or Parent > Child copies (so nothing hides Tamriel's grass or water LOD around the city), and the log says so (`Walled cities: SR Exterior Cities.esp is loaded, so WhiterunWorld, ... get no child-worldspace copies`). The city's objects are then ordinary Tamriel references, and the Tamriel object LOD blocks over the city include them (Whiterun's LOD4 block has more references than its neighbours with the mod loaded).
+
+## Object LOD inset (smooth swap)
+
+The engine swaps object LOD for the real objects by itself: it loads the full model first, then unloads the LOD, so both are drawn for a moment, and there is no setting that fades one into the other. Where the two surfaces coincide that shows as flicker. **Object LOD inset** (`--object-inset <units>`, a dropdown under Objects in the app; off by default) pulls every other object in LOD4 and LOD8 (buildings, walls, rocks; ice, mountains and ships have their own insets) a few units inside its own surface along its smoothed normals, so the full model is always the nearer one in that ring. Flat pieces (roads, floor slabs, planks on the ground; shapes lower than four times the inset) are left alone, because moving them down would sink them under the terrain. Try 2 or 4 units if objects shimmer as they load in. It changes the LOD blocks, so generate again after changing it.
+
 ## Fires and candles
 
 Native effects write fires, torches, braziers, lava and streams. Candles and lanterns are left out: small lights nobody sees from a distance.
