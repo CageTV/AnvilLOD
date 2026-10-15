@@ -60,6 +60,14 @@ namespace AnvilLOD
 			}
 		}
 
+		/// Birds, fish and other critter models (BIRDS.esl's seagulls and hawks are DynDOLOD "Far LOD" grid objects): they only make sense
+		/// moving, and a still copy hangs in the air at its spawn point, so they are only drawn while the animation is on.
+		bool IsCritterMesh(std::string a_path)
+		{
+			std::ranges::transform(a_path, a_path.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			return a_path.starts_with("critters\\") || a_path.find("\\critters\\") != std::string::npos;
+		}
+
 		/// Water-shader planes (lakes, pools, streams), as opposed to waterfall / creek effect meshes.
 		bool IsWaterMesh(std::string a_path)
 		{
@@ -450,6 +458,7 @@ namespace AnvilLOD
 			item.nativeBacked = (e.flags & DynamicEntry::kNativeBacked) != 0;
 			_glowCount += item.glow ? 1 : 0;
 			item.water = item.grid && IsWaterMesh(_meshes[e.mesh]);
+			item.critter = item.grid && IsCritterMesh(_meshes[e.mesh]);
 			_gridCount += item.grid ? 1 : 0;
 			_byWorld[item.world].push_back(_items.size());
 			_items.push_back(std::move(item));
@@ -672,6 +681,9 @@ namespace AnvilLOD
 		}
 		if (a_item.grid ?(!settings.gridObjects || (a_item.water && !settings.waterPlanes)) : !settings.enabled) {
 			return false;
+		}
+		if (a_item.critter && !settings.animate) {
+			return false;  // a frozen bird hangs in the air; it is drawn only when it can move
 		}
 		if (a_item.glow && (!settings.glowWindows || _glowFactor <= 0.001f)) {
 			return false;  // windows are dark by day: nothing to draw

@@ -77,7 +77,7 @@ namespace AnvilLOD
 					effectsDistance = std::clamp(std::stof(value), 4096.0f, 200000.0f);
 				} else if (EqualsNoCase(key, "bDriveSequences")) {
 					driveSequences = value != "0" && !EqualsNoCase(value, "false");
-				} else if (EqualsNoCase(key, "bTickManagers")) {
+				} else if (EqualsNoCase(key, "bTickEngineManagers")) {
 					tickManagers = value != "0" && !EqualsNoCase(value, "false");
 				} else if (EqualsNoCase(key, "bAnimateExperimental")) {
 					animate = value != "0" && !EqualsNoCase(value, "false");
@@ -91,6 +91,8 @@ namespace AnvilLOD
 					waterOpacity = std::clamp(std::stof(value), 0.05f, 2.0f);
 				} else if (EqualsNoCase(key, "bAdaptiveQuality")) {
 					adaptiveQuality = value != "0" && !EqualsNoCase(value, "false");
+				} else if (EqualsNoCase(key, "iAdaptiveFloor")) {
+					adaptiveFloor = std::clamp(static_cast<std::int32_t>(std::stol(value)), 0, 3);
 				} else if (EqualsNoCase(key, "iAdaptiveTargetFps")) {
 					adaptiveTargetFps = std::clamp(static_cast<std::int32_t>(std::stol(value)), 20, 144);
 				} else if (EqualsNoCase(key, "bCityGrass")) {
@@ -140,7 +142,7 @@ namespace AnvilLOD
 			{ "fFarGridDistance", std::format("{:.0f}", farGridDistance) },
 			{ "fEffectsDistance", std::format("{:.0f}", effectsDistance) },
 			{ "bAnimateExperimental", animate ? "1" : "0" },
-			{ "bTickManagers", tickManagers ? "1" : "0" },
+			{ "bTickEngineManagers", tickManagers ? "1" : "0" },
 			{ "bDriveSequences", driveSequences ? "1" : "0" },
 			{ "iAnimationFps", std::to_string(animationFps) },
 			{ "bAnimateWater", animateWater ? "1" : "0" },
@@ -148,6 +150,7 @@ namespace AnvilLOD
 			{ "fWaterOpacity", std::format("{:.2f}", waterOpacity) },
 			{ "bAdaptiveQuality", adaptiveQuality ? "1" : "0" },
 			{ "iAdaptiveTargetFps", std::to_string(adaptiveTargetFps) },
+			{ "iAdaptiveFloor", std::to_string(adaptiveFloor) },
 			{ "bCityGrass", cityGrass ? "1" : "0" },
 			{ "bUndersides", undersides ? "1" : "0" },
 			{ "bGlowWindows", glowWindows ? "1" : "0" },

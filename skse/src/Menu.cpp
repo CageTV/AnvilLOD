@@ -314,6 +314,8 @@ namespace AnvilLOD::Menu
 #else
 			Smf::Checkbox("Adaptive quality", &s.adaptiveQuality);
 			Smf::SliderInt("Target frame rate", &s.adaptiveTargetFps, 20, 144);
+			Smf::SliderInt("Lowest step it may use", &s.adaptiveFloor, 0, 3);
+			Smf::TextDisabled("    %s. High keeps all the grass; Medium and Low drop the far grass, so the carpet only appears close to you.", Adaptive::LevelName(s.adaptiveFloor));
 			Smf::TextDisabled("    With frame generation on, generated frames count too: set the target to what you want to see on screen.");
 			Smf::Separator();
 			if (!a.Available()) {
@@ -321,6 +323,9 @@ namespace AnvilLOD::Menu
 			} else {
 				Smf::Text("Frame rate now: %.0f", a.Fps());
 				Smf::Text("Quality now: %s", Adaptive::LevelName(a.Level()));
+				if (s.adaptiveQuality && a.Level() >= s.adaptiveFloor && a.Level() > 0 && a.Fps() < static_cast<float>(s.adaptiveTargetFps)) {
+					Smf::TextDisabled("    The game runs below the target even at the lowest step allowed: lower the target, or turn this off.");
+				}
 			}
 			if (Smf::Button("Back to Max now")) {
 				a.Reset();

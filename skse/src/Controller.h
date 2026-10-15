@@ -61,6 +61,7 @@ namespace AnvilLOD
 			bool                           nearGrid{ false };
 			bool                           neverFade{ false };
 			bool                           water{ false };
+			bool                           critter{ false };    // a bird or other critter model: drawn only while the animation is on
 			bool                           underside{ false };  // a child worldspace's terrain underside: drawn whenever the player is in `world`
 			bool                           copy{ false };       // a Parent > Child copy (AnvilLOD.copies): drawn while the player is in `world`, inside the loaded cells
 			bool                           childCell{ false };  // ... and the child worldspace has a cell here

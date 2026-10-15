@@ -127,7 +127,16 @@ namespace AnvilLOD
 		}
 
 		const float target = static_cast<float>(s.adaptiveTargetFps);
+		const int   lowest = std::clamp(s.adaptiveFloor, 0, 3);
 		++_sinceChange;
+		if (_level > lowest) {
+			// The floor was raised (menu or ini) below where it had gone: come back up to it at once.
+			Apply(lowest);
+			_lowSeconds = 0;
+			_highSeconds = 0;
+			_sinceChange = 0;
+			return;
+		}
 		if (_fps < target) {
 			++_lowSeconds;
 			_highSeconds = 0;
@@ -139,7 +148,7 @@ namespace AnvilLOD
 			_highSeconds = 0;
 		}
 
-		if (_lowSeconds >= 8 && _level < 3 && _sinceChange >= 15) {
+		if (_lowSeconds >= 8 && _level < lowest && _sinceChange >= 15) {
 			// Having to step down again soon after a step up means the headroom was only the lower setting's: wait longer before the next one.
 			if (_lastWasUp && _sinceChange < 180) {
 				_upHold = std::min(_upHold * 2, 900);

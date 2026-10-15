@@ -73,7 +73,7 @@ dotnet test
 
 ## Run the scan
 
-**MO2 users (recommended):** point AnvilLOD at your MO2 instance folder. It reads the profile's modlist, plugins and load order and layers the mod folders itself, the way MO2's VFS would. There's no need to launch it through MO2.
+**MO2 users (recommended):** when AnvilLOD is started from MO2 it opens on the profile MO2 has selected, not the one remembered from the last run. Point AnvilLOD at your MO2 instance folder. It reads the profile's modlist, plugins and load order and layers the mod folders itself, the way MO2's VFS would. There's no need to launch it through MO2.
 
 **Folders on different drives, or a wrong auto-detect:** AnvilLOD reads the game folder, mods, profiles and overwrite folders from the instance's `ModOrganizer.ini`. Open **Locations** under the instance folder (or use `--mo2-game`, `--mo2-mods`, `--mo2-profiles`, `--mo2-overwrite`) and type any of them to override what the ini says; a box you leave empty keeps the auto-detect. The game folder can be given as the folder with `SkyrimSE.exe` or as its `Data` folder. With the game, mods and profiles folders typed, `ModOrganizer.ini` isn't needed at all (name the profile with the Profile box or `--profile`).
 
@@ -318,6 +318,12 @@ Next to the size estimate on the **Grass and size** page, pick a target (2 to 24
 
 The in-game menu has an **Adaptive Quality** page (off by default). While it is on, the plugin reads the frame rate from the swap chain's present counter once a second and steps the quality layers down one preset (Max, High, Medium, Low) when the rate stays under your target for eight seconds, and back up when there is plenty of headroom for a minute or more; a step up that is followed by another step down makes the next one wait longer. Menus and loading screens are ignored. With frame generation on, generated frames count too. Not available in Skyrim VR.
 
+**Lowest step it may use** (`iAdaptiveFloor`, default 1 = High): adaptive quality never goes below this preset. High only trims the 3D trees to LOD4 and keeps all the grass; Medium and Low also drop the far grass, so the grass carpet then only appears close to you. A target above what your list can reach (say 118 on a list that runs at 80 fps) would otherwise push it to Low and keep it there. The page warns when the game runs below the target even at the lowest step allowed.
+
+## Animated distant objects (experimental)
+
+`bAnimateExperimental=1` (a checkbox in the menu; off by default) keeps the drawn grid objects animated: waterfall flow, windmill blades, the Snow Elf waygates, circling birds. The plugin plays each copy's transform sequences itself (`bDriveSequences`, on). Calling the engine's own controller-manager update on those copies (`bTickEngineManagers`) is **off by default**: the copies' sequence times are never initialised, and on Skyrim 1.6.1170 it crashed on the first animation tick, as soon as the exterior LOD loaded (`NiControllerManager::Update`). An older `bTickManagers` key in your ini is ignored. Birds and other `critters\` models (BIRDS.esl's hawks and seagulls are DynDOLOD "Far LOD" objects) are only drawn while the animation is on: a still copy would hang in the air at its spawn point.
+
 ## Live tuning
 
 The Water page has a **Water opacity** slider (the water sheets around the walled cities, changes at once) and the Dynamic LOD page has the hours the window glow fades in and out. **Save to AnvilLOD.ini** keeps them (`fWaterOpacity`, `fGlowDuskStart`, `fGlowDuskEnd`, `fGlowDawnStart`, `fGlowDawnEnd`).
@@ -343,6 +349,8 @@ Tick **Draw missing tree billboards** on the Trees page (`--render-trees`) and e
 - **Which trees:** tall ones (a model at least 256 units high). Trees TexGen listed without a billboard, and anything lower than that, get no LOD, like in TexGen and DynDOLOD. TexGen's own rule is not a plain height (its smallest kept tree is 316 units, its largest skipped one 449), so a few more shrubs than TexGen's may get a billboard.
 - **How it looks:** the front view of the model, alpha-tested with its own textures, 2x supersampled, up to 512 pixels. Checked against TexGen's own billboards for 85 trees: the height is the same (median ratio 1.02) and the vertical offset matches exactly. The picture is a little brighter than TexGen's; the tree LOD brightness setting covers that.
 - **Cache:** the billboards are written to `%LocalAppData%\AnvilLOD\TreeBillboards` in TexGen's file layout and read last, below every mod. A billboard is drawn again only when its model or one of its textures changed. Delete the folder to start over.
+
+**What TexGen still has to do:** the billboards above replace TexGen's tree billboards, not its trunk textures. 3D tree LOD needs the flat trunk textures (`textures\DynDOLOD\LOD\Trees\<tree>_<CRC32>_trunk_1.dds`) that TexGen makes from each model's `_trunk.nif`; without them those trees keep billboard tree LOD (on the dev list: 11,584 trees with 3D LOD without TexGen's output, 50,626 with it).
 
 ## Textures that don't exist
 

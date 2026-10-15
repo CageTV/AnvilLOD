@@ -18,7 +18,7 @@ namespace AnvilLOD
 		float         farGridDistance{ 120000.0f }; // "Far LOD" / "Far Full" objects
 		float         effectsDistance{ 20000.0f };  // fires, candles and streams of AnvilLOD Effects.esp are only enabled this close to the player
 		bool          driveSequences{ true };       // play the transform sequences of drawn clones ourselves (windmill blades, water wheels)
-		bool          tickManagers{ true };         // also tick controller managers of drawn clones (windmill blades, water wheels)
+		bool          tickManagers{ false };        // also call the engine's NiControllerManager::Update on drawn clones: OFF, it crashed on the 1.6.1170 build at the first tick (their sequence times are never initialised, 2026-10-15). Key is bTickEngineManagers so an old bTickManagers=1 in a user's ini is ignored
 		bool          animate{ false };             // EXPERIMENTAL: keep grid objects animated (bAnimateExperimental)
 		std::uint32_t animationFps{ 30 };           // update ticks per second while animate is on
 		bool          animateWater{ true };         // scroll the texture of the water copies around the walled cities (the engine never animates a model a plugin attaches)
@@ -42,6 +42,7 @@ namespace AnvilLOD
 		// Adaptive quality (Adaptive.cpp): steps the quality layers down while the frame rate stays under the target
 		bool          adaptiveQuality{ false };
 		std::int32_t  adaptiveTargetFps{ 40 };
+		std::int32_t  adaptiveFloor{ 1 };            // the lowest preset it may step down to: 0 Max, 1 High (keeps all the grass), 2 Medium, 3 Low
 
 		bool          parentCopies{ true };
 		std::int32_t  parentCopyExtraCells{ 0 };    // draw copies this many cells beyond the loaded ones too (to find how far the engine hides the parent's LOD)

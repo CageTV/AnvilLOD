@@ -63,7 +63,7 @@ public partial class MainWindow : Window
         if (_settings.MakerFolderMode) MakerFolderRadio.IsChecked = true; else MakerNewModRadio.IsChecked = true;
         MakerOutMode_Changed(this, new RoutedEventArgs());
         MakerBudget_Changed(this, new RoutedEventArgs());
-        LoadProfiles(_settings.Mo2Profile);
+        LoadProfiles(_settings.Mo2Profile, StartupLog.IsUnderMo2());
         if (_settings.UseMo2) Mo2Radio.IsChecked = true; else if (_settings.UseVortex) VortexRadio.IsChecked = true; else DataRadio.IsChecked = true;
         DataBox.Text = _settings.DataFolder ?? "";
         PluginsBox.Text = _settings.PluginsTxt ?? "";
@@ -249,7 +249,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Reads the instance's profiles into the dropdown and selects the wanted (or MO2's selected) one.</summary>
-    private void LoadProfiles(string? wanted)
+    private void LoadProfiles(string? wanted, bool preferMo2 = false)
     {
         ProfileBox.ItemsSource = null;
         var folder = Blank(Mo2Box.Text);
@@ -263,10 +263,8 @@ public partial class MainWindow : Window
             var inst = Mo2Instance.Open(folder, Mo2LocationsFromBoxes());
             var profiles = inst.ListProfiles();
             ProfileBox.ItemsSource = profiles;
-            ProfileBox.SelectedItem =
-                profiles.FirstOrDefault(p => p.Equals(wanted, StringComparison.OrdinalIgnoreCase))
-                ?? profiles.FirstOrDefault(p => p.Equals(inst.SelectedProfile, StringComparison.OrdinalIgnoreCase))
-                ?? profiles.FirstOrDefault();
+            // Started from MO2 (preferMo2): the profile MO2 is on, not the one remembered from the last run.
+            ProfileBox.SelectedItem = Mo2ProfileChoice.Pick(profiles, wanted, inst.SelectedProfile, preferMo2);
             Mo2InfoText.Text = $"{inst.GameName ?? "Game"} at {inst.GamePath}";
             if (string.IsNullOrWhiteSpace(DynDolodBox.Text))
             {
