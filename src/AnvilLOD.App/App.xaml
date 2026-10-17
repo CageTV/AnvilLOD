@@ -302,6 +302,18 @@
             </Style.Triggers>
         </Style>
 
+        <!-- Tooltips wrap instead of running off the screen on long text -->
+        <Style TargetType="ToolTip">
+            <Setter Property="MaxWidth" Value="520" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="ProgressBar">
             <Setter Property="Foreground" Value="{StaticResource Accent}" />
             <Setter Property="Background" Value="{StaticResource Field}" />
