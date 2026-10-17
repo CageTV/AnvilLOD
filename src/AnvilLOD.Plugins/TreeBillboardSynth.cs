@@ -56,7 +56,7 @@ public sealed class TreeBillboardSynth(IAssetSource assets, string? cacheRoot = 
         var sb = new StringBuilder().Append(Convert.ToHexString(SHA256.HashData(bytes)));
         foreach (var t in mesh.Parts.SelectMany(p => p.Material.Textures.Take(1)).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
             sb.Append('|').Append(assets.Fingerprint(TexturePath(t)));
-        var source = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("v1|" + sb))).ToLowerInvariant()[..24];
+        var source = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("v2|" + sb))).ToLowerInvariant()[..24];
 
         var dir = Path.Combine(_root, "textures", "terrain", "lodgen", pluginFolder);
         var main = Path.Combine(dir, name + ".dds");
@@ -70,7 +70,7 @@ public sealed class TreeBillboardSynth(IAssetSource assets, string? cacheRoot = 
             Directory.CreateDirectory(dir);
             foreach (var file in new[] { main, Path.Combine(dir, name + "_1.dds") })
                 using (var fs = File.Create(file)) BillboardRenderer.WriteDds(fs, img.Rgba, img.Width, img.Height);
-            using (var fs = File.Create(Path.Combine(dir, name + "_1_n.dds"))) BillboardRenderer.WriteFlatNormalDds(fs, img.Width, img.Height);
+            using (var fs = File.Create(Path.Combine(dir, name + "_1_n.dds"))) { if (img.NormalRgba is { } nrm) BillboardRenderer.WriteNormalDds(fs, nrm, img.Width, img.Height); else BillboardRenderer.WriteFlatNormalDds(fs, img.Width, img.Height); }
             var inv = CultureInfo.InvariantCulture;
             File.WriteAllText(txt, string.Join("\r\n",
                 "[LOD]",

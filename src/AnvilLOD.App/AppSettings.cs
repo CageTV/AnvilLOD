@@ -38,6 +38,7 @@ public sealed class AppSettings
     public bool CustomRulesEnabled { get; set; }     // use the custom rule file below (off: DynDOLOD's own rule files only)
     public string? CustomRulesFile { get; set; }     // a DynDOLOD-format rule file; written by the rule editor or picked by the user
     public bool RemoveBuried { get; set; } = true;
+    public bool RemoveUnderwater { get; set; } = true;
     public bool TreeLod { get; set; } = true;
     public string? MakerInputs { get; set; }        // LOD Mesh Maker: the models (one path per line)
     public bool MakerFolderMode { get; set; }       // false = a new mod in the MO2 mods folder, true = a folder the user chose

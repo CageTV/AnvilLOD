@@ -9,7 +9,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | Object LOD (`.bto`) | Managed NIF reader/writer, parallel per block | ✅ v1 |
 | LOD mesh discovery (MNAM + `name_lod_N.nif` by file name) | MNAM first, named files fill gaps, DynDOLOD folder order | ✅ |
 | DynDOLOD rules (preset + mod-shipped `DynDOLOD_SSE_*.ini`) | Read as-is from the DynDOLOD install and Data\DynDOLOD; Candles / FXGlow rule sets; rule editor and a custom rules file that wins over them | ✅ (NoGlow flag + Reference column stored, not applied) |
-| Hidden-face removal (needs terrain) | LAND heights read from plugins; conservative buried-triangle test | ✅ v1 |
+| Hidden-face removal (needs terrain) | LAND heights read from plugins; conservative buried-triangle test, plus triangles completely under the cell's water surface (as DynDOLOD removes both) | ✅ |
 | Texture atlas (TexGen + DynDOLOD) | GPU atlas, BC7, PBR-aware pages | planned |
 | Tree LOD: billboards (`.lst`/`.btt` + atlas) | TexGen billboards packed into a BC7 atlas (managed encoder), engine format verified against vanilla and DynDOLOD | ✅ v1 |
 | Tree LOD: 3D tree LOD models in object LOD (`passthru_lod.nif`) | Models matched by CRC32 (or, opt-in, plain name), 3D at LOD4 (optionally LOD8), billboard cards beyond, passthru shaders kept, size estimate in the log | ✅ v1 (opt-in) |
@@ -22,20 +22,20 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 | In-game quality (no DynDOLOD equivalent) | Grass, 3D trees and tree cards are written as named layers per LOD level; the SKSE plugin hides or shows them live (Quality Layers page, presets Max / High / Medium / Low, `[Layers]` in AnvilLOD.ini). Saves draw cost, not memory | ✅ |
 | Size estimate before generating | Scaled from the last generation of the same preset (grass density, 3D trees, LOD8, seasons); size breakdown per level, layer and season in the log | ✅ |
 | Texture audit | Every texture a LOD mesh names is checked after generating; missing ones are listed (DynDOLOD's "File Not Found Textures") | ✅ |
-| Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | 🧪 experimental |
-| Glow windows (`<model>glow_lod_N.nif`) | `--glow-windows`: drawn by the SKSE plugin beyond the loaded cells and lit by the game hour; near/far/never-fade grid from the mesh number. Static-LOD glow (forts) not yet | 🧪 experimental (in-game check pending) |
+| Large references (engine large reference grid) | `AnvilLOD.esm` (ESL): lists qualifying references from ESM plugins that no plugin lists, using the rule that reproduces Skyrim.esm's list; report of what was left out | ✅ (checked in game) |
+| Glow windows (`<model>glow_lod_N.nif`) | `--glow-windows`: drawn by the SKSE plugin beyond the loaded cells and lit by the game hour; near/far/never-fade grid from the mesh number. Static-LOD glow (forts) not yet: DynDOLOD builds it into the object LOD with a per-worldspace glow-map atlas (`DynDOLOD_<ws>_Glow` + `_g`), so it comes with the texture atlas | ✅ (checked in game) |
 | Per-cell LOD4 segments (engine hides LOD for loaded cells, incl. child worlds like Whiterun) | BSSubIndexTriShape 4×4 segments, matched to DynDOLOD output | ✅ |
 | Enable parents (quest-built places, e.g. Helgen Reborn) | Initial state resolved through the parent chain; start-disabled refs left out of static LOD | ✅ |
 | Water planes, waterfalls, fires, windmills (DynDOLOD Grid objects) | Grid column read from the rules; drawn by the SKSE plugin beyond the loaded cells, `_dyndolod_lod` meshes preferred | ✅ v1 (static; animation 🧪). Stream, creek and pond water planes: lit fake-water stand-ins instead of black water (opt-in) |
 | Walled cities in the parent's LOD (Dragonsreach etc.) | Child world references copied into Tamriel's LOD, driven by DynDOLOD's `Configs\DynDOLOD_SSE_childworld_*.ini` + ChildworldMatches | ✅ |
-| Parent > Child copies (DynDOLOD's `ScanParent`: Tamriel's objects around the walled cities, copied into the city worldspaces) | `--parent-copies`: same rules as DynDOLOD's childworld configs; `AnvilLOD.copies` drawn by the SKSE plugin while you are in the city, no plugin; also grass LOD and river/pond water for the cells the city worldspace owns | 🧪 experimental (checked in game at Whiterun) |
+| Parent > Child copies (DynDOLOD's `ScanParent`: Tamriel's objects around the walled cities, copied into the city worldspaces) | `--parent-copies`: same rules as DynDOLOD's childworld configs; `AnvilLOD.copies` drawn by the SKSE plugin while you are in the city, no plugin; also grass LOD and river/pond water for the cells the city worldspace owns | ✅ (checked in game) |
 | Native animated grid objects (waterfalls, windmills, wheels, fires) | DynDOLOD makes them real references: base records in DynDOLOD.esm (STAT, or MSTT where a model animates through sequences, e.g. the windmill fan) with the `dyndolod\lod` mesh as model, and refs in DynDOLOD.esp that copy the vanilla refs. The engine then animates them natively; the plugin's copies stay static. Plan: register the same statics (bases + refs) in AnvilLOD.esm, using DynDOLOD Resources' meshes until AnvilLOD has its own, and swap in MSTT bases where an object needs it | planned |
 | Base Object Swapper compatibility for the native grid objects | A swapper (Diverse Windmill Sails - Base Object Swapper) changes the base of the vanilla windmill fans by location, so near fans show the swapped sails while AnvilLOD's native far fans (own base, no location) show the default ones. Fix idea: the SKSE plugin copies the vanilla fan's current base onto its native reference while that one is disabled (needs the vanilla base id in AnvilLOD.native v2). Later, not now | planned |
 | Child worldspaces with their own LOD | Generate for parent/child links | planned |
 | Occlusion.esp | Build from our own terrain data (xLODGen meanwhile) | planned |
-| LOD meshes from full models you pick (LOD Mesh Maker) | `name_lod_0/1/2.nif` (simplified, no collision, own textures) into a new mod or folder, plus a DynDOLOD-format rule file | 🧪 experimental |
-| PBR full models → matching object LOD textures | TexGen `pbr_lod` twins used as found; other textures with a `textures\pbr` version get a converted, shrunk copy (`textures\anvillod\pbr`). Tree LOD not yet | 🧪 experimental (conversion curve is an approximation) |
-| Terrain underside (volumetric lighting) | `<ws>_Underside.nif` from LAND (never above the terrain) + ESL ESM/ESP that place it, as DynDOLOD does | 🧪 experimental (in-game check pending) |
+| LOD meshes from full models you pick (LOD Mesh Maker) | `name_lod_0/1/2.nif` (simplified, no collision, own textures) into a new mod or folder, plus a DynDOLOD-format rule file | ✅ |
+| PBR full models → matching object LOD textures | TexGen `pbr_lod` twins used as found; other textures with a `textures\pbr` version get a converted, shrunk copy (`textures\anvillod\pbr`). Tree LOD not yet | ✅ (checked in game; the conversion curve is an approximation) |
+| Terrain underside (volumetric lighting) | `<ws>_Underside.nif` from LAND (never above the terrain) + ESL ESM/ESP that place it, as DynDOLOD does | ✅ (checked in game) |
 | Terrain LOD | xLODGen for now; own GPU terrain step later | later |
 
 ## Milestone 1a — Scan ✅
@@ -68,7 +68,7 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 - [x] LOD4 shapes split into per-cell segments (fixes LOD staying visible up close and inside Whiterun)
 - [x] Enable-parent chains resolved; refs that start disabled stay out of static LOD
 - [ ] Use DynDOLOD's grid/reference/flags columns (Near/Far LOD, VWD) when dynamic LOD arrives
-- [ ] Weld duplicate vertices, drop degenerate triangles
+- [x] Weld duplicate vertices, drop degenerate triangles (once per mesh when loaded; lossless, so the saving is small: about 2,700 merged vertices and 11 triangles over 3,347 shapes on the test list)
 
 ## Milestone 2 — Textures (replaces TexGen + DynDOLOD atlas)
 - [ ] GPU backend (Vortice D3D12 or Silk.NET Vulkan); CPU fallback
@@ -114,7 +114,8 @@ AnvilLOD reads LOD **assets** (the `_lod` meshes and LOD textures that mods and 
 ## Mod author tools
 - [x] Per-plugin report: objects/trees placed in LOD worldspaces with no LOD, broken MNAM, missing LOD textures, empty models, missing billboards
 - [x] LOD mesh generation (QEM simplification, seam-aware), billboard rendering (software rasterizer, BC7, coverage-preserving mips), DynDOLOD-format rule file
-- [ ] Billboard normal maps from the model (now flat), multiple views (_2), grass billboards
+- [x] Billboard normal maps from the model's own vertex normals (DirectX orientation like TexGen's: red right, green down; the normal map of the model itself is not read)
+- [ ] Multiple views (_2), grass billboards
 - [ ] Optional atlas of the generated LOD textures
 
 ## Open questions

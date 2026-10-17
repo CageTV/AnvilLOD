@@ -77,6 +77,7 @@ public partial class MainWindow : Window
         Lod16Check.IsChecked = _settings.Lod16;
         Lod32Check.IsChecked = _settings.Lod32;
         RemoveBuriedCheck.IsChecked = _settings.RemoveBuried;
+        RemoveUnderwaterCheck.IsChecked = _settings.RemoveUnderwater;
         TreeLodCheck.IsChecked = _settings.TreeLod;
         LargeRefsCheck.IsChecked = _settings.LargeReferences;
         LargeRefsEslCheck.IsChecked = _settings.LargeRefsEsl;
@@ -141,6 +142,7 @@ public partial class MainWindow : Window
         _settings.CustomRulesFile = Blank(CustomRulesBox.Text);
         _settings.CustomRulesEnabled = CustomRulesCheck.IsChecked == true;
         _settings.RemoveBuried = RemoveBuriedCheck.IsChecked == true;
+        _settings.RemoveUnderwater = RemoveUnderwaterCheck.IsChecked == true;
         _settings.TreeLod = TreeLodCheck.IsChecked == true;
         _settings.LargeReferences = LargeRefsCheck.IsChecked == true;
         _settings.LargeRefsEsl = LargeRefsEslCheck.IsChecked == true;
@@ -429,6 +431,7 @@ public partial class MainWindow : Window
             Generate: generate,
             DynDolodFolder: _settings.DynDolodFolder,
             RemoveBuried: _settings.RemoveBuried,
+            RemoveUnderwater: _settings.RemoveUnderwater,
             GrassLod: _settings.GrassLod,
             TreeBrightness: _settings.TreeBrightness / 100f,
             ObjectBrightness: _settings.ObjectBrightness / 100f,

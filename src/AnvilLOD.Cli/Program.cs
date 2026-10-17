@@ -57,6 +57,7 @@ public static class Program
           --rules <file>         Your own LOD rule file (DynDOLOD rule format, e.g. saved by the app's rule editor). Its rules come
                                  before all others; without it only DynDOLOD's own rule files are used
           --keep-buried          Don't remove LOD triangles buried under the terrain
+          --keep-underwater      Don't remove LOD triangles that lie completely under water
           --include-disabled     Include initially-disabled references
           --no-child-worlds      Don't copy walled cities (Whiterun, Solitude, ...) into Tamriel's LOD
           --no-dynamic           Keep switchable references (quest-toggled) in static LOD instead of
@@ -235,6 +236,7 @@ public static class Program
             FxGlow: a.Has("fxglow"),
             CustomRulesFile: a.Get("rules"),
             RemoveBuried: !a.Has("keep-buried"),
+            RemoveUnderwater: !a.Has("keep-underwater"),
             GrassLod: !a.Has("no-grass"),
             ChildWorlds: !a.Has("no-child-worlds"),
             Seasons: a.Has("seasons"),

@@ -355,7 +355,7 @@ public static class ModAuthorTool
             Directory.CreateDirectory(dir);
             foreach (var file in new[] { main, Path.Combine(dir, name + "_1.dds") })
                 using (var fs = File.Create(file)) BillboardRenderer.WriteDds(fs, img.Rgba, img.Width, img.Height);
-            using (var fs = File.Create(Path.Combine(dir, name + "_1_n.dds"))) BillboardRenderer.WriteFlatNormalDds(fs, img.Width, img.Height);
+            using (var fs = File.Create(Path.Combine(dir, name + "_1_n.dds"))) { if (img.NormalRgba is { } nrm) BillboardRenderer.WriteNormalDds(fs, nrm, img.Width, img.Height); else BillboardRenderer.WriteFlatNormalDds(fs, img.Width, img.Height); }
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             File.WriteAllText(Path.Combine(dir, name + ".txt"), string.Join("\r\n",
                 "[LOD]",

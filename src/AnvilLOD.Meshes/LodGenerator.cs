@@ -49,6 +49,9 @@ public sealed class LodGenerator
     /// <summary>When set, shapes without an alpha property whose diffuse texture has a translucent alpha channel point at an opaque copy.</summary>
     public OpaqueLodTextures? Opaque { get; init; }
 
+    /// <summary>Also drop triangles that lie completely below the water surface of their cell (needs the water heights in the terrain data).</summary>
+    public bool RemoveUnderwater { get; init; }
+
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
 
@@ -118,6 +121,30 @@ public sealed class LodGenerator
         catch (Exception ex) { _meshErrors[path] = ex.Message; return null; }
     }
 
+    /// <summary>What <see cref="MeshCleaner"/> removed from the meshes loaded so far.</summary>
+    public CleaningStats Cleaning { get; } = new();
+
+    public sealed class CleaningStats
+    {
+        public long Parts, TrianglesDropped, VerticesMerged;
+    }
+
+    private LodMesh Tidy(LodMesh mesh)
+    {
+        bool changed = false;
+        var parts = new List<LodMeshPart>(mesh.Parts.Count);
+        foreach (var part in mesh.Parts)
+        {
+            var r = MeshCleaner.Clean(part);
+            Interlocked.Increment(ref Cleaning.Parts);
+            Interlocked.Add(ref Cleaning.TrianglesDropped, r.TrianglesDropped);
+            Interlocked.Add(ref Cleaning.VerticesMerged, r.VerticesMerged);
+            if (!ReferenceEquals(r.Part, part)) changed = true;
+            parts.Add(r.Part);
+        }
+        return changed ? new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings, NoShapesInFile = mesh.NoShapesInFile } : mesh;
+    }
+
     private LodMesh? Load(string path)
     {
         try
@@ -135,7 +162,7 @@ public sealed class LodGenerator
                     bytes = copy.ToArray();
                 }
             }
-            var mesh = NifGeometryReader.Read(path, bytes);
+            var mesh = Tidy(NifGeometryReader.Read(path, bytes));
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
             if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);
             if (mesh.Parts.Count == 0 && !mesh.NoShapesInFile)
@@ -436,7 +463,8 @@ public sealed class LodGenerator
                 try
                 {
                     var test = _terrain is null ? null
-                        : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level));
+                        : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level),
+                            RemoveUnderwater ? (x, y) => _terrain.WaterAt(quad.Worldspace, x, y) : null);
                     var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize, Inset);
                     var rel = seasonSuffix is null ? quad.RelativePath : AnvilLOD.Core.Lod.SeasonSwaps.SeasonalPath(quad.RelativePath, seasonSuffix);
                     var path = Path.Combine(outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));

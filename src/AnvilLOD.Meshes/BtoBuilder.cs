@@ -48,16 +48,20 @@ public static class BtoBuilder
     /// Drops triangles that are completely buried: every corner, edge midpoint and the centre must be at least
     /// <see cref="Margin"/> below the terrain. Points over cells without terrain data always keep the triangle.
     /// </summary>
-    public sealed class TerrainTest(Func<float, float, float?> heightAt, float margin)
+    public sealed class TerrainTest(Func<float, float, float?> heightAt, float margin, Func<float, float, float?>? waterAt = null)
     {
         public float Margin { get; } = margin;
 
+        /// <summary>Buried under the terrain, or (when water heights are given) entirely below the water surface, as DynDOLOD drops both.</summary>
         public bool Buried(Vector3 a, Vector3 b, Vector3 c) =>
-            Below(a) && Below(b) && Below(c)
-            && Below((a + b) * 0.5f) && Below((b + c) * 0.5f) && Below((c + a) * 0.5f)
-            && Below((a + b + c) / 3f);
+            AllBelow(a, b, c, heightAt) || (waterAt is not null && AllBelow(a, b, c, waterAt));
 
-        private bool Below(Vector3 p) => heightAt(p.X, p.Y) is { } h && p.Z < h - Margin;
+        private bool AllBelow(Vector3 a, Vector3 b, Vector3 c, Func<float, float, float?> surface) =>
+            Below(a, surface) && Below(b, surface) && Below(c, surface)
+            && Below((a + b) * 0.5f, surface) && Below((b + c) * 0.5f, surface) && Below((c + a) * 0.5f, surface)
+            && Below((a + b + c) / 3f, surface);
+
+        private bool Below(Vector3 p, Func<float, float, float?> surface) => surface(p.X, p.Y) is { } h && p.Z < h - Margin;
     }
 
     /// <param name="terrain">Optional buried-triangle test (see <see cref="TerrainTest"/>).</param>

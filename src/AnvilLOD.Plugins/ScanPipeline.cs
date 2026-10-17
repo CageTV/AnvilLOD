@@ -17,6 +17,7 @@ public sealed record ScanRequest(
     string? DynDolodFolder = null,                 // DynDOLOD install folder: its rule files are reused (optional)
     LodPreset Preset = LodPreset.High,
     bool RemoveBuried = true,                      // drop LOD triangles buried under the terrain (reads LAND)
+    bool RemoveUnderwater = true,                  // also drop triangles completely below the water surface of their cell, as DynDOLOD does (part of the same terrain read)
     bool GrassLod = true,                          // grass LOD in LOD4 from the grass cache (grass\*.cgid)
     float GrassDensity = 0.08f,                    // share of cached grass instances kept as LOD quads
     float GrassSize = 1f,                          // size multiplier for the kept quads (fewer, bigger tufts)
@@ -421,7 +422,7 @@ public static class ScanPipeline
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
                 req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
-                    : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none")),
+                    : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none") + (req.RemoveUnderwater ? "|water:" + cullTerrain.Heights.WaterFingerprint(kv.Key.Worldspace) : "")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
 
@@ -464,7 +465,7 @@ public static class ScanPipeline
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
             var opaqueLod = req.OpaqueAlpha ? new OpaqueLodTextures(assets, OpaqueLodStage.IsTranslucent) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { Brightness = req.ObjectBrightness, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { RemoveUnderwater = req.RemoveUnderwater, Brightness = req.ObjectBrightness, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
             if (ships is not null && ships.Built() is { Count: > 0 } builtShips)
                 progress?.Report($"Detailed ships: {builtShips.Count} ship models drawn from their real models ("
@@ -474,6 +475,10 @@ public static class ScanPipeline
             if (scan.TextureVariants is not null && tm.Meshes > 0)
                 progress?.Report($"Texture matching: {tm.ShapesChanged:N0} of {tm.Shapes:N0} LOD shapes (in {tm.MeshesChanged:N0} of {tm.Meshes:N0} LOD meshes) now use the texture their full model has, snow, ice and other variants included;"
                                  + $" {tm.ShapesStitched:N0} shapes keep stitched LOD textures. {tm.FullModelsRead:N0} full models read, {tm.FullModelsMissing:N0} not found.");
+
+            var cl = generator.Cleaning;
+            if (cl.TrianglesDropped > 0 || cl.VerticesMerged > 0)
+                progress?.Report($"Mesh tidy-up: {cl.TrianglesDropped:N0} triangles without area dropped and {cl.VerticesMerged:N0} duplicate vertices merged in {cl.Parts:N0} LOD mesh shapes.");
 
             foreach (var stale in plan.StaleFiles)
             {

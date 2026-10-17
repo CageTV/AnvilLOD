@@ -7,7 +7,9 @@ using AnvilLOD.Textures.Dds;
 namespace AnvilLOD.Plugins.Authoring;
 
 /// <summary>A rendered tree billboard: RGBA image plus the world size it covers.</summary>
-public sealed record BillboardImage(byte[] Rgba, int Width, int Height, float WorldWidth, float WorldHeight, float ShiftZ, float Coverage);
+/// <param name="NormalRgba">The normal map of the same size (tangent space of the card, DirectX style like TexGen's: red right, green down,
+/// blue towards the viewer), shaded from the model's own vertex normals; null if it wasn't made.</param>
+public sealed record BillboardImage(byte[] Rgba, int Width, int Height, float WorldWidth, float WorldHeight, float ShiftZ, float Coverage, byte[]? NormalRgba = null);
 
 /// <summary>
 /// Small software renderer for tree/plant billboards, the way TexGen makes them: the model seen from the front
@@ -33,6 +35,7 @@ public static class BillboardRenderer
         float sx = w / worldW, sz = h / worldH;
 
         var color = new byte[w * h * 4];
+        var normalMap = new byte[w * h * 4];
         var depth = new float[w * h];
         Array.Fill(depth, float.MaxValue);
         var light = Vector3.Normalize(new Vector3(0.3f, -1f, 0.8f));
@@ -74,6 +77,13 @@ public static class BillboardRenderer
                     float shade = 0.7f + 0.3f * MathF.Abs(Vector3.Dot(float.IsFinite(n.X) ? n : -Vector3.UnitY, light));
                     depth[idx] = z;
                     int o = idx * 4;
+                    // The card faces the viewer (looking along +Y): a back-facing normal is turned round, as both sides are drawn.
+                    var nv = float.IsFinite(n.X) ? n : -Vector3.UnitY;
+                    if (nv.Y > 0) nv = -nv;
+                    normalMap[o] = (byte)Math.Clamp(MathF.Round(128f + 127f * nv.X), 0, 255);
+                    normalMap[o + 1] = (byte)Math.Clamp(MathF.Round(128f - 127f * nv.Z), 0, 255);   // green down: the top of a crown has a low green
+                    normalMap[o + 2] = (byte)Math.Clamp(MathF.Round(128f - 127f * nv.Y), 0, 255);
+                    normalMap[o + 3] = 255;
                     color[o] = (byte)Math.Clamp(r * shade, 0, 255);
                     color[o + 1] = (byte)Math.Clamp(g * shade, 0, 255);
                     color[o + 2] = (byte)Math.Clamp(bl * shade, 0, 255);
@@ -87,10 +97,19 @@ public static class BillboardRenderer
         for (int i = 3; i < img.Length; i += 4) img[i] = img[i] >= 96 ? (byte)255 : (byte)0; // crisp cut-out
         for (int pass = 0; pass < 6 && minCoverage > 0 && Coverage(img, 1f) < minCoverage; pass++) Thicken(img, iw, ih);
         Bleed(img, iw, ih, 6);
+        var (nimg, _, _) = TreeAtlasBuilder.Downsample(normalMap, w, h);
+        for (int i = 0; i < nimg.Length; i += 4) nimg[i + 3] = img[i + 3];
+        Bleed(nimg, iw, ih, 6);
+        for (int i = 0; i < nimg.Length; i += 4)
+        {
+            if (nimg[i] == 0 && nimg[i + 1] == 0 && nimg[i + 2] == 0) { nimg[i] = 128; nimg[i + 1] = 128; nimg[i + 2] = 255; }
+            Renormalize(nimg, i);
+            nimg[i + 3] = 255;
+        }
         int opaque = 0;
         for (int i = 3; i < img.Length; i += 4) if (img[i] >= 128) opaque++;
         if (opaque == 0) return null;
-        return new BillboardImage(img, iw, ih, worldW, worldH, min.Z, opaque / (float)(iw * ih));
+        return new BillboardImage(img, iw, ih, worldW, worldH, min.Z, opaque / (float)(iw * ih), nimg);
 
         Vector3 Screen(Vector3 v) => new((v.X - min.X) * sx, (max.Z - v.Z) * sz, v.Y);
     }
@@ -115,6 +134,33 @@ public static class BillboardRenderer
             mips.Add(Bc7Encoder.EncodeImage(cur, w, h));
         }
         DdsFile.WriteBc7(output, width, height, mips);
+    }
+
+    /// <summary>A normal map as BC7 with mips that are renormalised at every step (averaging shortens the vectors).</summary>
+    public static void WriteNormalDds(Stream output, byte[] rgba, int width, int height)
+    {
+        var mips = new List<byte[]> { Bc7Encoder.EncodeImage(rgba, width, height) };
+        var (cur, w, h) = (rgba, width, height);
+        while (w > 4 && h > 4)
+        {
+            (cur, w, h) = TreeAtlasBuilder.Downsample(cur, w, h);
+            for (int i = 0; i < cur.Length; i += 4) { Renormalize(cur, i); cur[i + 3] = 255; }
+            mips.Add(Bc7Encoder.EncodeImage(cur, w, h));
+        }
+        DdsFile.WriteBc7(output, width, height, mips);
+    }
+
+    /// <summary>Scales the encoded vector at <paramref name="i"/> back to length 1 (a zero or unusable vector becomes flat).</summary>
+    internal static void Renormalize(byte[] px, int i)
+    {
+        float x = (px[i] - 128f) / 127f, y = (px[i + 1] - 128f) / 127f, z = (px[i + 2] - 128f) / 127f;
+        float len = MathF.Sqrt(x * x + y * y + z * z);
+        if (!(len > 1e-3f)) { px[i] = 128; px[i + 1] = 128; px[i + 2] = 255; return; }
+        if (z < 0.05f) z = 0.05f;   // always towards the viewer
+        len = MathF.Sqrt(x * x + y * y + z * z);
+        px[i] = (byte)Math.Clamp(MathF.Round(128f + 127f * x / len), 0, 255);
+        px[i + 1] = (byte)Math.Clamp(MathF.Round(128f + 127f * y / len), 0, 255);
+        px[i + 2] = (byte)Math.Clamp(MathF.Round(128f + 127f * z / len), 0, 255);
     }
 
     /// <summary>A flat normal map (facing the camera) of the given size, as BC7.</summary>

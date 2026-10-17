@@ -357,6 +357,9 @@
                             <TextBlock Text="Object LOD, PBR, brightness, terrain underside, large references and which references count." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
 <CheckBox x:Name="RemoveBuriedCheck" Content="Remove faces buried under terrain" IsChecked="True"
                                   ToolTip="Drops LOD triangles that are completely underground. Big savings on mountains and rocks." />
+<CheckBox x:Name="RemoveUnderwaterCheck" Content="Remove faces under water" IsChecked="True"
+                                  IsEnabled="{Binding IsChecked, ElementName=RemoveBuriedCheck}"
+                                  ToolTip="Drops LOD triangles that lie completely below the water surface of their cell (the water hides them), as DynDOLOD does. Smaller blocks around lakes, coasts and harbours. Needs the terrain read of the option above." />
 <CheckBox x:Name="PbrLodCheck" Content="Match PBR textures in object LOD"
                                   ToolTip="LOD uses vanilla shaders, so a LOD mesh that uses a texture your PBR mods replace shows the vanilla look while the real object shows the PBR one (mountains, buildings). With this on, LOD textures that TexGen made a pbr_lod twin of use the twin, and other textures that have a PBR version (textures\pbr\...) use a darkened, shrunk copy of the PBR albedo written to textures\anvillod\pbr. Waterfalls: when your waterfall model is PBR-patched (CS Water Mod's PBR waterfalls), the waterfall LOD uses that model instead of the plain LOD mesh (Community Shaders only). Changing it or the brightness rebuilds every block." />
 <TextBlock Text="PBR LOD texture brightness (1.0 = DynDOLOD default)" Margin="20,2,0,2" />

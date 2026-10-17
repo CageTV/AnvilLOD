@@ -38,6 +38,19 @@ public static class TerrainReader
             list.Add((grid.Point.X, grid.Point.Y, h));
         }
 
+        // Water surface per exterior cell (for dropping object faces that sit under water): the cell's own height, else the worldspace default.
+        foreach (var cctx in game.LoadOrder.PriorityOrder.Cell().WinningContextOverrides(game.LinkCache))
+        {
+            ct.ThrowIfCancellationRequested();
+            var cell = cctx.Record;
+            if (cell.Grid is not { } cgrid || !cell.Flags.HasFlag(Cell.Flag.HasWater)) continue;
+            if (!cctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var cws) || cws.Record.EditorID is not { } cwsName || !wanted.Contains(cwsName)) continue;
+            var level = cell.WaterHeight ?? cws.Record.LandDefaults?.DefaultWaterHeight;
+            // Sentinels ("no water", FLT_MAX) and nonsense values are not a surface.
+            if (level is not { } wl || !float.IsFinite(wl) || MathF.Abs(wl) > 1_000_000f) continue;
+            heights.SetWater(cwsName, cgrid.Point.X, cgrid.Point.Y, wl);
+        }
+
         // Fingerprint per worldspace, so editing terrain rebuilds that worldspace's blocks.
         var fingerprints = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (ws, cells) in perWs)

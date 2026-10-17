@@ -47,6 +47,37 @@ public sealed class TerrainHeights
     public void Set(string worldspace, int cellX, int cellY, float[] heights) =>
         _cells[(worldspace.ToLowerInvariant(), cellX, cellY)] = heights;
 
+    private readonly ConcurrentDictionary<(string Ws, int X, int Y), float> _water = new();
+
+    public int WaterCellCount => _water.Count;
+
+    /// <summary>The water surface height of an exterior cell that has water (its own XCLW, else the worldspace's default).</summary>
+    public void SetWater(string worldspace, int cellX, int cellY, float height) =>
+        _water[(worldspace.ToLowerInvariant(), cellX, cellY)] = height;
+
+    /// <summary>Water surface height at a world position, or null where the cell has no water or is unknown.</summary>
+    public float? WaterAt(string worldspace, float x, float y)
+    {
+        var cell = CellCoord.FromWorld(x, y);
+        return _water.TryGetValue((worldspace.ToLowerInvariant(), cell.X, cell.Y), out var h) ? h : null;
+    }
+
+    /// <summary>A stable digest of every water height of one worldspace, for the block hash.</summary>
+    public string WaterFingerprint(string worldspace)
+    {
+        var ws = worldspace.ToLowerInvariant();
+        using var hash = System.Security.Cryptography.IncrementalHash.CreateHash(System.Security.Cryptography.HashAlgorithmName.SHA256);
+        var buf = new byte[12];
+        foreach (var kv in _water.Where(k => k.Key.Ws == ws).OrderBy(k => k.Key.X).ThenBy(k => k.Key.Y))
+        {
+            BitConverter.TryWriteBytes(buf.AsSpan(0, 4), kv.Key.X);
+            BitConverter.TryWriteBytes(buf.AsSpan(4, 4), kv.Key.Y);
+            BitConverter.TryWriteBytes(buf.AsSpan(8, 4), kv.Value);
+            hash.AppendData(buf);
+        }
+        return Convert.ToHexString(hash.GetHashAndReset(), 0, 8);
+    }
+
     /// <summary>
     /// Height of one LAND vertex by global vertex index (cell * 32 + local; one step = 128 units), or null where the
     /// cell has no terrain. A cell's last row/column is the next cell's first, so only 32 of the 33 are read.
