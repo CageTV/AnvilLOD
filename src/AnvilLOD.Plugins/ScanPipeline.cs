@@ -382,6 +382,8 @@ public static class ScanPipeline
                     t3Tris, t3Bytes / 1048576.0);
                 progress?.Report($"3D tree LOD: {in3d.Count:N0} of {allTrees.Count:N0} trees use a 3D model ({types} models: {types - byName} matched by CRC32, {byName} by name; "
                                  + (t3.Lod8 ? "LOD4 and LOD8" : "LOD4 only") + "), billboard cards further out");
+                if (scanner.Tree3DPatchedMeshes > 0)
+                    progress?.Report($"3D tree LOD: PGPatcher's ParallaxGen_Diff.json lists {scanner.Tree3DPatchedMeshes:N0} patched meshes; {scanner.Tree3DMatchedByOriginalCrc} tree models were found under the checksum from before patching, as DynDOLOD does.");
                 if (in3d.Count > 0)
                     progress?.Report($"3D tree LOD: the models add about {t3Tris * t3Levels / 1e6:F1} million triangles and {t3Bytes * t3Levels / 1048576.0:F0} MB to the LOD blocks"
                                      + (t3.Lod8 ? "" : " (turning on LOD8 would roughly double that)")

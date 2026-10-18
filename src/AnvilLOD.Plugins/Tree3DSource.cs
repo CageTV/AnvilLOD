@@ -31,7 +31,7 @@ public sealed record Tree3DStats(
 public sealed class Tree3DSource : ISyntheticMeshSource
 {
     public const string Prefix = "~anvillod-tree3d|";
-    private const int Version = 1;
+    private const int Version = 2;   // 2: trunk shapes without an alpha property go through the opaque-texture mapping
 
     private readonly AssetIndex _assets;
     private readonly float _brightness;
@@ -47,6 +47,13 @@ public sealed class Tree3DSource : ISyntheticMeshSource
     public static string MeshPath(string modelPath) => Prefix + modelPath;
 
     public bool Owns(string path) => path.StartsWith(Prefix, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Tree models are real models, so their textures go through the same mapping as any LOD mesh's. The one that matters here: a trunk shape has no
+    /// alpha property, yet the engine's LOD shader alpha-tests it, and the bark textures of tree mods keep gloss in their alpha channel, so the trunks
+    /// came out as strips with holes between them.
+    /// </summary>
+    public bool MapTextures(string path) => true;
 
     public string? Fingerprint(string path)
         => Owns(path) ? $"t{Version}|b{_brightness:F3}|{_assets.Fingerprint(path[Prefix.Length..])}" : null;

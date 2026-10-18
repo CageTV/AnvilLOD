@@ -54,9 +54,19 @@ public static class Tree3DModels
     /// stored under the plain tree name (the form DynDOLOD Resources ships for most vanilla trees).
     /// </summary>
     public static Match? Resolve(string modelPath, uint crc, bool plainNameFallback, Func<string, bool> exists)
+        => Resolve(modelPath, [crc], plainNameFallback, exists);
+
+    /// <summary>
+    /// Same, trying several checksums in order (see <see cref="ParallaxGenDiff.LodCrcs"/>): every checksum is tried before the
+    /// plain name is.
+    /// </summary>
+    public static Match? Resolve(string modelPath, IReadOnlyList<uint> crcs, bool plainNameFallback, Func<string, bool> exists)
     {
-        var withCrc = CrcPath(modelPath, crc);
-        if (exists(withCrc)) return new Match(withCrc, MatchKind.Crc32);
+        foreach (var crc in crcs)
+        {
+            var withCrc = CrcPath(modelPath, crc);
+            if (exists(withCrc)) return new Match(withCrc, MatchKind.Crc32);
+        }
         if (plainNameFallback)
         {
             var plain = PlainPath(modelPath);

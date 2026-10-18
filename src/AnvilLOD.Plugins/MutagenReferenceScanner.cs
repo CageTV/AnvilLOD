@@ -67,10 +67,18 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
     /// </summary>
     public int Tree3DNameOnlyAvailable { get; private set; }
 
+    /// <summary>3D tree LOD, last scan: meshes in PGPatcher's ParallaxGen_Diff.json (0 when there is no such file).</summary>
+    public int Tree3DPatchedMeshes { get; private set; }
+
+    /// <summary>3D tree LOD, last scan: tree types whose model was found under the checksum from before PGPatcher changed the mesh.</summary>
+    public int Tree3DMatchedByOriginalCrc { get; private set; }
+
     public ScanResult Scan(ScanOptions options, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         ChildCopies = 0;
         Tree3DNameOnlyAvailable = 0;
+        Tree3DPatchedMeshes = 0;
+        Tree3DMatchedByOriginalCrc = 0;
         var sw = Stopwatch.StartNew();
         var priority = _game.LoadOrder.PriorityOrder;
 
@@ -233,6 +241,16 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
         var tree3d = options.Tree3D is { Enabled: true } t3o ? t3o : null;
         var tree3dCache = new ConcurrentDictionary<FormKey, Tree3DModels.Match?>();
         int nameOnlyTypes = 0;
+        // PGPatcher changes the CRC32 of the meshes it patches and records both checksums in ParallaxGen_Diff.json. DynDOLOD looks the
+        // LOD model up by the checksum from BEFORE patching, so LOD packs made for the original tree mod keep working: so does this.
+        Dictionary<string, ParallaxGenDiff.Entry>? pgDiff = null;
+        if (tree3d is not null && _assets.TryOpen(ParallaxGenDiff.FileName, out var pgStream))
+        {
+            using (pgStream) pgDiff = ParallaxGenDiff.Parse(pgStream, out var pgProblem);
+            if (pgDiff.Count == 0) pgDiff = null;
+            Tree3DPatchedMeshes = pgDiff?.Count ?? 0;
+        }
+        var viaOriginalCrc = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
         Tree3DModels.Match? Find3D(FormKey fk)
         {
             if (tree3d is null || !linkCache.TryResolve<ITreeGetter>(fk, out var tree)) return null;
@@ -247,7 +265,11 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 ms0.CopyTo(buf);
                 bytes = buf.ToArray();
             }
-            var match = Tree3DModels.Resolve(modelPath, Tree3DModels.Crc32(bytes), tree3d.PlainNameFallback, Exists);
+            var actualCrc = Tree3DModels.Crc32(bytes);
+            var crcs = ParallaxGenDiff.LodCrcs(pgDiff, modelPath, actualCrc);
+            var match = Tree3DModels.Resolve(modelPath, crcs, tree3d.PlainNameFallback, Exists);
+            if (match is { Kind: Tree3DModels.MatchKind.Crc32 } && crcs.Count > 1 && match.Path.Equals(Tree3DModels.CrcPath(modelPath, crcs[0]), StringComparison.OrdinalIgnoreCase))
+                viaOriginalCrc.TryAdd(modelPath, 0);
             if (match is null && !tree3d.PlainNameFallback && Exists(Tree3DModels.PlainPath(modelPath)))
                 Interlocked.Increment(ref nameOnlyTypes);
             // A tree mod's own LOD models, named like any object's LOD mesh (<tree>_LOD_0.nif next to the model: Skyrim 3D Trees and Plants
@@ -759,6 +781,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             skippedDisabled += before - trees.Count;
         }
         Tree3DNameOnlyAvailable = nameOnlyTypes;
+        Tree3DMatchedByOriginalCrc = viaOriginalCrc.Count;
         if (options.TreeLod)
             progress?.Report($"Trees: {trees.Count:N0} with billboards, {missingBillboards.Values.Sum():N0} without ({missingBillboards.Count:N0} tree types have no billboard)");
 
