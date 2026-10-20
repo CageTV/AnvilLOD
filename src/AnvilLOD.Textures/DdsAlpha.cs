@@ -13,8 +13,31 @@ public static class DdsAlpha
     /// <summary>Alpha below this counts as translucent. A few texels at 250+ are rounding noise from a lossy encoder.</summary>
     public const byte OpaqueAbove = 250;
 
-    /// <summary>True when the top mip has any texel with alpha below <see cref="OpaqueAbove"/>. Formats without alpha say no.</summary>
-    public static bool IsTranslucent(byte[] dds)
+    /// <summary>Alpha at or below this counts as cut out, at or above <see cref="CutoutHigh"/> as kept; BC7 rounding stays inside both.</summary>
+    public const byte CutoutLow = 15, CutoutHigh = 240;
+
+    /// <summary>
+    /// True when the top mip's alpha carries something other than a cutout: texels below <see cref="OpaqueAbove"/> exist and most of
+    /// them lie between <see cref="CutoutLow"/> and <see cref="CutoutHigh"/> (gloss, a height map). A 0 / 255 mask is the shape's own
+    /// cutout (lake snow patches, ruin and tree cards), which the LOD shader's alpha test applies as meant. Formats without alpha say no.
+    /// </summary>
+    public static bool IsTranslucent(byte[] dds) => HasTranslucentTexel(dds) && !IsCutoutMask(dds);
+
+    private static bool IsCutoutMask(byte[] dds)
+    {
+        var (rgba, _, _, _) = DdsFile.DecodeTopMip(dds);
+        int below = 0, between = 0;
+        for (int i = 3; i < rgba.Length; i += 4)
+        {
+            var a = rgba[i];
+            if (a >= OpaqueAbove) continue;
+            below++;
+            if (a > CutoutLow && a < CutoutHigh) between++;
+        }
+        return between * 2 < below;
+    }
+
+    private static bool HasTranslucentTexel(byte[] dds)
     {
         var info = DdsFile.ReadInfo(dds);
         if (info.Uncompressed)
