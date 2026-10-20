@@ -31,7 +31,7 @@ public sealed record Tree3DStats(
 public sealed class Tree3DSource : ISyntheticMeshSource
 {
     public const string Prefix = "~anvillod-tree3d|";
-    private const int Version = 2;   // 2: trunk shapes without an alpha property go through the opaque-texture mapping
+    private const int Version = 3;   // 2: trunk shapes without an alpha property go through the opaque-texture mapping; 3: vertex alpha forced opaque
 
     private readonly AssetIndex _assets;
     private readonly float _brightness;
@@ -115,7 +115,7 @@ public sealed class Tree3DSource : ISyntheticMeshSource
             var card = TreeCardSource.Prefix + t.Billboard.TexturePath;
             var near8 = settings.Lod8 ? model : card;
             // Trees copied in from a child worldspace (walled cities) only matter close up, as before.
-            var meshes = t.ObjectLod ? new LodMeshSet(model, near8, null, null) : new LodMeshSet(model, near8, card, card);
+            var meshes = t.ObjectLod ? new LodMeshSet(model, near8, null, null) : new LodMeshSet(model, near8, card, settings.MapTrees ? card : null);
             yield return new LodReference(
                 FormKey: t.FormKey,
                 BaseFormKey: "tree",
@@ -153,11 +153,20 @@ public sealed class Tree3DSource : ISyntheticMeshSource
                     normals[i] = Transforms.SafeNormalize(part.Positions[i] - center, part.Normals[i]);
             }
 
+            // A tree model's vertex alpha is not opacity: the tree shader reads it as the wind weight of the vertex (0 at the trunk, 1 at the
+            // tips; the pine crown of Happy Little Trees' passthru model has half its vertices under 0.5). The LOD shader multiplies it into the
+            // alpha test instead, which cuts the inner foliage away and leaves a thin, bald crown. Every vertex goes in fully opaque.
             var colors = part.Colors;
-            if (dim)
+            if (colors is not null && colors.Any(c => (c >> 24) != 0xFFu))
             {
                 colors = new uint[part.VertexCount];
-                for (int i = 0; i < colors.Length; i++) colors[i] = BtoBuilder.Scale(part.Colors?[i] ?? 0xFFFF_FFFFu, _brightness);
+                for (int i = 0; i < colors.Length; i++) colors[i] = part.Colors![i] | 0xFF00_0000u;
+            }
+            if (dim)
+            {
+                var src = colors;
+                colors = new uint[part.VertexCount];
+                for (int i = 0; i < colors.Length; i++) colors[i] = BtoBuilder.Scale(src?[i] ?? 0xFFFF_FFFFu, _brightness);
             }
 
             parts.Add(new LodMeshPart

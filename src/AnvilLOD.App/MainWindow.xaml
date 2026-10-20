@@ -142,6 +142,7 @@
                         <RadioButton x:Name="NavTrees" GroupName="Nav" Tag="Trees" Style="{StaticResource NavButton}" Content="Trees" Checked="Nav_Checked" />
                         <RadioButton x:Name="NavGrass" GroupName="Nav" Tag="Grass" Style="{StaticResource NavButton}" Content="Grass and size" Checked="Nav_Checked" />
                         <RadioButton x:Name="NavDynamic" GroupName="Nav" Tag="Dynamic" Style="{StaticResource NavButton}" Content="Seasons, water, dynamic" Checked="Nav_Checked" />
+                        <RadioButton x:Name="NavOcclusion" GroupName="Nav" Tag="Occlusion" Style="{StaticResource NavButton}" Content="Occlusion" Checked="Nav_Checked" ToolTip="Makes Occlusion.esp with xLODGen or DynDOLOD, which hides distant LOD that is behind terrain." />
                         <TextBlock Text="MOD AUTHOR TOOLS" Style="{StaticResource SectionHeader}" Margin="8,22,0,8" />
                         <RadioButton x:Name="NavFinder" GroupName="Nav" Tag="Finder" Style="{StaticResource NavButton}" Content="Missing LOD finder" Checked="Nav_Checked" ToolTip="Finds the objects and trees of one plugin that are seen from afar but have no LOD, and makes what is missing." />
                         <RadioButton x:Name="NavMaker" GroupName="Nav" Tag="Maker" Style="{StaticResource NavButton}" Content="LOD Mesh Maker" Checked="Nav_Checked" ToolTip="Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick." />
@@ -317,8 +318,20 @@
                             <CheckBox x:Name="Lod4Check" Content="LOD 4" IsChecked="True" Margin="0,3,16,3" />
                             <CheckBox x:Name="Lod8Check" Content="LOD 8" IsChecked="True" Margin="0,3,16,3" />
                             <CheckBox x:Name="Lod16Check" Content="LOD 16" IsChecked="True" Margin="0,3,16,3" />
-                            <CheckBox x:Name="Lod32Check" Content="LOD 32" IsChecked="True" Margin="0,3,16,3" />
+                            <CheckBox x:Name="Lod32Check" Content="LOD 32" IsChecked="True" Margin="0,3,16,3"
+                                      ToolTip="LOD 32 is only drawn on the world map (the map's object LOD level is [MapMenu] uLockedObjectMapLOD, 16 by default; map mods such as A Clear Map of Skyrim set it to 32). DynDOLOD generates no LOD 32 unless asked to. Files written here replace a map mod's own LOD 32 files, so untick it if you use a map mod that ships them and not the setting below." />
                         </WrapPanel>
+                        <TextBlock Text="Map objects (LOD 32)" Margin="0,6,0,2" />
+                        <ComboBox x:Name="MapObjectsBox" SelectedIndex="0"
+                                  ToolTip="What objects show at LOD 32, i.e. on the world map when uLockedObjectMapLOD=32. Auto: the most detailed LOD mesh when A Clear Map of Skyrim is in the load order (it asks for exactly that on DynDOLOD's catch-all rule), otherwise only what the rules name. Rules that name a LOD 32 mesh (or None) themselves always keep it.">
+                            <ComboBoxItem Content="Auto" />
+                            <ComboBoxItem Content="From the rules only (DynDOLOD default)" />
+                            <ComboBoxItem Content="Most detailed LOD mesh (Level 0)" />
+                            <ComboBoxItem Content="Level 1 LOD mesh" />
+                            <ComboBoxItem Content="Level 2 LOD mesh (like LOD 16)" />
+                        </ComboBox>
+                        <CheckBox x:Name="MapTreesCheck" Content="Trees on the map" IsChecked="True" Margin="0,4,0,0"
+                                  ToolTip="With 3D tree LOD: tree billboard cards in LOD 32, so trees show on the world map. Untick for a map without trees; the game's own far view (LOD 4 to 16) is unchanged. Trees of the plain billboard tree LOD are not affected." />
                         </StackPanel>
                         <StackPanel x:Name="CatRules" Visibility="Collapsed">
                             <TextBlock Text="Which LOD model or billboard each kind of object uses at each LOD level. AnvilLOD reuses DynDOLOD rule files." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
@@ -434,13 +447,13 @@
                         </ComboBox>
 <TextBlock Text="Mountain LOD inset" Margin="0,2,0,2" />
 <ComboBox x:Name="MountainInsetBox" SelectedIndex="0" Margin="0,0,0,6"
-                                  ToolTip="The same inset for mountain LOD (meshes\lod\mountains and dlc01\lod\mountains). Off by default: try it if the mountain LOD flickers against the full mesh as you approach.">
-                            <ComboBoxItem Content="0 (off, default)" />
+                                  ToolTip="The same inset for mountain LOD (meshes\lod\mountains and dlc01\lod\mountains). 12 units by default: mountain LOD that sits outside the full mesh flickers against it as you approach (the ERM add-on does). Set 0 to turn it off.">
+                            <ComboBoxItem Content="0 (off)" />
                             <ComboBoxItem Content="2 units" />
                             <ComboBoxItem Content="4 units" />
                             <ComboBoxItem Content="6 units" />
                             <ComboBoxItem Content="8 units" />
-                            <ComboBoxItem Content="12 units" />
+                            <ComboBoxItem Content="12 units (default)" />
                             <ComboBoxItem Content="16 units" />
                             <ComboBoxItem Content="24 units" />
                         </ComboBox>
@@ -562,6 +575,70 @@
                         </ComboBox>
                         </StackPanel>
                                 </StackPanel>
+                                <StackPanel x:Name="CatOcclusion" Visibility="Collapsed">
+                            <TextBlock Text="Occlusion data tells the game which distant LOD is hidden behind terrain, so it is not drawn. It lives in Occlusion.esp." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock Text="OCCLUSION.ESP" Style="{StaticResource SectionHeader}" />
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,6"
+                                       Text="AnvilLOD does not calculate this itself yet. It starts the occlusion run of xLODGen or DynDOLOD, which you have installed, with your game's folders, and copies the Occlusion.esp that run writes into the LOD output. Nothing of those programs is copied or bundled." />
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,6"
+                                       Text="xLODGen and DynDOLOD run the same occlusion code, but a file from each can differ: by the quality and mode chosen and by the LOD each one saw when it ran. In a comparison of the two for Tamriel, DynDOLOD's file hid far less distant LOD than xLODGen's at quality 2." />
+                            <TextBlock Text="Program" Style="{StaticResource FieldLabel}" />
+                            <ComboBox x:Name="OccToolBox" SelectedIndex="0" Width="300" HorizontalAlignment="Left" SelectionChanged="OccTool_Changed"
+                                      ToolTip="xLODGen makes occlusion on its own. DynDOLOD runs the same code, but as part of a DynDOLOD run, so xLODGen is the simpler choice if you have it.">
+                                <ComboBoxItem Content="xLODGen (occlusion only)" />
+                                <ComboBoxItem Content="DynDOLOD" />
+                            </ComboBox>
+                            <TextBlock x:Name="OccFolderLabel" Text="xLODGen folder" Style="{StaticResource FieldLabel}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOccFolder_Click" />
+                                <TextBox x:Name="OccFolderBox" LostFocus="OccFolder_LostFocus" ToolTip="The folder with xLODGenx64.exe (or DynDOLODx64.exe). Filled in when it is found next to your DynDOLOD folder or in the MO2 instance's tools folder." />
+                            </DockPanel>
+                            <TextBlock x:Name="OccInfoText" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            <StackPanel x:Name="OccOptionsPanel">
+                                <TextBlock Text="XLODGEN OPTIONS" Style="{StaticResource SectionHeader}" />
+                                <CheckBox x:Name="OccPresetCheck" Content="Set these in xLODGen's window for me (occlusion only)" IsChecked="True" Checked="OccPreset_Changed" Unchecked="OccPreset_Changed"
+                                          ToolTip="Before xLODGen starts, AnvilLOD writes these values into xLODGen's own saved settings (Plugins.sseviewsettings, a backup is kept) and turns off object, tree and terrain LOD, so the window opens ready for an occlusion run. xLODGen has no command line switches for this. The worldspaces are still picked in its window." />
+                                <WrapPanel Margin="0,6,0,0">
+                                    <TextBlock Text="Quality" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="OccQualityBox" SelectedIndex="1" Width="190" Margin="8,0,16,0"
+                                              ToolTip="Samples per cell. 2 is quick, 3 can hide a few more areas but takes far longer (up to 256 samples between two cells instead of 16).">
+                                        <ComboBoxItem Content="1" />
+                                        <ComboBoxItem Content="2 (default)" />
+                                        <ComboBoxItem Content="3 (slow)" />
+                                    </ComboBox>
+                                    <TextBlock Text="Height" VerticalAlignment="Center" />
+                                    <TextBox x:Name="OccHeightBox" Text="0" Width="60" Margin="8,0,16,0" ToolTip="Extra height added to the observer. Raise it if holes remain visible from a high vantage point." />
+                                    <TextBlock Text="Radius" VerticalAlignment="Center" />
+                                    <TextBox x:Name="OccRadiusBox" Text="100" Width="60" Margin="8,0,16,0" ToolTip="Cells. The game draws about 100 cells into the distance, so more only costs time." />
+                                    <TextBlock Text="Mode" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="OccModeBox" Width="190" Margin="8,0,0,0" ToolTip="Which cells get new data. -Flat skips perfectly flat cells, +Border only cells in a border region, +TVDT/-TVDT only cells that already have/lack occlusion data." />
+                                </WrapPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Memory: object LOD threads" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="OccThreadsBox" SelectedIndex="0" Width="290" Margin="8,0,0,0"
+                                              ToolTip="xLODGen reads every object LOD mesh to find the heights, and each thread holds meshes in memory. With 3D tree LOD that is many gigabytes: a run can use all of your RAM and slow the PC to a crawl. Fewer threads use less memory and take longer. Automatic picks about one thread per 24 GB of RAM; the Log shows the peak memory of each run.">
+                                        <ComboBoxItem Content="Automatic (by your installed RAM, default)" />
+                                        <ComboBoxItem Content="1 (least memory)" />
+                                        <ComboBoxItem Content="2" />
+                                        <ComboBoxItem Content="4" />
+                                        <ComboBoxItem Content="No limit (fastest, most memory)" />
+                                    </ComboBox>
+                                </StackPanel>
+                                <CheckBox x:Name="OccAutoCloseCheck" Content="Close xLODGen for me when it says it has finished" IsChecked="True" Margin="0,8,0,0"
+                                          ToolTip="xLODGen does not close itself, and saves Occlusion.esp when its window is closed. AnvilLOD watches its log for the line that ends the work and then closes the window. xLODGen still asks which plugin to save: confirm it." />
+                            </StackPanel>
+
+                            <TextBlock Text="HOW IT GOES" Style="{StaticResource SectionHeader}" />
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}"
+                                       Text="1.  Generate your LOD first and have the LOD output mod enabled in MO2 (occlusion is worked out from the object LOD and terrain LOD that exist).&#x0A;2.  Start AnvilLOD from MO2, so the program sees your mods. Press the button below.&#x0A;3.  In the program's window: pick the worldspaces (Tamriel and the big ones) and press OK. With xLODGen the options above are already set and only Occlusion is ticked.&#x0A;4.  When it has finished, close it. AnvilLOD copies Occlusion.esp into the LOD output (an older one is kept as .bak).&#x0A;5.  Put Occlusion.esp last in your plugin order." />
+                            <CheckBox x:Name="OccAfterGenerateCheck" Content="Run occlusion automatically when Generate has finished" Margin="0,10,0,0"
+                                      ToolTip="After a successful Generate, the program above is started for the occlusion run, before the &quot;close AnvilLOD&quot; question. The new LOD is not in MO2's virtual folder yet (MO2 only sees it after AnvilLOD closes), so xLODGen is pointed at the AnvilLOD output folder, whose LOD files it reads first. Occlusion.esp ends up in the output folder." />
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
+                                <Button x:Name="OccStartButton" Content="Start occlusion run" Style="{StaticResource PrimaryButton}" Click="OccStart_Click" />
+                                <Button x:Name="OccOpenButton" Content="Open run folder" Margin="8,0,0,0" IsEnabled="False" Click="OccOpen_Click" />
+                            </StackPanel>
+                            <TextBlock x:Name="OccSummaryText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        </StackPanel>
                                 <StackPanel x:Name="CatFinder" Visibility="Collapsed" HorizontalAlignment="Left" MaxWidth="1000">
 <StackPanel Margin="0,6,10,10">
                             <Border Background="#2E2418" BorderBrush="{StaticResource Accent}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">

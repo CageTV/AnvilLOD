@@ -362,9 +362,28 @@ A LOD mesh can name a texture that exists nowhere (some creek LOD from a water m
 
 Mods such as SR Exterior Cities (it moves the five hold cities into Tamriel's own cells, no loading screens) and Open Cities make the city part of the parent worldspace. DynDOLOD's `childworld` configs name them under `NoScanIfPluginExists`, and AnvilLOD reads that: with one of them loaded there are no Child > Parent or Parent > Child copies (so nothing hides Tamriel's grass or water LOD around the city), and the log says so (`Walled cities: SR Exterior Cities.esp is loaded, so WhiterunWorld, ... get no child-worldspace copies`). The city's objects are then ordinary Tamriel references, and the Tamriel object LOD blocks over the city include them (Whiterun's LOD4 block has more references than its neighbours with the mod loaded).
 
+## LOD 32 and the world map
+
+Object LOD level 32 is only drawn on the world map. In the game's own far view the levels are 4, 8 and 16. The map's object level is `[MapMenu] uLockedObjectMapLOD` in the INI: 16 by default, 32 when a map mod such as A Clear Map of Skyrim sets it. DynDOLOD generates no object LOD 32 unless you ask it to, and rules of the 7-column format have no LOD 32 column.
+
+- **Map objects** (`--map-objects auto|rules|0|1|2`, a dropdown under LOD levels in the app): which LOD mesh objects get at LOD 32. *Auto* (the default) gives every object the most detailed LOD mesh (level 0) when A Clear Map of Skyrim is in the load order, which is what its readme asks of DynDOLOD's catch-all rule, and otherwise leaves LOD 32 to the rules. *From the rules only* is the DynDOLOD default. 0, 1 and 2 give every object that level's LOD mesh. A rule that names LOD 32 itself, even as None, and objects drawn by dynamic LOD only are never changed.
+- **Trees on the map** (`--no-map-trees`): with 3D tree LOD, the tree cards that go into LOD 16 also go into LOD 32. Untick it for a map without trees; LOD 4 to 16 stay as they are. The plain billboard tree LOD (`.btt`) is drawn at every distance and isn't affected.
+- **A Clear Map of Skyrim (ACMOS):** its readme asks for two DynDOLOD changes, both already what AnvilLOD does with the defaults: the catch-all rule `\` with LOD 32 = Level0 (Map objects: Auto) and the tree rule with LOD 32 = Billboard6 (Trees on the map, with 3D tree LOD). Its own rule files (`DynDOLOD_SSE_aclearmapofskyrimesp_low/medium/high.ini`) are read like any plugin's. Its INI sets `uLockedObjectMapLOD=32`, so the map shows exactly what is in LOD 32.
+- Untick **LOD 32** to write no LOD 32 files at all. Do that if a map mod ships its own LOD 32 files and you want to keep them: AnvilLOD's files replace them. With a map mod that sets `uLockedObjectMapLOD=32` and no object LOD 32 anywhere, the map shows holes (its INI warns about it).
+
+## Occlusion (Occlusion.esp)
+
+Occlusion data is stored on the exterior CELL records and tells the game which distant LOD is hidden behind terrain, so it is not drawn. AnvilLOD does not calculate it itself yet. The Occlusion page starts the occlusion run of xLODGen or DynDOLOD (by default also right after every Generate, when the program is found and AnvilLOD was started from MO2; untick "Run occlusion automatically" to turn that off), which you have installed, with your game's Data folder and a folder of its own for the result, then copies the `Occlusion.esp` it wrote into the LOD output (an `Occlusion.esp` that is already there is kept as `.bak_<time>`). AnvilLOD does not change those programs' settings and does not contain or copy any of their code.
+
+- Generate your LOD first and enable the LOD output in MO2, then start AnvilLOD from MO2 so the program sees your mods.
+- In the program's window pick the worldspaces, tick only Occlusion and press OK. Close it when it has finished.
+- Put `Occlusion.esp` last in your plugin order.
+
 ## Object LOD inset (smooth swap)
 
 The engine swaps object LOD for the real objects by itself: it loads the full model first, then unloads the LOD, so both are drawn for a moment, and there is no setting that fades one into the other. Where the two surfaces coincide that shows as flicker. **Object LOD inset** (`--object-inset <units>`, a dropdown under Objects in the app; off by default) pulls every other object in LOD4 and LOD8 (buildings, walls, rocks; ice, mountains and ships have their own insets) a few units inside its own surface along its smoothed normals, so the full model is always the nearer one in that ring. Flat pieces (roads, floor slabs, planks on the ground; shapes lower than four times the inset) are left alone, because moving them down would sink them under the terrain. Try 2 or 4 units if objects shimmer as they load in. It changes the LOD blocks, so generate again after changing it.
+
+**Mountain LOD inset** (`--mountain-inset <units>`) is the same for mountain LOD and is **12 units by default**: mountain mods whose LOD lies a little outside the full mesh (ERM and its DynDOLOD add-on, for example) flicker as you approach without it. Set 0 to turn it off. Settings saved by an older version that still held the old default of 0 are moved to 12 once.
 
 ## Fires and candles
 

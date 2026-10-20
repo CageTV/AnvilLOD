@@ -58,12 +58,13 @@ public sealed record TreeReference(
 /// <param name="Lod8">Use the 3D model at LOD8 as well (otherwise LOD4 only, billboard cards from LOD8).</param>
 /// <param name="PlainNameFallback">When no model matches the tree mesh's CRC32, accept the one stored under the plain tree name.
 /// It may have been made for another version of the mesh, so it's opt-in.</param>
-public sealed record Tree3DSettings(bool Enabled = false, bool Lod8 = false, bool PlainNameFallback = false)
+/// <param name="MapTrees">Draw the trees' billboard cards in LOD32 too. LOD32 is only shown on the world map (uLockedObjectMapLOD=32), so off = no trees on the map, nothing changes in the game's own far view.</param>
+public sealed record Tree3DSettings(bool Enabled = false, bool Lod8 = false, bool PlainNameFallback = false, bool MapTrees = true)
 {
     public static readonly Tree3DSettings Off = new();
 
     /// <summary>Part of the settings fingerprint, so a changed option rebuilds the blocks it affects.</summary>
-    public string Fingerprint => Enabled ? $"tree3d:{(Lod8 ? "l48" : "l4")}{(PlainNameFallback ? "+name" : "")}" : "";
+    public string Fingerprint => Enabled ? $"tree3d:{(Lod8 ? "l48" : "l4")}{(PlainNameFallback ? "+name" : "")}{(MapTrees ? "" : "+nomaptrees")}" : "";
 }
 
 /// <summary>

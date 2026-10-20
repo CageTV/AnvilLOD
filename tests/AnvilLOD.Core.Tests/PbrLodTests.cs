@@ -1,5 +1,6 @@
 using AnvilLOD.Core.Lod;
 using AnvilLOD.Core.Pipeline;
+using AnvilLOD.Meshes;
 using AnvilLOD.Textures;
 using AnvilLOD.Textures.Bc;
 using AnvilLOD.Textures.Dds;
@@ -85,5 +86,16 @@ public class PbrLodTests
 
         var brighter = PbrLodConverter.Convert(src.ToArray(), maxSize: 128, brightness: 1.5f);
         Assert.True(DdsFile.DecodeTopMip(brighter).Rgba[0] > outRgba[0]);
+    }
+
+    [Fact]
+    public void A_missing_pbr_texture_goes_to_its_plain_twin_or_to_a_path_outside_the_pbr_folder()
+    {
+        var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { @"textures\landscape\trees\oak.dds", @"textures\pbr\landscape\rock.dds" };
+        bool Exists(string p) => present.Contains(p);
+        Assert.Equal(@"textures\landscape\trees\oak.dds", LodGenerator.RedirectMissingPbr(@"textures\pbr\landscape\trees\oak.dds", Exists));
+        Assert.Equal(@"textures\anvillod\missing\myingredients\mushroom_n.dds", LodGenerator.RedirectMissingPbr(@"textures\pbr\myingredients\mushroom_n.dds", Exists));
+        Assert.Equal(@"textures\pbr\landscape\rock.dds", LodGenerator.RedirectMissingPbr(@"textures\pbr\landscape\rock.dds", Exists));   // exists: untouched
+        Assert.Equal(@"textures\furniture\x.dds", LodGenerator.RedirectMissingPbr(@"textures\furniture\x.dds", Exists));                   // not a PBR path: untouched
     }
 }

@@ -43,7 +43,8 @@ public sealed record LodRule(
     LodChoice Lod4, LodChoice Lod8, LodChoice Lod16, LodChoice Lod32,
     string SourceFile,
     DynamicGrid Grid = DynamicGrid.None,
-    int Flags = 0)                // DynDOLOD's Flags column: 1 VWD, 2 NoGlow, 4 NoMATO, 8 Dynamic, 16 TREE
+    int Flags = 0,                // DynDOLOD's Flags column: 1 VWD, 2 NoGlow, 4 NoMATO, 8 Dynamic, 16 TREE
+    bool Lod32Explicit = false)   // the line has a LOD32 column (8-9 columns); a 7-column line leaves LOD32 undecided, which the map setting may fill
 {
     /// <summary>"NoGlow": the object's LOD gets no glowing windows.</summary>
     public bool NoGlow => (Flags & RuleEntry.FlagNoGlow) != 0;
@@ -354,7 +355,7 @@ public sealed class LodRules
             mask = "";
         }
         int.TryParse(c.Length > gridCol + 2 ? c[gridCol + 2].Trim() : "", out var flags);
-        return new LodRule(mask, formId, l4, l8, l16, l32, source, grid, flags);
+        return new LodRule(mask, formId, l4, l8, l16, l32, source, grid, flags, hasLod32);
     }
 
     /// <summary>

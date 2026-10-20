@@ -14,6 +14,8 @@ public sealed class PresetSlot
 /// <summary>UI settings, saved to %AppData%\AnvilLOD\settings.json between sessions.</summary>
 public sealed class AppSettings
 {
+    /// <summary>Which version of the defaults the saved file has seen: 1 = mountain inset 12 (older files still hold the old 0 that nobody chose).</summary>
+    public int SettingsRevision { get; set; }
     public bool UseMo2 { get; set; } = true;
     public bool UseVortex { get; set; }   // when UseMo2 is false: Vortex (true) or a plain Data folder (false)
     public string? Mo2Instance { get; set; }
@@ -31,7 +33,19 @@ public sealed class AppSettings
     public bool Lod8 { get; set; } = true;
     public bool Lod16 { get; set; } = true;
     public bool Lod32 { get; set; } = true;
+    public int MapObjects { get; set; }              // LOD32 objects for the world map: 0 auto, 1 from the rules only, 2/3/4 = the level 0/1/2 LOD mesh
+    public bool MapTrees { get; set; } = true;       // tree cards in LOD32 (3D tree LOD): off = no trees on the map
     public string? DynDolodFolder { get; set; }
+    public int OcclusionTool { get; set; }           // the Occlusion page: 0 xLODGen, 1 DynDOLOD
+    public bool OccAfterGenerate { get; set; } = true; // start the occlusion run when Generate has finished (skipped, with a note, when the program is not set up)
+    public bool OccAutoClose { get; set; } = true;    // close xLODGen's window when its log says the work is done (you still confirm the save)
+    public bool OccPreset { get; set; } = true;       // set xLODGen's occlusion options before it starts
+    public int OccQuality { get; set; } = 2;          // xLODGen occlusion quality 1-3
+    public int OccHeight { get; set; }                // extra observer height
+    public int OccRadius { get; set; } = 100;         // cells
+    public string OccMode { get; set; } = "-Flat +Border";
+    public int OccThreads { get; set; }               // threads that read the object LOD meshes (memory!): 0 = by the installed RAM, 1, 2, 4 or -1 = no limit
+    public string? XLodGenFolder { get; set; }       // folder with xLODGenx64.exe (DynDOLOD's folder is DynDolodFolder)
     public string Preset { get; set; } = "High";
     public bool Candles { get; set; }                // also load DynDOLOD's Candles rules
     public bool FxGlow { get; set; }                 // also load DynDOLOD's FXGlow rules
@@ -66,7 +80,7 @@ public sealed class AppSettings
     public bool AnimatedShips { get; set; } = true;   // Animated Ships' sailing ships drawn beyond the loaded cells
     public bool DetailedShips { get; set; } = true;   // whole ships in object LOD from simplified copies of their real models
     public int IceInset { get; set; } = 6;           // units, 0-24: glacier/ice LOD pulled inside its surface (0 = off)
-    public int MountainInset { get; set; } = 0;      // units, 0-24: the same for mountain LOD (experimental)
+    public int MountainInset { get; set; } = 12;     // units, 0-24: the same for mountain LOD (12 = the ERM add-on and other mountain mods stop flickering)
     public int ObjectInset { get; set; } = 0;        // units, 0-24: the same for every other object in LOD4/LOD8 (experimental)
     public bool DynamicLod { get; set; } = true;
     public bool GridObjects { get; set; } = true;
@@ -92,9 +106,9 @@ public sealed class AppSettings
     /// <summary>Settings that belong to the game source in the top bar, the other tabs, or the presets themselves, not to a preset.</summary>
     private static readonly HashSet<string> NotPerPreset =
     [
-        nameof(UseMo2), nameof(UseVortex), nameof(Mo2Instance), nameof(Mo2Profile), nameof(Mo2GamePath), nameof(Mo2ModsFolder),
+        nameof(SettingsRevision), nameof(UseMo2), nameof(UseVortex), nameof(Mo2Instance), nameof(Mo2Profile), nameof(Mo2GamePath), nameof(Mo2ModsFolder),
         nameof(Mo2ProfilesFolder), nameof(Mo2OverwriteFolder), nameof(DataFolder), nameof(PluginsTxt),
-        nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput),
+        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput),
         nameof(Presets), nameof(ActivePreset),
     ];
 
@@ -129,6 +143,19 @@ public sealed class AppSettings
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
+    public const int CurrentRevision = 1;
+
+    /// <summary>Brings a saved file up to the current defaults once: a stored mountain inset of 0 was only ever the old default.</summary>
+    public void Migrate()
+    {
+        if (SettingsRevision >= CurrentRevision) return;
+        if (MountainInset == 0) MountainInset = 12;
+        foreach (var slot in Presets)
+            if (slot.Values is { } v && v.TryGetValue(nameof(MountainInset), out var el) && el.ValueKind == JsonValueKind.Number && el.GetInt32() == 0)
+                v[nameof(MountainInset)] = JsonSerializer.SerializeToElement(12);
+        SettingsRevision = CurrentRevision;
+    }
+
     public static AppSettings Load()
     {
         try
@@ -136,6 +163,7 @@ public sealed class AppSettings
             var s = File.Exists(FilePath)
                 ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Json) ?? new()
                 : new();
+            s.Migrate();
             s.EnsurePresets();
             return s;
         }
@@ -149,6 +177,7 @@ public sealed class AppSettings
 
     public void Save()
     {
+        SettingsRevision = CurrentRevision;   // what is saved has the current defaults applied (a file written here is never migrated again)
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);

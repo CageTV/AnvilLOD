@@ -29,6 +29,7 @@ public partial class MainWindow
             ["Trees"] = (CatTrees, "Trees"),
             ["Grass"] = (CatGrass, "Grass and size"),
             ["Dynamic"] = (CatDynamic, "Seasons, water and dynamic LOD"),
+            ["Occlusion"] = (CatOcclusion, "Occlusion data (Occlusion.esp)"),
             ["Finder"] = (CatFinder, "Missing LOD finder (mod author tool)"),
             ["Maker"] = (CatMaker, "LOD Mesh Maker (mod author tool)"),
         };

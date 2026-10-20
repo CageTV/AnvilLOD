@@ -114,6 +114,7 @@ public sealed class LodGenerator
         {
             var mesh = _synthetic!.Build(path);
             if (mesh is null) { _meshErrors[path] = "could not be built"; return null; }
+            mesh = ApplyMissingPbr(mesh);
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
             if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);
             return mesh;
@@ -163,6 +164,7 @@ public sealed class LodGenerator
                 }
             }
             var mesh = Tidy(NifGeometryReader.Read(path, bytes));
+            mesh = ApplyMissingPbr(mesh);
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
             if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);
             if (mesh.Parts.Count == 0 && !mesh.NoShapesInFile)
@@ -302,6 +304,65 @@ public sealed class LodGenerator
         var name = Path.GetFileNameWithoutExtension(t);
         if (name.EndsWith("_n", StringComparison.Ordinal)) name = name[..^2];
         return name.EndsWith("lod", StringComparison.Ordinal) || name.Contains("_lod", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Where a LOD mesh's missing textures are redirected when they sit under textures\pbr\ and have no non-PBR twin: a path the PBR shader
+    /// code never claims. A stand-in written AT the pbr path makes Community Shaders treat the shape as a PBR one and look for companion maps
+    /// (rmaos, parallax, ...) that were never made.
+    /// </summary>
+    public const string MissingPbrFolder = "textures\\anvillod\\missing\\";
+
+    /// <summary>
+    /// A texture under textures\pbr\ that exists nowhere: its non-PBR twin when there is one (textures\pbr\x.dds -> textures\x.dds), otherwise a
+    /// path outside the PBR folder, so AnvilLOD's stand-in for it is a plain texture on a plain shape. Existing textures are never touched.
+    /// </summary>
+    private string RedirectMissingPbr(string texture) => RedirectMissingPbr(texture, _assets.Exists);
+
+    /// <summary>The pure part of the redirect, with the existence check passed in.</summary>
+    public static string RedirectMissingPbr(string texture, Func<string, bool> exists)
+    {
+        var t = texture.Replace('/', '\\').TrimStart('\\');
+        if (!t.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) t = "textures\\" + t;
+        const string pbr = "textures\\pbr\\";
+        if (!t.StartsWith(pbr, StringComparison.OrdinalIgnoreCase) || exists(t)) return texture;
+        var plain = "textures\\" + t[pbr.Length..];
+        return exists(plain) ? plain : MissingPbrFolder + t[pbr.Length..];
+    }
+
+    private LodMesh ApplyMissingPbr(LodMesh mesh)
+    {
+        var cache = new Dictionary<string, LodMaterial>(StringComparer.Ordinal);
+        var parts = new List<LodMeshPart>(mesh.Parts.Count);
+        bool any = false;
+        foreach (var p in mesh.Parts)
+        {
+            var m = p.Material;
+            if (!cache.TryGetValue(m.Key, out var swapped))
+            {
+                swapped = m;
+                List<string>? tex = null;
+                for (int i = 0; i < m.Textures.Count; i++)
+                {
+                    var raw = m.Textures[i];
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    var to = RedirectMissingPbr(raw);
+                    if (to == raw) continue;
+                    tex ??= m.Textures.ToList();
+                    tex[i] = to;
+                }
+                if (tex is not null) swapped = m with { Textures = tex };
+                cache[m.Key] = swapped;
+            }
+            if (ReferenceEquals(swapped, m)) { parts.Add(p); continue; }
+            any = true;
+            parts.Add(new LodMeshPart
+            {
+                Name = p.Name, Material = swapped, Positions = p.Positions, UVs = p.UVs, Normals = p.Normals,
+                Tangents = p.Tangents, Bitangents = p.Bitangents, Colors = p.Colors, Triangles = p.Triangles,
+            });
+        }
+        return any ? new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings, NoShapesInFile = mesh.NoShapesInFile } : mesh;
     }
 
     private static LodMesh ApplyOpaque(LodMesh mesh, OpaqueLodTextures opaque)

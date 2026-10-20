@@ -55,6 +55,14 @@ public sealed class LodMeshResolver
     public Func<string, LodMeshSet, LodMeshSet>? ModelUpgrade { get; init; }
 
     /// <summary>
+    /// LOD32 is only shown on the world map (uLockedObjectMapLOD=32, as A Clear Map of Skyrim sets it). DynDOLOD leaves it empty unless a rule
+    /// names a LOD32 model (rule files of 7 columns have none), and so does AnvilLOD by default (-1). 0..2 gives every object whose rule has
+    /// no LOD32 column the LOD mesh of that level at LOD32 (the map mod asks for Level0 on DynDOLOD's catch-all rule). Objects drawn by
+    /// dynamic LOD only, and rules that name LOD32 themselves (even None), keep what they have.
+    /// </summary>
+    public int MapObjectLevel { get; init; } = -1;
+
+    /// <summary>
     /// LOD meshes for a model that has none anywhere (no MNAM, no file by name): the full model's path and whether the rules want LOD for it
     /// in, a set out, or null. The callback decides whether to override a rule that leaves the model out.
     /// </summary>
@@ -95,7 +103,10 @@ public sealed class LodMeshResolver
             _ => null, // None; Billboard is handled by tree LOD (milestone 3)
         };
 
-        var set = new LodMeshSet(Pick(rule.Lod4), Pick(rule.Lod8), Pick(rule.Lod16), Pick(rule.Lod32));
+        var lod32 = Pick(rule.Lod32);
+        if (lod32 is null && MapObjectLevel >= 0 && !rule.Lod32Explicit && !rule.IsGridObject && WantsLod(rule))
+            lod32 = levels[Math.Clamp(MapObjectLevel, 0, 2)];
+        var set = new LodMeshSet(Pick(rule.Lod4), Pick(rule.Lod8), Pick(rule.Lod16), lod32);
         if (ModelUpgrade is not null && set.HasAny) set = ModelUpgrade(fullModelPath, set);
         else if (ModelFallback is not null && !set.HasAny && !rule.IsGridObject && ModelFallback(fullModelPath, WantsLod(rule)) is { HasAny: true } made) set = made;
         return new Resolution(set, rule, usedNamed, usedMnam);

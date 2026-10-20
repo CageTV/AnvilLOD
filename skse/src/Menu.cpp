@@ -286,6 +286,7 @@ namespace AnvilLOD::Menu
 				Smf::Text("%s", Layers::LayerName(layer));
 				for (int level = 0; level < Layers::kLevelCount; ++level) {
 					const int n = Layers::LevelNumber(level);
+					if (n == 32) continue;  // LOD32 is only drawn on the world map, never in play: no layer can be seen or hidden there (note below)
 					Smf::SameLine();
 					const auto label = std::format("LOD{}##{}{}", n, Layers::LayerKey(layer), n);
 					if (l.Found(layer, level) == 0) {
@@ -295,6 +296,8 @@ namespace AnvilLOD::Menu
 					if (Smf::Checkbox(label.c_str(), &l.show[layer][level])) l.Changed();
 				}
 			}
+			Smf::TextDisabled("LOD32 has no layers: the game only draws it on the world map. What it holds is set when you generate "
+								  "(Map objects, Trees on the map), so it is not listed here even when it was generated.");
 			Smf::Separator();
 			if (Smf::Button("Save to AnvilLOD.ini##layers")) g_status = l.Save() ? "Saved." : "Could not write AnvilLOD.ini (see AnvilLOD.log).";
 			if (!g_status.empty()) Smf::Text("%s", g_status.c_str());

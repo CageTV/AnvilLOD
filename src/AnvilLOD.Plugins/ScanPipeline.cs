@@ -49,7 +49,8 @@ public sealed record ScanRequest(
     bool OpaqueAlpha = true,                       // shapes without an alpha property use opaque copies of textures whose alpha channel isn't opacity (ship hulls), so the LOD shader doesn't cut holes
     bool DetailedShips = true,                     // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
     bool AnimatedShips = true,                     // with Animated Ships in the load order, its sailing ships are drawn beyond the loaded cells (real references in AnvilLOD.esp; needs native grid objects)
-    bool CsGrassLod = true);                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
+    bool CsGrassLod = true,
+    int MapObjectLevel = -2);                      // LOD32 objects for the world map: -1 none unless a rule names LOD32 (DynDOLOD's default), 0..2 = that level's LOD mesh, -2 auto (level 0 when A Clear Map of Skyrim is in the load order, else -1)                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -221,7 +222,15 @@ public static class ScanPipeline
             if (File.Exists(lookupFile)) meshLookup = LodMeshResolver.ParseMeshLookup(File.ReadAllText(lookupFile));
         }
         var ships = req.DetailedShips ? new ShipLodSource(assets) : null;
-        var resolver = new LodMeshResolver(lodIndex, rules, assets.Exists, meshLookup) { ModelUpgrade = ships is null ? null : ships.Upgrade, ModelFallback = ships is null ? null : ships.Fallback };
+        int mapObjectLevel = req.MapObjectLevel;
+        if (mapObjectLevel == -2)
+        {
+            var mapMod = plugins.FirstOrDefault(p => p.Contains("clear map", StringComparison.OrdinalIgnoreCase) || p.Contains("aclearmap", StringComparison.OrdinalIgnoreCase));
+            mapObjectLevel = mapMod is not null ? 0 : -1;
+            if (mapMod is not null) progress?.Report($"{mapMod} is in the load order: its map uses object LOD level 32, so objects get their most detailed LOD mesh at LOD32 (set Map objects to \"From rules\" to leave LOD32 to the rules).");
+        }
+        if (mapObjectLevel >= 0) progress?.Report($"LOD32 (world map): objects without a LOD32 rule use their level {mapObjectLevel} LOD mesh.");
+        var resolver = new LodMeshResolver(lodIndex, rules, assets.Exists, meshLookup) { MapObjectLevel = mapObjectLevel, ModelUpgrade = ships is null ? null : ships.Upgrade, ModelFallback = ships is null ? null : ships.Fallback };
 
         // Walled cities: DynDOLOD's child world configs say which child worldspaces are copied into the parent's LOD.
         var childCopies = ChildWorldCopies.None;
@@ -423,7 +432,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (mapObjectLevel >= 0 ? $"|map32:{mapObjectLevel}" : "") + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none") + (req.RemoveUnderwater ? "|water:" + cullTerrain.Heights.WaterFingerprint(kv.Key.Worldspace) : "")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();

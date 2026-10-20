@@ -22,6 +22,31 @@ public class LodRulesTests
     }
 
     [Fact]
+    public void Map_objects_fill_only_the_lod32_a_rule_leaves_undecided()
+    {
+        var rules = new LodRules();
+        rules.AddFile("x.ini", """
+            [Skyrim LODGen]
+            LODGen1=rock,Level0,Level1,Level2,,Unchanged,1
+            LODGen2=road,Level0,Level1,Level2,None,Unchanged,1,explicit none
+            LODGen3=\,Level0,Level1,Level2,Far LOD,Unchanged,1
+            """);
+        var idx = LodMeshIndex.Build([@"meshes\lod\rock_lod_0.nif", @"meshes\lod\rock_lod_1.nif", @"meshes\lod\rock_lod_2.nif", @"meshes\lod\road_lod_0.nif", @"meshes\lod\road_lod_1.nif", @"meshes\lod\road_lod_2.nif"]);
+        Assert.False(rules.Match(null, null, @"meshes\rock.nif").Lod32Explicit);
+        Assert.True(rules.Match(null, null, @"meshes\road.nif").Lod32Explicit);
+
+        var off = new LodMeshResolver(idx, rules, _ => true);
+        Assert.Null(off.Resolve(null, null, @"meshes\rock.nif", null).Meshes.Lod32);
+
+        var map0 = new LodMeshResolver(idx, rules, _ => true) { MapObjectLevel = 0 };
+        Assert.Equal(@"meshes\lod\rock_lod_0.nif", map0.Resolve(null, null, @"meshes\rock.nif", null).Meshes.Lod32);
+        Assert.Null(map0.Resolve(null, null, @"meshes\road.nif", null).Meshes.Lod32);   // the rule named LOD32 itself (None)
+
+        var map2 = new LodMeshResolver(idx, rules, _ => true) { MapObjectLevel = 2 };
+        Assert.Equal(@"meshes\lod\rock_lod_2.nif", map2.Resolve(null, null, @"meshes\rock.nif", null).Meshes.Lod32);
+    }
+
+    [Fact]
     public void FormId_rules_win_over_mesh_masks_and_first_mesh_rule_wins()
     {
         var rules = new LodRules();

@@ -76,6 +76,8 @@ public partial class MainWindow : Window
         Lod8Check.IsChecked = _settings.Lod8;
         Lod16Check.IsChecked = _settings.Lod16;
         Lod32Check.IsChecked = _settings.Lod32;
+        MapObjectsBox.SelectedIndex = Math.Clamp(_settings.MapObjects, 0, 4);
+        MapTreesCheck.IsChecked = _settings.MapTrees;
         RemoveBuriedCheck.IsChecked = _settings.RemoveBuried;
         RemoveUnderwaterCheck.IsChecked = _settings.RemoveUnderwater;
         TreeLodCheck.IsChecked = _settings.TreeLod;
@@ -113,10 +115,12 @@ public partial class MainWindow : Window
         FillGrassBrightness(GrassBottomBox, _settings.GrassBottom);
         IncludeDisabledCheck.IsChecked = _settings.IncludeDisabled;
         IncludeEnableParentCheck.IsChecked = _settings.IncludeEnableParented;
+        ApplyOcclusionSettings();
     }
 
     private void CaptureSettings()
     {
+        CaptureOcclusionSettings();   // first: it can set the DynDOLOD folder box that is read below
         _settings.UseMo2 = Mo2Radio.IsChecked == true;
         _settings.UseVortex = VortexRadio.IsChecked == true;
         _settings.Mo2Instance = Blank(Mo2Box.Text);
@@ -135,6 +139,8 @@ public partial class MainWindow : Window
         _settings.Lod8 = Lod8Check.IsChecked == true;
         _settings.Lod16 = Lod16Check.IsChecked == true;
         _settings.Lod32 = Lod32Check.IsChecked == true;
+        _settings.MapObjects = Math.Clamp(MapObjectsBox.SelectedIndex, 0, 4);
+        _settings.MapTrees = MapTreesCheck.IsChecked == true;
         _settings.DynDolodFolder = Blank(DynDolodBox.Text);
         _settings.Preset = PresetBox.SelectedIndex switch { 0 => "Low", 1 => "Medium", _ => "High" };
         _settings.Candles = CandlesCheck.IsChecked == true;
@@ -424,7 +430,7 @@ public partial class MainWindow : Window
                 GridObjects: _settings.GridObjects,
                 ParentCopies: _settings.ParentCopies,
                 GlowWindows: _settings.GlowWindows,
-                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName) : null,
+                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName, _settings.MapTrees) : null,
                 RenderTreeBillboards: _settings.RenderTreeBillboards),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,
@@ -441,6 +447,7 @@ public partial class MainWindow : Window
             IceInset: _settings.IceInset,
             MountainInset: _settings.MountainInset,
             ObjectInset: _settings.ObjectInset,
+            MapObjectLevel: _settings.MapObjects switch { 0 => -2, 1 => -1, 2 => 0, 3 => 1, _ => 2 },
             Seasons: _settings.Seasons,
             Underside: _settings.Underside,
             NativeGridObjects: _settings.NativeGridObjects,
@@ -485,6 +492,7 @@ public partial class MainWindow : Window
                 : $"Scan finished in {_lastTotal.TotalSeconds:F1}s";
             ProgressText.Text = "Done";
             Progress.Value = 100;
+            if (generate && _settings.OccAfterGenerate) await RunOcclusionAsync(automatic: true);   // before the close question: closing is what lets MO2 see the new LOD
             // MO2 has no refresh command a program can call: it re-reads its mods and plugins when the program it started exits, so
             // new plugins (AnvilLOD Effects.esp, ...) only show up after that.
             if (generate && StartupLog.IsUnderMo2()

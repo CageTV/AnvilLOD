@@ -89,8 +89,10 @@ public static class Program
           --no-animated-ships       Don't draw Animated Ships' sailing ships in the distance (they need the native grid objects; on by default when the mod is in the load order)
           --no-detailed-ships       Draw moored ships from the stock LOD meshes instead of simplified copies of their real models
           --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
-          --mountain-inset <units>  The same for mountain LOD (default 0 = off)
+          --mountain-inset <units>  The same for mountain LOD (default 12, 0 = off)
           --object-inset <units>    The same for every other object in LOD4/LOD8 (buildings, walls, rocks; default 0 = off): smooths the swap to the full model
+          --map-objects <mode>      LOD 32 objects for the world map: auto (default; level 0 when A Clear Map of Skyrim is loaded, else rules only), rules, 0, 1 or 2 (that level's LOD mesh)
+          --no-map-trees            With --tree-3d: no tree cards in LOD 32, so no trees on the world map (LOD 4 to 16 unchanged)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
           --render-trees         Trees without a TexGen billboard get one drawn from their own model, so TexGen is not needed
                                  for them (tall trees only; small plants TexGen skipped on purpose stay without LOD).
@@ -175,7 +177,7 @@ public static class Program
                 throw new CliArgException("--tree-3d-lod8, --tree-3d-by-name and --tree-3d-crc-only only apply together with --tree-3d.");
             return null;
         }
-        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: !a.Has("tree-3d-crc-only"));   // --tree-3d-by-name is still accepted: it is the default now
+        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: !a.Has("tree-3d-crc-only"), MapTrees: !a.Has("no-map-trees"));   // --tree-3d-by-name is still accepted: it is the default now
     }
 
     public static int Main(string[] args)
@@ -263,7 +265,8 @@ public static class Program
             AnimatedShips: !a.Has("no-animated-ships"),
             CsGrassLod: !a.Has("no-cs-grass"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
-            MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 0f,
+            MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 12f,
+            MapObjectLevel: a.Get("map-objects")?.ToLowerInvariant() switch { null or "auto" => -2, "rules" => -1, "0" => 0, "1" => 1, "2" => 2, var bad => throw new CliArgException($"--map-objects must be auto, rules, 0, 1 or 2 (got '{bad}').") },
             ObjectInset: a.Get("object-inset") is { } oi && float.TryParse(oi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var oip) ? Math.Clamp(oip, 0f, 64f) : 0f,
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,
