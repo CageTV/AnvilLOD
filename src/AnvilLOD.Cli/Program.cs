@@ -116,6 +116,8 @@ public static class Program
           --tree-3d-crc-only     With --tree-3d: only use models whose file name carries the tree mesh's CRC32.
                                  Default: when none matches, the model stored under the plain tree name is used
                                  (how DynDOLOD Resources ships almost all of its models, and how DynDOLOD matches)
+          --tree-3d-own-lod      With --tree-3d: a tree mod's own LOD model (<tree>_LOD_0.nif) wins over a DynDOLOD-style one
+                                 (DynDOLOD tries it last). Needs the model's TexGen trunk billboards.
           --mo2-game <dir>       With --mo2: the game folder (SkyrimSE.exe), instead of the gamePath in ModOrganizer.ini
           --mo2-mods <dir>       With --mo2: the mods folder, instead of the ini's (for lists on another drive)
           --mo2-profiles <dir>   With --mo2: the profiles folder, instead of the ini's
@@ -185,11 +187,11 @@ public static class Program
     {
         if (!a.Has("tree-3d"))
         {
-            if (a.Has("tree-3d-lod8") || a.Has("tree-3d-by-name") || a.Has("tree-3d-crc-only"))
-                throw new CliArgException("--tree-3d-lod8, --tree-3d-by-name and --tree-3d-crc-only only apply together with --tree-3d.");
+            if (a.Has("tree-3d-lod8") || a.Has("tree-3d-by-name") || a.Has("tree-3d-crc-only") || a.Has("tree-3d-own-lod"))
+                throw new CliArgException("--tree-3d-lod8, --tree-3d-by-name, --tree-3d-crc-only and --tree-3d-own-lod only apply together with --tree-3d.");
             return null;
         }
-        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: !a.Has("tree-3d-crc-only"), MapTrees: !a.Has("no-map-trees"));   // --tree-3d-by-name is still accepted: it is the default now
+        return new Tree3DSettings(Enabled: true, Lod8: a.Has("tree-3d-lod8"), PlainNameFallback: !a.Has("tree-3d-crc-only"), MapTrees: !a.Has("no-map-trees"), PreferNamedLod: a.Has("tree-3d-own-lod"));   // --tree-3d-by-name is still accepted: it is the default now
     }
 
     public static int Main(string[] args)

@@ -94,6 +94,7 @@ public partial class MainWindow : Window
         Tree3DCheck.IsChecked = _settings.Tree3D;
         Tree3DLod8Check.IsChecked = _settings.Tree3DLod8;
         Tree3DNameCheck.IsChecked = _settings.Tree3DByName;
+        Tree3DOwnCheck.IsChecked = _settings.Tree3DPreferOwn;
         GrassLodCheck.IsChecked = _settings.GrassLod;
         TreeBrightnessBox.SelectedIndex = BrightnessIndex(_settings.TreeBrightness);
         ObjectBrightnessBox.SelectedIndex = BrightnessIndex(_settings.ObjectBrightness);
@@ -163,6 +164,7 @@ public partial class MainWindow : Window
         _settings.Tree3D = Tree3DCheck.IsChecked == true;
         _settings.Tree3DLod8 = Tree3DLod8Check.IsChecked == true;
         _settings.Tree3DByName = Tree3DNameCheck.IsChecked == true;
+        _settings.Tree3DPreferOwn = Tree3DOwnCheck.IsChecked == true;
         _settings.GrassLod = GrassLodCheck.IsChecked == true;
         _settings.TreeBrightness = BrightnessPercent(TreeBrightnessBox.SelectedIndex);
         _settings.ObjectBrightness = BrightnessPercent(ObjectBrightnessBox.SelectedIndex);
@@ -431,7 +433,7 @@ public partial class MainWindow : Window
                 GridObjects: _settings.GridObjects,
                 ParentCopies: _settings.ParentCopies,
                 GlowWindows: _settings.GlowWindows,
-                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName, _settings.MapTrees) : null,
+                Tree3D: _settings.Tree3D ? new AnvilLOD.Core.World.Tree3DSettings(true, _settings.Tree3DLod8, _settings.Tree3DByName, _settings.MapTrees, _settings.Tree3DPreferOwn) : null,
                 RenderTreeBillboards: _settings.RenderTreeBillboards),
             OutputFolder: _settings.OutputFolder,
             Levels: levels,

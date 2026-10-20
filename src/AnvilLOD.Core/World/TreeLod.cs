@@ -59,12 +59,14 @@ public sealed record TreeReference(
 /// <param name="PlainNameFallback">When no model matches the tree mesh's CRC32, accept the one stored under the plain tree name.
 /// It may have been made for another version of the mesh, so it's opt-in.</param>
 /// <param name="MapTrees">Draw the trees' billboard cards in LOD32 too. LOD32 is only shown on the world map (uLockedObjectMapLOD=32), so off = no trees on the map, nothing changes in the game's own far view.</param>
-public sealed record Tree3DSettings(bool Enabled = false, bool Lod8 = false, bool PlainNameFallback = false, bool MapTrees = true)
+/// <param name="PreferNamedLod">Use a tree mod's own LOD model (<c>&lt;tree&gt;_LOD_0.nif</c>) before a DynDOLOD-style CRC32 / plain-name one, when both exist.
+/// DynDOLOD only tries the named LOD model as a last resort, but a mod that ships hybrid models (the Nature of the Wild Lands addon) made them for this.</param>
+public sealed record Tree3DSettings(bool Enabled = false, bool Lod8 = false, bool PlainNameFallback = false, bool MapTrees = true, bool PreferNamedLod = false)
 {
     public static readonly Tree3DSettings Off = new();
 
     /// <summary>Part of the settings fingerprint, so a changed option rebuilds the blocks it affects.</summary>
-    public string Fingerprint => Enabled ? $"tree3d:{(Lod8 ? "l48" : "l4")}{(PlainNameFallback ? "+name" : "")}{(MapTrees ? "" : "+nomaptrees")}" : "";
+    public string Fingerprint => Enabled ? $"tree3d:{(Lod8 ? "l48" : "l4")}{(PlainNameFallback ? "+name" : "")}{(PreferNamedLod ? "+ownlod" : "")}{(MapTrees ? "" : "+nomaptrees")}" : "";
 }
 
 /// <summary>

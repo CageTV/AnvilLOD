@@ -60,7 +60,8 @@ public class Tree3DTests
         var l4 = new Tree3DSettings(true).Fingerprint;
         var l48 = new Tree3DSettings(true, Lod8: true).Fingerprint;
         var name = new Tree3DSettings(true, PlainNameFallback: true).Fingerprint;
-        Assert.Equal(3, new[] { l4, l48, name }.Distinct().Count());
+        var own = new Tree3DSettings(true, PreferNamedLod: true).Fingerprint;
+        Assert.Equal(4, new[] { l4, l48, name, own }.Distinct().Count());
         Assert.NotEqual("", l4);
     }
 

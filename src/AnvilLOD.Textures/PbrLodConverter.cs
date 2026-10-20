@@ -14,6 +14,12 @@ public static class PbrLodConverter
     public const float Gamma = 1.15f;
     public const float BaseScale = 0.65f;
 
+    /// <summary>Alpha-test reference of the LOD shader (the same 128 the grass and tree patches use).</summary>
+    public const byte AlphaThreshold = 128;
+
+    /// <summary>Bump when the mip chain changes, so converted copies written by an older build are made again.</summary>
+    public const int MipVersion = 2;
+
     /// <param name="brightness">Multiplier on top of <see cref="BaseScale"/> (1 = DynDOLOD's default).</param>
     /// <param name="maxSize">Largest side kept; bigger textures are halved until they fit.</param>
     /// <returns>A BC7 DDS with a full mip chain.</returns>
@@ -33,16 +39,56 @@ public static class PbrLodConverter
             rgba[i + 2] = lut[rgba[i + 2]];
         }
 
-        var mips = new List<byte[]> { Bc7Encoder.EncodeImage(rgba, w, h) };
-        int mw = w, mh = h;
-        var level = rgba;
-        while (mw > 4 || mh > 4)
-        {
-            (level, mw, mh) = TreeAtlasBuilder.Downsample(level, mw, mh);
-            mips.Add(Bc7Encoder.EncodeImage(level, mw, mh));
-        }
+        var mips = MipChain(rgba, w, h).Select(m => Bc7Encoder.EncodeImage(m.Rgba, m.W, m.H)).ToList();
         using var ms = new MemoryStream();
         DdsFile.WriteBc7(ms, w, h, mips);
         return ms.ToArray();
+    }
+
+    /// <summary>
+    /// The mip levels down to 4 texels, top level first. A box filter averages the alpha of a sparse leaf card away: the share of texels
+    /// that pass the alpha test falls to nothing a few levels down and the crown of a distant tree disappears, leaving the trunk. Each
+    /// level's alpha is scaled so the share passing the test matches the top level, as the vanilla tree textures are authored.
+    /// </summary>
+    public static List<(byte[] Rgba, int W, int H)> MipChain(byte[] rgba, int w, int h)
+    {
+        var levels = new List<(byte[] Rgba, int W, int H)> { (rgba, w, h) };
+        float target = Coverage(rgba, 1f);
+        var level = rgba;
+        int mw = w, mh = h;
+        while (mw > 4 || mh > 4)
+        {
+            (level, mw, mh) = TreeAtlasBuilder.Downsample(level, mw, mh);   // the next level is filtered from the unadjusted one
+            var shown = level;
+            if (target is > 0f and < 0.999f)
+            {
+                shown = (byte[])level.Clone();
+                KeepCoverage(shown, target);
+            }
+            levels.Add((shown, mw, mh));
+        }
+        return levels;
+    }
+
+    /// <summary>Share of texels whose alpha, times <paramref name="scale"/>, passes the alpha test.</summary>
+    private static float Coverage(byte[] rgba, float scale)
+    {
+        int count = 0, total = rgba.Length / 4;
+        for (int i = 3; i < rgba.Length; i += 4)
+            if (rgba[i] * scale >= AlphaThreshold) count++;
+        return total == 0 ? 0f : (float)count / total;
+    }
+
+    private static void KeepCoverage(byte[] rgba, float target)
+    {
+        float lo = 0.25f, hi = 8f;
+        for (int i = 0; i < 12; i++)
+        {
+            float mid = (lo + hi) / 2;
+            if (Coverage(rgba, mid) < target) lo = mid; else hi = mid;
+        }
+        if (MathF.Abs(hi - 1f) < 0.01f) return;
+        for (int i = 3; i < rgba.Length; i += 4)
+            rgba[i] = (byte)Math.Min(255, MathF.Round(rgba[i] * hi));
     }
 }

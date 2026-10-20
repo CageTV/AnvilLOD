@@ -89,6 +89,30 @@ public class PbrLodTests
     }
 
     [Fact]
+    public void A_sparse_leaf_card_keeps_its_alpha_test_coverage_down_the_mip_chain()
+    {
+        // Two opaque texels in every 4x4 block (12% of the card, alpha varying like a real leaf), like the needle cards of the PBR tree
+        // mods: a plain box filter averages that to under the alpha test within a few levels, so a distant crown vanished and left the trunk.
+        const int size = 128;
+        var rgba = new byte[size * size * 4];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+                rgba[(y * size + x) * 4 + 3] = (byte)(x % 4 is 1 or 2 && y % 4 == 1 ? 140 + (x * 37 + y * 91) % 116 : 0);
+
+        float Share(byte[] img) { int n = 0; for (int i = 3; i < img.Length; i += 4) if (img[i] >= PbrLodConverter.AlphaThreshold) n++; return n / (img.Length / 4f); }
+
+        var chain = PbrLodConverter.MipChain(rgba, size, size);
+        float top = Share(chain[0].Rgba);
+        Assert.InRange(top, 0.12f, 0.13f);
+        foreach (var (img, w, _) in chain.Skip(1).Where(m => m.W >= 16))
+            Assert.InRange(Share(img), top * 0.5f, top * 2f);
+
+        var opaque = new byte[size * size * 4];
+        for (int i = 3; i < opaque.Length; i += 4) opaque[i] = 255;
+        Assert.All(PbrLodConverter.MipChain(opaque, size, size), m => Assert.Equal(1f, Share(m.Rgba)));
+    }
+
+    [Fact]
     public void A_missing_pbr_texture_goes_to_its_plain_twin_or_to_a_path_outside_the_pbr_folder()
     {
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { @"textures\landscape\trees\oak.dds", @"textures\pbr\landscape\rock.dds" };

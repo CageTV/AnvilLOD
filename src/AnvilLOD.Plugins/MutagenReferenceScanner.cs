@@ -265,6 +265,10 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 ms0.CopyTo(buf);
                 bytes = buf.ToArray();
             }
+            // Asked for: the tree mod's own LOD model (<tree>_LOD_0.nif) wins over a DynDOLOD-style one.
+            if (tree3d.PreferNamedLod && _resolver?.Index.Find(modelPath) is { } own
+                && own.FirstOrDefault(p => !string.IsNullOrEmpty(p)) is { } ownPath)
+                return new Tree3DModels.Match(ownPath, Tree3DModels.MatchKind.NamedLod);
             var actualCrc = Tree3DModels.Crc32(bytes);
             var crcs = ParallaxGenDiff.LodCrcs(pgDiff, modelPath, actualCrc);
             var match = Tree3DModels.Resolve(modelPath, crcs, tree3d.PlainNameFallback, Exists);

@@ -31,7 +31,7 @@ public static class PbrLodStage
         }
         catch (Exception ex) when (ex is IOException or JsonException) { }
 
-        var settings = FormattableString.Invariant($"{maxSize}|{brightness:F3}|{PbrLodConverter.Gamma}|{PbrLodConverter.BaseScale}");
+        var settings = FormattableString.Invariant($"{maxSize}|{brightness:F3}|{PbrLodConverter.Gamma}|{PbrLodConverter.BaseScale}|m{PbrLodConverter.MipVersion}");
         int converted = 0, unchanged = 0, failed = 0;
         var errors = new ConcurrentBag<string>();
 
