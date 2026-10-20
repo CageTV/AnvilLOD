@@ -89,6 +89,33 @@ public class PbrLodTests
     }
 
     [Fact]
+    public void Conversion_keeps_the_alpha_test_coverage_of_thin_cutouts_in_every_mip()
+    {
+        const int size = 256;
+        var rgba = new byte[size * size * 4];
+        var random = new Random(1);
+        for (int i = 0; i < size * size; i++)
+        {
+            rgba[i * 4] = 60; rgba[i * 4 + 1] = 90; rgba[i * 4 + 2] = 40;
+            rgba[i * 4 + 3] = (byte)(random.Next(8) == 0 ? random.Next(128, 256) : 0);   // scattered one-texel needles, ~12.5 % coverage
+        }
+        using var src = new MemoryStream();
+        DdsFile.WriteBc7(src, size, size, [Bc7Encoder.EncodeImage(rgba, size, size)]);
+
+        var dds = PbrLodConverter.Convert(src.ToArray(), maxSize: 128, brightness: 1f);
+        var info = DdsFile.ReadInfo(dds);
+        int offset = info.DataOffset;
+        for (int s = 128; s >= 8; s /= 2)
+        {
+            var mip = BcDecoder.DecodeImage(dds.AsSpan(offset), s, s, BcFormat.Bc7);
+            int passing = 0;
+            for (int i = 3; i < mip.Length; i += 4) if (mip[i] >= 128) passing++;
+            Assert.InRange(passing / (float)(s * s), 0.08f, 0.2f);
+            offset += (s / 4) * (s / 4) * 16;
+        }
+    }
+
+    [Fact]
     public void A_missing_pbr_texture_goes_to_its_plain_twin_or_to_a_path_outside_the_pbr_folder()
     {
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { @"textures\landscape\trees\oak.dds", @"textures\pbr\landscape\rock.dds" };

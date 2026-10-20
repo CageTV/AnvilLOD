@@ -20,8 +20,12 @@ public static class PbrLodConverter
     public static byte[] Convert(byte[] dds, int maxSize, float brightness)
     {
         var (rgba, w, h, _) = DdsFile.DecodeTopMip(dds);
+        float coverage = Coverage(rgba, 1f);
         while (Math.Max(w, h) > maxSize && Math.Min(w, h) > 4)
+        {
             (rgba, w, h) = TreeAtlasBuilder.Downsample(rgba, w, h);
+            KeepCoverage(rgba, coverage);
+        }
 
         var lut = new byte[256];
         for (int i = 0; i < 256; i++)
@@ -39,10 +43,32 @@ public static class PbrLodConverter
         while (mw > 4 || mh > 4)
         {
             (level, mw, mh) = TreeAtlasBuilder.Downsample(level, mw, mh);
+            KeepCoverage(level, coverage);
             mips.Add(Bc7Encoder.EncodeImage(level, mw, mh));
         }
         using var ms = new MemoryStream();
         DdsFile.WriteBc7(ms, w, h, mips);
         return ms.ToArray();
+    }
+
+    private static float Coverage(byte[] rgba, float scale)
+    {
+        int n = 0;
+        for (int i = 3; i < rgba.Length; i += 4) if (rgba[i] * scale >= 128f) n++;
+        return n / (float)(rgba.Length / 4);
+    }
+
+    /// <summary>Scales alpha so the share of texels passing the alpha test matches the top mip (leaves and needles would thin out to nothing).</summary>
+    private static void KeepCoverage(byte[] rgba, float target)
+    {
+        if (target <= 0f || target >= 1f) return;
+        float lo = 0.25f, hi = 8f;
+        for (int i = 0; i < 12; i++)
+        {
+            float mid = (lo + hi) / 2;
+            if (Coverage(rgba, mid) < target) lo = mid; else hi = mid;
+        }
+        if (MathF.Abs(hi - 1f) < 0.01f) return;
+        for (int i = 3; i < rgba.Length; i += 4) rgba[i] = (byte)Math.Min(255, MathF.Round(rgba[i] * hi));
     }
 }
