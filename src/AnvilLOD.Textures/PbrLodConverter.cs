@@ -20,7 +20,7 @@ public static class PbrLodConverter
     public static byte[] Convert(byte[] dds, int maxSize, float brightness)
     {
         var (rgba, w, h, _) = DdsFile.DecodeTopMip(dds);
-        float coverage = Coverage(rgba, 1f);
+        float coverage = IsCutout(rgba) ? Coverage(rgba, 1f) : 0f;   // continuous alpha (heights, gloss) keeps its plain mips
         while (Math.Max(w, h) > maxSize && Math.Min(w, h) > 4)
         {
             (rgba, w, h) = TreeAtlasBuilder.Downsample(rgba, w, h);
@@ -49,6 +49,13 @@ public static class PbrLodConverter
         using var ms = new MemoryStream();
         DdsFile.WriteBc7(ms, w, h, mips);
         return ms.ToArray();
+    }
+
+    private static bool IsCutout(byte[] rgba)
+    {
+        int soft = 0;
+        for (int i = 3; i < rgba.Length; i += 4) if (rgba[i] > 15 && rgba[i] < 240) soft++;
+        return soft * 4 < rgba.Length / 4;
     }
 
     private static float Coverage(byte[] rgba, float scale)

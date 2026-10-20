@@ -132,6 +132,28 @@ public class PbrLodTests
     }
 
     [Fact]
+    public void Continuous_alpha_keeps_its_plain_mips()
+    {
+        const int size = 256;
+        var rgba = new byte[size * size * 4];
+        var random = new Random(1);
+        for (int i = 0; i < size * size; i++)
+        {
+            rgba[i * 4] = 120; rgba[i * 4 + 1] = 110; rgba[i * 4 + 2] = 100;
+            rgba[i * 4 + 3] = (byte)random.Next(0, 151);   // height-like alpha, a few texels above 128 (landscape rocks)
+        }
+        using var src = new MemoryStream();
+        DdsFile.WriteBc7(src, size, size, [Bc7Encoder.EncodeImage(rgba, size, size)]);
+
+        var dds = PbrLodConverter.Convert(src.ToArray(), maxSize: 128, brightness: 1f);
+        var info = DdsFile.ReadInfo(dds);
+        int offset = info.DataOffset;
+        for (int s = 128; s > 16; s /= 2) offset += (s / 4) * (s / 4) * 16;
+        var mip = BcDecoder.DecodeImage(dds.AsSpan(offset), 16, 16, BcFormat.Bc7);
+        Assert.InRange(Enumerable.Range(0, 256).Average(i => mip[i * 4 + 3]), 65, 85);
+    }
+
+    [Fact]
     public void A_missing_pbr_texture_goes_to_its_plain_twin_or_to_a_path_outside_the_pbr_folder()
     {
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { @"textures\landscape\trees\oak.dds", @"textures\pbr\landscape\rock.dds" };
