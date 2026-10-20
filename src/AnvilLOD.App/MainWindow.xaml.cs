@@ -376,7 +376,7 @@ public partial class MainWindow : Window
         ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: _settings.Mo2Instance, Mo2Profile: _settings.Mo2Profile, Mo2Locations: TypedLocations())
         : new GameContextOptions(_settings.DataFolder, _settings.PluginsTxt, Mode: _settings.UseVortex ? GameSourceMode.Vortex : GameSourceMode.DataFolder);
 
-    private async Task RunAsync(bool generate)
+    private async Task RunAsync(bool generate, bool occlusionOnly = false)
     {
         CaptureSettings();
         _settings.Save();
@@ -466,7 +466,10 @@ public partial class MainWindow : Window
             GrassTop: _settings.GrassTop / 100f,
             GrassBottom: _settings.GrassBottom / 100f,
             SkseDll: (AnvilLOD.Plugins.SkseDllChoice)Math.Clamp(_settings.SkseDll, 0, 4),
-            Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High });
+            Preset: _settings.Preset switch { "Low" => AnvilLOD.Core.Lod.LodPreset.Low, "Medium" => AnvilLOD.Core.Lod.LodPreset.Medium, _ => AnvilLOD.Core.Lod.LodPreset.High },
+            Occlusion: _settings.OcclusionTool == 2 && (occlusionOnly || (generate && _settings.OccAfterGenerate))
+                ? new AnvilLOD.Core.Occlusion.OcclusionSettings(Clearance: _settings.OccClearance, ParentClearance: _settings.OccClearance) : null,
+            OcclusionFolder: _settings.OutputFolder);
 
         SetBusy(true);
         LogBox.Clear();
@@ -492,7 +495,7 @@ public partial class MainWindow : Window
                 : $"Scan finished in {_lastTotal.TotalSeconds:F1}s";
             ProgressText.Text = "Done";
             Progress.Value = 100;
-            if (generate && _settings.OccAfterGenerate) await RunOcclusionAsync(automatic: true);   // before the close question: closing is what lets MO2 see the new LOD
+            if (generate && _settings.OccAfterGenerate && _settings.OcclusionTool != 2) await RunOcclusionAsync(automatic: true);   // before the close question: closing is what lets MO2 see the new LOD
             // MO2 has no refresh command a program can call: it re-reads its mods and plugins when the program it started exits, so
             // new plugins (AnvilLOD Effects.esp, ...) only show up after that.
             if (generate && StartupLog.IsUnderMo2()

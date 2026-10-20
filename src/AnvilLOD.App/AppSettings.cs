@@ -44,6 +44,7 @@ public sealed class AppSettings
     public int OccHeight { get; set; }                // extra observer height
     public int OccRadius { get; set; } = 100;         // cells
     public string OccMode { get; set; } = "-Flat +Border";
+    public int OccClearance { get; set; } = 3072;     // AnvilLOD's own occlusion: units a hill must stand above the line of sight to hide what is behind it (larger = safer)
     public int OccThreads { get; set; }               // threads that read the object LOD meshes (memory!): 0 = by the installed RAM, 1, 2, 4 or -1 = no limit
     public string? XLodGenFolder { get; set; }       // folder with xLODGenx64.exe (DynDOLOD's folder is DynDolodFolder)
     public string Preset { get; set; } = "High";
@@ -108,7 +109,7 @@ public sealed class AppSettings
     [
         nameof(SettingsRevision), nameof(UseMo2), nameof(UseVortex), nameof(Mo2Instance), nameof(Mo2Profile), nameof(Mo2GamePath), nameof(Mo2ModsFolder),
         nameof(Mo2ProfilesFolder), nameof(Mo2OverwriteFolder), nameof(DataFolder), nameof(PluginsTxt),
-        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput),
+        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(OccClearance), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput),
         nameof(Presets), nameof(ActivePreset),
     ];
 

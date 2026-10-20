@@ -31,6 +31,9 @@ public sealed class XLodGenSettingsTests : IDisposable
         Assert.Equal("80", v["OcclusionRadius"]);
         Assert.Equal("-Flat +Border", v["OcclusionMode"]);
         Assert.Equal("2", v["OcclusionMaxThreadsObjectLOD"]);   // the default keeps memory use down
+        Assert.Equal("0", v["Chunk"]);                 // chunk off, its fields emptied
+        Assert.Equal("", v["LODX"]);
+        Assert.Equal("0", v["OcclusionCreateImages"]);
         Assert.Equal("1", v["HeightMaps"]);            // not ours
         Assert.Contains("[Init]\r\nFirstStart=1\r\n", text);
         Assert.Contains("[Filter]\r\nX=1\r\n", text);

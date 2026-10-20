@@ -50,7 +50,9 @@ public sealed record ScanRequest(
     bool DetailedShips = true,                     // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
     bool AnimatedShips = true,                     // with Animated Ships in the load order, its sailing ships are drawn beyond the loaded cells (real references in AnvilLOD.esp; needs native grid objects)
     bool CsGrassLod = true,
-    int MapObjectLevel = -2);                      // LOD32 objects for the world map: -1 none unless a rule names LOD32 (DynDOLOD's default), 0..2 = that level's LOD mesh, -2 auto (level 0 when A Clear Map of Skyrim is in the load order, else -1)                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
+    int MapObjectLevel = -2,
+    AnvilLOD.Core.Occlusion.OcclusionSettings? Occlusion = null,   // work out the occlusion data (Occlusion.esp) ourselves, with these settings (null = off)
+    string? OcclusionFolder = null);                              // where Occlusion.esp goes (null = the output folder)                      // LOD32 objects for the world map: -1 none unless a rule names LOD32 (DynDOLOD's default), 0..2 = that level's LOD mesh, -2 auto (level 0 when A Clear Map of Skyrim is in the load order, else -1)                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -259,7 +261,7 @@ public static class ScanPipeline
         progress?.Report($"Scan: {scan.Stats.LodReferencesFound:N0} LOD refs from {scan.Stats.PlacedObjectsVisited:N0} refs in {scan.Stats.Elapsed.TotalSeconds:F1}s");
 
         TerrainReader.Result? terrain = null;
-        if ((req.RemoveBuried || req.Underside) && scan.Grids.Count > 0)
+        if ((req.RemoveBuried || req.Underside || req.Occlusion is not null) && scan.Grids.Count > 0)
         {
             progress?.Report("Reading terrain heights (LAND)...");
             terrain = TerrainReader.Read(game, scan.Grids.Keys.ToList(), ct);
@@ -267,6 +269,14 @@ public static class ScanPipeline
         }
         // Only the buried-triangle test (and the block hashes it feeds) depends on RemoveBuried; the underside reads the same heights.
         var cullTerrain = req.RemoveBuried ? terrain : null;
+
+        if (req.Occlusion is not null && terrain is not null && (req.OcclusionFolder ?? req.OutputFolder) is { } occlusionFolder)
+        {
+            var occ = OcclusionStage.Run(game, terrain.Heights, scan.Grids, scan.References, scan.Trees, assets, occlusionFolder, req.Occlusion, progress, Warn, ct);
+            if (occ.Path is not null)
+                progress?.Report($"Occlusion.esp: {occ.Cells:N0} cells of {occ.Worldspaces} worldspace(s) in {occ.Elapsed.TotalSeconds:F0}s (clearance {req.Occlusion.Clearance:0}), written to {occ.Path}. Put it last in your plugin order.");
+            if (occ.Skipped.Count > 0) progress?.Report($"Occlusion: left out (too small, a child world or no landscape): {string.Join(", ", occ.Skipped)}");
+        }
 
         GrassLodSource? grass = null;
         IReadOnlyList<LodReference> allRefs = scan.References;

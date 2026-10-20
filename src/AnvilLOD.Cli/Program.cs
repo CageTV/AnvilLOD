@@ -93,6 +93,9 @@ public static class Program
           --object-inset <units>    The same for every other object in LOD4/LOD8 (buildings, walls, rocks; default 0 = off): smooths the swap to the full model
           --map-objects <mode>      LOD 32 objects for the world map: auto (default; level 0 when A Clear Map of Skyrim is loaded, else rules only), rules, 0, 1 or 2 (that level's LOD mesh)
           --no-map-trees            With --tree-3d: no tree cards in LOD 32, so no trees on the world map (LOD 4 to 16 unchanged)
+          --occlusion               Work out the occlusion data (Occlusion.esp) ourselves instead of running xLODGen (EXPERIMENTAL)
+          --occlusion-clearance <u> Units a hill must stand above the line of sight to hide what is behind it (default 3072; larger = safer, hides less)
+          --occlusion-folder <dir>  Where Occlusion.esp goes (default: the output folder; also works with scan)
           --no-trees             Don't build billboard tree LOD (.lst/.btt + atlas)
           --render-trees         Trees without a TexGen billboard get one drawn from their own model, so TexGen is not needed
                                  for them (tall trees only; small plants TexGen skipped on purpose stay without LOD).
@@ -266,6 +269,8 @@ public static class Program
             CsGrassLod: !a.Has("no-cs-grass"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
             MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 12f,
+            Occlusion: a.Has("occlusion") ? new AnvilLOD.Core.Occlusion.OcclusionSettings(Clearance: a.Get("occlusion-clearance") is { } oc && float.TryParse(oc, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv) ? Math.Max(0f, ocv) : 3072f, ParentClearance: a.Get("occlusion-clearance") is { } oc2 && float.TryParse(oc2, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv2) ? Math.Max(0f, ocv2) : 3072f) : null,
+            OcclusionFolder: a.Get("occlusion-folder"),
             MapObjectLevel: a.Get("map-objects")?.ToLowerInvariant() switch { null or "auto" => -2, "rules" => -1, "0" => 0, "1" => 1, "2" => 2, var bad => throw new CliArgException($"--map-objects must be auto, rules, 0, 1 or 2 (got '{bad}').") },
             ObjectInset: a.Get("object-inset") is { } oi && float.TryParse(oi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var oip) ? Math.Clamp(oip, 0f, 64f) : 0f,
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,

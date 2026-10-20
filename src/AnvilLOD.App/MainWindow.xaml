@@ -587,7 +587,19 @@
                                       ToolTip="xLODGen makes occlusion on its own. DynDOLOD runs the same code, but as part of a DynDOLOD run, so xLODGen is the simpler choice if you have it.">
                                 <ComboBoxItem Content="xLODGen (occlusion only)" />
                                 <ComboBoxItem Content="DynDOLOD" />
+                                <ComboBoxItem Content="AnvilLOD, built in (experimental)" />
                             </ComboBox>
+                            <StackPanel x:Name="OccBuiltinPanel" Visibility="Collapsed" Margin="0,6,0,0">
+                                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Text="AnvilLOD works the occlusion out itself, in about a minute, from the landscape and the objects and trees it already reads: no other program, no window, no memory problem. It follows what xLODGen makes (it hides about nine tenths of what xLODGen hides and, at the default, about 1 in 250 of what xLODGen would keep visible), but it is new: if you see holes in distant LOD, raise the safety or go back to xLODGen." />
+                                <TextBlock Text="Safety" Style="{StaticResource FieldLabel}" />
+                                <ComboBox x:Name="OccClearanceBox" SelectedIndex="1" Width="320" HorizontalAlignment="Left"
+                                          ToolTip="How high a hill must stand above the line of sight before it hides what is behind it. Higher = fewer blocks are hidden and none by mistake.">
+                                    <ComboBoxItem Content="Safest (hides least)" />
+                                    <ComboBoxItem Content="Safe (default)" />
+                                    <ComboBoxItem Content="Balanced" />
+                                    <ComboBoxItem Content="Strict (hides most)" />
+                                </ComboBox>
+                            </StackPanel>
                             <TextBlock x:Name="OccFolderLabel" Text="xLODGen folder" Style="{StaticResource FieldLabel}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOccFolder_Click" />

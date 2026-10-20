@@ -7,6 +7,8 @@ public enum OcclusionTool
 {
     XLodGen,
     DynDolod,
+    /// <summary>AnvilLOD's own calculation (experimental): no other program is started.</summary>
+    Builtin,
 }
 
 /// <summary>What <see cref="OcclusionLauncher.ImportResult"/> did.</summary>
@@ -24,13 +26,13 @@ public static class OcclusionLauncher
 {
     public const string PluginName = "Occlusion.esp";
 
-    public static string ExeName(OcclusionTool tool) => tool == OcclusionTool.XLodGen ? "xLODGenx64.exe" : "DynDOLODx64.exe";
+    public static string ExeName(OcclusionTool tool) => tool switch { OcclusionTool.XLodGen => "xLODGenx64.exe", OcclusionTool.DynDolod => "DynDOLODx64.exe", _ => "" };
 
-    public static string ToolName(OcclusionTool tool) => tool == OcclusionTool.XLodGen ? "xLODGen" : "DynDOLOD";
+    public static string ToolName(OcclusionTool tool) => tool switch { OcclusionTool.XLodGen => "xLODGen", OcclusionTool.DynDolod => "DynDOLOD", _ => "AnvilLOD" };
 
     public static string? FindExe(OcclusionTool tool, string? folder)
     {
-        if (string.IsNullOrWhiteSpace(folder)) return null;
+        if (string.IsNullOrWhiteSpace(folder) || tool == OcclusionTool.Builtin) return null;
         var path = Path.Combine(folder.Trim(), ExeName(tool));
         return File.Exists(path) ? path : null;
     }

@@ -379,6 +379,12 @@ Occlusion data is stored on the exterior CELL records and tells the game which d
 - In the program's window pick the worldspaces, tick only Occlusion and press OK. Close it when it has finished.
 - Put `Occlusion.esp` last in your plugin order.
 
+### AnvilLOD's own occlusion (experimental)
+
+Choose "AnvilLOD, built in" on the Occlusion page (or `--occlusion` on the command line) and AnvilLOD works the occlusion out itself: no other program, no window, no memory problem. It reads the landscape, the water, and the tops of the objects and trees it already scans for LOD, works out for every cell which LOD blocks can be seen from it (a straight line of sight over the hills, from points in the cell to points in the block, out to 100 cells) and writes `Occlusion.esp` into the LOD output. On Tamriel it takes under a minute where xLODGen takes about half an hour.
+
+It is new and follows xLODGen's result closely, not exactly. Compared with an xLODGen file for the same load order, at the default "Safe" setting it hides about nine tenths of the LOD4 blocks xLODGen hides, and about 2% of the blocks xLODGen would keep. The Safety setting is how high a hill must stand over the line of sight before it hides what is behind it: Safest hides least. If you see holes in distant LOD, raise the safety or use xLODGen. The data format (TVDT, a quadtree of block visibility per cell, and MHDT) was worked out from xLODGen's own output.
+
 ## Object LOD inset (smooth swap)
 
 The engine swaps object LOD for the real objects by itself: it loads the full model first, then unloads the LOD, so both are drawn for a moment, and there is no setting that fades one into the other. Where the two surfaces coincide that shows as flicker. **Object LOD inset** (`--object-inset <units>`, a dropdown under Objects in the app; off by default) pulls every other object in LOD4 and LOD8 (buildings, walls, rocks; ice, mountains and ships have their own insets) a few units inside its own surface along its smoothed normals, so the full model is always the nearer one in that ring. Flat pieces (roads, floor slabs, planks on the ground; shapes lower than four times the inset) are left alone, because moving them down would sink them under the terrain. Try 2 or 4 units if objects shimmer as they load in. It changes the LOD blocks, so generate again after changing it.

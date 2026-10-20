@@ -55,6 +55,9 @@ public static class XLodGenSettings
             ("ObjectsLOD", "0"),
             ("TreesLOD", "0"),
             ("TerrainLOD", "0"),
+            ("Chunk", "0"),                    // a left-over "specific chunk" would limit the run to a few cells
+            ("LODX", ""), ("LODY", ""), ("LODX2", ""), ("LODY2", ""),
+            ("OcclusionCreateImages", "0"),    // debug images, only wanted for experiments
             ("OcclusionQuality", Math.Clamp(o.Quality, 1, 3).ToString(CultureInfo.InvariantCulture)),
             ("OcclusionHeight", Math.Max(0, o.Height).ToString(CultureInfo.InvariantCulture)),
             ("OcclusionRadius", Math.Max(1, o.Radius).ToString(CultureInfo.InvariantCulture)),

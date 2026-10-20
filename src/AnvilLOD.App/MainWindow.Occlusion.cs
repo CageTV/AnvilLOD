@@ -14,14 +14,16 @@ public partial class MainWindow
     private string? _occRunFolder;
     private int _occToolShown;   // the tool whose folder the box shows
 
-    private OcclusionTool OccTool => OccToolBox.SelectedIndex == 1 ? OcclusionTool.DynDolod : OcclusionTool.XLodGen;
+    private OcclusionTool OccTool => OccToolBox.SelectedIndex switch { 1 => OcclusionTool.DynDolod, 2 => OcclusionTool.Builtin, _ => OcclusionTool.XLodGen };
+
+    private static readonly int[] ClearanceChoices = [4096, 3072, 2048, 1024];
 
     private bool _occLoading;   // filling the page from the settings: the change handlers must not write back
 
     private void ApplyOcclusionSettings()
     {
         _occLoading = true;
-        _occToolShown = Math.Clamp(_settings.OcclusionTool, 0, 1);
+        _occToolShown = Math.Clamp(_settings.OcclusionTool, 0, 2);
         OccToolBox.SelectedIndex = _occToolShown;
         OccModeBox.ItemsSource = XLodGenSettings.Modes;
         OccModeBox.SelectedItem = XLodGenSettings.Modes.Contains(_settings.OccMode) ? _settings.OccMode : "-Flat +Border";
@@ -30,6 +32,7 @@ public partial class MainWindow
         OccHeightBox.Text = _settings.OccHeight.ToString();
         OccRadiusBox.Text = _settings.OccRadius.ToString();
         OccPresetCheck.IsChecked = _settings.OccPreset;
+        OccClearanceBox.SelectedIndex = Math.Max(0, Array.IndexOf(ClearanceChoices, _settings.OccClearance));
         OccAutoCloseCheck.IsChecked = _settings.OccAutoClose;
         OccAfterGenerateCheck.IsChecked = _settings.OccAfterGenerate;
         ShowOccFolder();
@@ -39,7 +42,8 @@ public partial class MainWindow
     private void CaptureOcclusionSettings()
     {
         if (OccFolderBox is null || OccToolBox is null || _occLoading) return;
-        _settings.OcclusionTool = Math.Clamp(OccToolBox.SelectedIndex, 0, 1);
+        _settings.OcclusionTool = Math.Clamp(OccToolBox.SelectedIndex, 0, 2);
+        _settings.OccClearance = ClearanceChoices[Math.Clamp(OccClearanceBox.SelectedIndex, 0, ClearanceChoices.Length - 1)];
         StoreOccFolder(OccToolBox.SelectedIndex);
         _settings.OccPreset = OccPresetCheck.IsChecked == true;
         _settings.OccAutoClose = OccAutoCloseCheck.IsChecked == true;
@@ -55,6 +59,7 @@ public partial class MainWindow
 
     private void StoreOccFolder(int tool)
     {
+        if (tool == 2) return;   // the built-in calculation has no folder
         if (tool == 1) DynDolodBox.Text = OccFolderBox.Text.Trim();   // DynDOLOD's folder is the one on the LOD rules page
         else _settings.XLodGenFolder = Blank(OccFolderBox.Text);
     }
@@ -64,8 +69,9 @@ public partial class MainWindow
         var tool = OccTool;
         var stored = OccStoredFolder(OccToolBox.SelectedIndex);
         stored ??= OcclusionLauncher.GuessFolder(tool, Blank(DynDolodBox.Text), _settings.UseMo2 ? Blank(Mo2Box.Text) : null);
-        OccFolderBox.Text = stored ?? "";
-        OccFolderLabel.Text = OcclusionLauncher.ToolName(tool) + " folder";
+        OccFolderBox.Text = tool == OcclusionTool.Builtin ? "" : stored ?? "";
+        OccFolderBox.IsEnabled = tool != OcclusionTool.Builtin;
+        OccFolderLabel.Text = tool == OcclusionTool.Builtin ? "No other program is needed" : OcclusionLauncher.ToolName(tool) + " folder";
         UpdateOccInfo();
     }
 
@@ -101,6 +107,15 @@ public partial class MainWindow
     private void UpdateOccInfo()
     {
         var tool = OccTool;
+        OccBuiltinPanel.Visibility = tool == OcclusionTool.Builtin ? Visibility.Visible : Visibility.Collapsed;
+        if (tool == OcclusionTool.Builtin)
+        {
+            OccInfoText.Text = "Runs inside AnvilLOD: it reads your landscape and the objects and trees of your load order, then writes Occlusion.esp into the LOD output.";
+            OccStartButton.IsEnabled = true;
+            OccOptionsPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        OccOptionsPanel.Visibility = Visibility.Visible;
         var exe = OcclusionLauncher.FindExe(tool, Blank(OccFolderBox.Text));
         var text = exe is null
             ? $"{OcclusionLauncher.ExeName(tool)} was not found in that folder."
@@ -130,6 +145,19 @@ public partial class MainWindow
     {
         CaptureSettings();
         var tool = OccTool;
+        if (tool == OcclusionTool.Builtin)
+        {
+            if (automatic) return;   // it already ran inside Generate
+            if (_settings.OutputFolder is null)
+            {
+                OutputBox.Text = OutputFolder.DefaultFolder(BuildGameOptions());
+                CaptureSettings();
+            }
+            OccSummaryText.Text = "Working out the occlusion data (see the Log tab)...";
+            await RunAsync(generate: false, occlusionOnly: true);
+            OccSummaryText.Text = File.Exists(Path.Combine(_settings.OutputFolder!, OcclusionLauncher.PluginName)) ? $"Occlusion.esp is in {_settings.OutputFolder}. Put it last in your plugin order." : "No Occlusion.esp was written: see the Log tab.";
+            return;
+        }
         var exe = OcclusionLauncher.FindExe(tool, Blank(OccFolderBox.Text));
         if (exe is null)
         {

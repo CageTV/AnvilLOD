@@ -47,6 +47,10 @@ public sealed class TerrainHeights
     public void Set(string worldspace, int cellX, int cellY, float[] heights) =>
         _cells[(worldspace.ToLowerInvariant(), cellX, cellY)] = heights;
 
+    /// <summary>The 33 x 33 vertex heights of a cell (row-major, row = Y), or false when the cell has no landscape.</summary>
+    public bool TryGetCell(string worldspace, int cellX, int cellY, out float[] heights) =>
+        _cells.TryGetValue((worldspace.ToLowerInvariant(), cellX, cellY), out heights!);
+
     private readonly ConcurrentDictionary<(string Ws, int X, int Y), float> _water = new();
 
     public int WaterCellCount => _water.Count;
