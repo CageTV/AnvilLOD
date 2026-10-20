@@ -111,12 +111,15 @@ public static class BtoBuilder
                 // The game puts its snow/ash LOD material on shapes by NAME, so those parts get their own shapes.
                 var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material, quad.Level) : ObjName;
                 var chunkKey = category == LodLayers.Objects ? part.Material.Key : part.Material.Key + "|layer:" + category;
+                // A grass density tier has its own shapes under its own node, so the SKSE plugin can hide it.
+                int tier = category == LodLayers.Grass ? part.Tier : 0;
+                if (tier > 0) chunkKey += "|tier:" + tier;
                 if (shapeName != ObjName) chunkKey += "|shape:" + shapeName;
                 if (!chunks.TryGetValue(chunkKey, out var list))
-                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName }];
+                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier }];
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
-                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName });
+                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier });
                 culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull, flatGuard);
             }
         }
@@ -142,7 +145,7 @@ public static class BtoBuilder
             tris += c.TriangleCount;
             verts += c.Vertices;
 
-            int layerName = w.String(LodLayers.NodeName(c.Layer, (int)quad.Level));
+            int layerName = w.String(LodLayers.NodeName(c.Layer, (int)quad.Level, c.Tier));
             w.Set(mbNode, b =>
             {
                 NifWriter.WriteObjectNet(b, layerName);
@@ -229,6 +232,7 @@ public static class BtoBuilder
     {
         public LodMaterial Material { get; } = material;
         public string Layer { get; init; } = LodLayers.Objects;
+        public int Tier { get; init; }
         public string ShapeName { get; init; } = ObjName;
         private readonly List<Vector3> _pos = [];
         private readonly List<Vector2> _uv = [];

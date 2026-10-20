@@ -13,6 +13,9 @@ namespace AnvilLOD
 	public:
 		enum Layer : int { kGrass, kTree3D, kTreeCard, kLayerCount };
 		static constexpr int kLevelCount = 4;  // LOD4, LOD8, LOD16, LOD32
+		/// The grass of a block is written in this many density tiers, each in its own node ("AL:grass:<level>" for tier 0,
+		/// "AL:grass:<level>:1" ... for the rest), spread evenly over the ground. Showing the first n of them is n/4 of the grass.
+		static constexpr int kGrassTiers = 4;
 
 		static Layers& Get();
 
@@ -43,6 +46,9 @@ namespace AnvilLOD
 		bool AnyFound() const { return _anyFound; }
 
 		bool show[kLayerCount][kLevelCount]{};
+		/// How many of the grass density tiers are drawn (1 to kGrassTiers; iGrassTiers in AnvilLOD.ini). LODs generated before
+		/// the tiers existed have only tier 0, which is always drawn.
+		int  grassTiers = kGrassTiers;
 
 	private:
 		void Apply();

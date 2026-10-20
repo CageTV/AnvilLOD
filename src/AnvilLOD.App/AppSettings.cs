@@ -79,7 +79,7 @@ public sealed class AppSettings
     public bool Tree3DLod8 { get; set; }        // use the 3D models at LOD8 as well
     public string? LastRunSizes { get; set; }   // JSON of the last generation's size by LOD level and layer (SizeCalibration), per preset, for the size estimate
     public bool Tree3DByName { get; set; } = true; // accept a model stored under the plain tree name when no CRC32-named one exists (DynDOLOD's own convention: CRC32 names are only for collisions)
-    public bool Tree3DPreferOwn { get; set; }      // a tree mod's own <tree>_LOD_0.nif model wins over a DynDOLOD-style one (off by default: DynDOLOD tries it last)
+    public bool Tree3DPreferOwn { get; set; } = true; // a tree mod's own <tree>_LOD_0.nif model wins over a DynDOLOD-style one (on by default; DynDOLOD itself tries it last)
     public bool GrassLod { get; set; } = true;
     public int TreeBrightness { get; set; } = 100;   // percent, 10-110
     public int ObjectBrightness { get; set; } = 100; // percent, 10-110

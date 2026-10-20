@@ -280,7 +280,17 @@ namespace AnvilLOD::Menu
 			if (Smf::Button("Medium")) l.Preset(2);
 			Smf::SameLine();
 			if (Smf::Button("Low")) l.Preset(3);
-			Smf::TextDisabled("    Max: everything. High: 3D trees only at LOD4. Medium: also grass only at LOD4 and LOD8. Low: grass only at LOD4.");
+			Smf::TextDisabled("    Max: everything. High: 3D trees only at LOD4, 75%% of the grass. Medium: also grass only at LOD4 and LOD8, 50%% of the grass. Low: grass only at LOD4, 25%% of the grass.");
+				Smf::SeparatorText("Grass density");
+				{
+					int tiers = l.grassTiers;
+					if (Smf::SliderInt("Grass shown (steps)##tiers", &tiers, 1, Layers::kGrassTiers)) {
+						l.grassTiers = tiers;
+						l.Changed();
+					}
+					Smf::TextDisabled("    %d of %d steps: %d%% of the grass you generated, spread evenly over the ground. Needs LOD generated with AnvilLOD 0.2.63 or newer; older LOD has one step and always shows it.",
+						l.grassTiers, Layers::kGrassTiers, l.grassTiers * 100 / Layers::kGrassTiers);
+				}
 			Smf::SeparatorText("Layers");
 			for (int layer = 0; layer < Layers::kLayerCount; ++layer) {
 				Smf::Text("%s", Layers::LayerName(layer));

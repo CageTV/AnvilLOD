@@ -12,8 +12,8 @@ namespace AnvilLOD
 
 		std::string KeyFor(int a_layer, int a_level) { return std::format("bShow_{}_{}", kKeys[a_layer], kLevels[a_level]); }
 
-		/// "AL:grass:16" -> layer 0, level index 2. False for anything else.
-		bool Parse(const char* a_name, int& a_layer, int& a_level)
+		/// "AL:grass:16" -> layer 0, level index 2, tier 0; "AL:grass:16:2" -> the same with tier 2. False for anything else.
+		bool Parse(const char* a_name, int& a_layer, int& a_level, int& a_tier)
 		{
 			if (!a_name || a_name[0] != 'A' || a_name[1] != 'L' || a_name[2] != ':') {
 				return false;
@@ -28,7 +28,16 @@ namespace AnvilLOD
 				if (rest.substr(0, colon) == kKeys[i]) a_layer = i;
 			}
 			a_level = -1;
-			const auto lv = rest.substr(colon + 1);
+			a_tier = 0;
+			auto lv = rest.substr(colon + 1);
+			if (const auto tc = lv.find(':'); tc != std::string_view::npos) {
+				const auto t = lv.substr(tc + 1);
+				if (t.size() != 1 || t[0] < '0' || t[0] > '9') {
+					return false;
+				}
+				a_tier = t[0] - '0';
+				lv = lv.substr(0, tc);
+			}
 			for (int i = 0; i < Layers::kLevelCount; ++i) {
 				if (lv == std::to_string(kLevels[i])) a_level = i;
 			}
@@ -75,6 +84,10 @@ namespace AnvilLOD
 			}
 			const auto key = trim(line.substr(0, eq));
 			const auto value = trim(line.substr(eq + 1));
+			if (_stricmp(key.c_str(), "iGrassTiers") == 0) {
+				grassTiers = std::clamp(std::atoi(value.c_str()), 1, kGrassTiers);
+				continue;
+			}
 			for (int l = 0; l < kLayerCount; ++l) {
 				for (int v = 0; v < kLevelCount; ++v) {
 					if (_stricmp(key.c_str(), KeyFor(l, v).c_str()) == 0) {
@@ -94,11 +107,15 @@ namespace AnvilLOD
 				values.emplace_back(KeyFor(l, v), show[l][v] ? "1" : "0");
 			}
 		}
+		values.emplace_back("iGrassTiers", std::to_string(grassTiers));
 		return IniFile::Write("Data/SKSE/Plugins/AnvilLOD.ini", "Layers", values);
 	}
 
 	bool Layers::AnyHidden() const
 	{
+		if (grassTiers < kGrassTiers) {
+			return true;
+		}
 		for (const auto& row : show) {
 			for (bool v : row) {
 				if (!v) return true;
@@ -112,6 +129,7 @@ namespace AnvilLOD
 		for (auto& row : show) {
 			for (auto& v : row) v = true;
 		}
+		grassTiers = std::clamp(kGrassTiers - a_preset, 1, kGrassTiers);  // Max 100%, High 75%, Medium 50%, Low 25% of the generated grass
 		if (a_preset >= 1) {  // High: the 3D trees only where they are close
 			show[kTree3D][1] = false;
 			show[kTree3D][2] = false;
@@ -216,15 +234,17 @@ namespace AnvilLOD
 			auto* o = stack.back();
 			stack.pop_back();
 			++visited;
-			int layer = 0, level = 0;
+			int layer = 0, level = 0, tier = 0;
 			if (const char* nm = o->name.c_str(); nm && !_objLogged && _stricmp(nm, "obj") == 0) {
 				// The root of a loaded .bto block is named "obj": tells where the LOD blocks hang in the scene.
 				_objLogged = true;
 				logger::info("Quality layers: a block root 'obj' sits at: {}", PathTo(o));
 			}
-			if (Parse(o->name.c_str(), layer, level)) {
-				++found[layer][level];
-				const bool cull = !show[layer][level];
+			if (Parse(o->name.c_str(), layer, level, tier)) {
+				if (tier == 0) {
+					++found[layer][level];   // a block counts once however many tiers it was written in
+				}
+				const bool cull = !show[layer][level] || (layer == kGrass && tier >= grassTiers);
 				if (o->GetAppCulled() != cull) {
 					o->SetAppCulled(cull);
 				}

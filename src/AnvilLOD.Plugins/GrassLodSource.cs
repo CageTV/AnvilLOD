@@ -23,7 +23,7 @@ namespace AnvilLOD.Plugins;
 public sealed class GrassLodSource : ISyntheticMeshSource
 {
     public const string Prefix = "~anvillod-grass|";
-    private const int Version = 5; // 2: crossed quads, coverage-compensated size, vertex colours; 3: rendered billboards; 4: binned sampling (one tuft per bin); 5: atlas, brightness top/bottom
+    private const int Version = 6; // 6: density tiers (each in its own part); 2: crossed quads, coverage-compensated size, vertex colours; 3: rendered billboards; 4: binned sampling (one tuft per bin); 5: atlas, brightness top/bottom
 
     private readonly AssetIndex _assets;
     private readonly float _density;
@@ -179,7 +179,7 @@ public sealed class GrassLodSource : ISyntheticMeshSource
             if (bb is null) continue;
             withBillboards.Add((bb, t.Instances));
         }
-        return GrassPatchBuilder.Build(path, origin, withBillboards, Math.Min(1f, _density * densityMul), _sizeScale * sizeMul, _top, _bottom);
+        return GrassPatchBuilder.Build(path, origin, withBillboards, Math.Min(1f, _density * densityMul), _sizeScale * sizeMul, _top, _bottom, AnvilLOD.Core.Lod.LodLayers.GrassTiers);
     }
 
     private GrassBillboard? FindBillboard(string model, uint runtimeId)

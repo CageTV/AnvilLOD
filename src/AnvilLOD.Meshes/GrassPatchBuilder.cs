@@ -44,8 +44,9 @@ public static class GrassPatchBuilder
     /// <summary>One kept tuft: where, how big (scale), which way, and how many cached instances it stands for.</summary>
     internal readonly record struct Tuft(Vector3 Position, float Scale, float Yaw, int Count, float Spacing);
 
+    /// <param name="tiers">Split the tufts into this many density tiers (see <see cref="SplitTiers"/>), each its own part, so the game can show a first n of them.</param>
     public static LodMesh Build(string path, Vector3 origin, IEnumerable<(GrassBillboard Billboard, IReadOnlyList<GrassInstance> Instances)> types,
-        float density, float sizeScale, float top = DefaultTop, float bottom = DefaultBottom)
+        float density, float sizeScale, float top = DefaultTop, float bottom = DefaultBottom, int tiers = 1)
     {
         uint bottomColor = Grey(bottom), topColor = Grey(top);
 
@@ -71,7 +72,8 @@ public static class GrassPatchBuilder
         }
 
         var parts = new List<LodMeshPart>();
-        foreach (var (material, items) in groups.Values)
+        foreach (var (material, all) in groups.Values)
+        foreach (var (tier, items) in SplitTiers(all, origin, tiers))
         {
             // Split so no part exceeds 65,535 vertices (8 per tuft: two crossed quads).
             const int MaxQuads = 8_000;
@@ -123,11 +125,47 @@ public static class GrassPatchBuilder
                 }
                 parts.Add(new LodMeshPart
                 {
-                    Material = material, Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit, Colors = col, Triangles = tris,
+                    Material = material, Positions = pos, UVs = uv, Normals = nrm, Tangents = tan, Bitangents = bit, Colors = col, Triangles = tris, Tier = tier,
                 });
             }
         }
         return new LodMesh { Path = path, Parts = parts };
+    }
+
+    /// <summary>
+    /// Deals the tufts into <paramref name="tiers"/> tiers: sorted along a Morton (Z-order) curve over the ground, every n-th tuft goes to the
+    /// same tier. Every tier is then an even spread over the whole patch, so showing only the first few thins the grass evenly instead of
+    /// leaving bald squares. One tier (or none to split) keeps the tufts in their order, as before.
+    /// </summary>
+    internal static IEnumerable<(int Tier, List<(GrassBillboard Bb, Tuft T)> Items)> SplitTiers(List<(GrassBillboard Bb, Tuft T)> items, Vector3 origin, int tiers)
+    {
+        if (tiers <= 1 || items.Count == 0)
+        {
+            yield return (0, items);
+            yield break;
+        }
+        var sorted = items.OrderBy(i => Morton(i.T.Position, origin)).ToList();
+        var split = new List<(GrassBillboard, Tuft)>[tiers];
+        for (int t = 0; t < tiers; t++) split[t] = [];
+        for (int i = 0; i < sorted.Count; i++) split[i % tiers].Add(sorted[i]);
+        for (int t = 0; t < tiers; t++)
+            if (split[t].Count > 0) yield return (t, split[t]);
+    }
+
+    /// <summary>Z-order code of a position relative to the patch origin, one unit per step (a patch is at most 16 cells wide).</summary>
+    internal static uint Morton(Vector3 p, Vector3 origin)
+    {
+        static uint Spread(uint v)
+        {
+            v &= 0xFFFF;
+            v = (v | v << 8) & 0x00FF00FF;
+            v = (v | v << 4) & 0x0F0F0F0F;
+            v = (v | v << 2) & 0x33333333;
+            v = (v | v << 1) & 0x55555555;
+            return v;
+        }
+        uint x = (uint)Math.Clamp((int)(p.X - origin.X), 0, 65535), y = (uint)Math.Clamp((int)(p.Y - origin.Y), 0, 65535);
+        return Spread(x) | Spread(y) << 1;
     }
 
     /// <summary>

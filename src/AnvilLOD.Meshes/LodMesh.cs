@@ -61,6 +61,8 @@ public sealed class LodMeshPart
     public required Vector3[] Bitangents { get; init; }
     public uint[]? Colors { get; init; }          // RGBA packed little-endian, or null
     public required ushort[] Triangles { get; init; } // 3 indices per triangle
+    /// <summary>Grass density tier (0 = the first, always drawn). A tier other than 0 gets its own node in the block, so the SKSE plugin can hide it (<see cref="AnvilLOD.Core.Lod.LodLayers.NodeName"/>).</summary>
+    public int Tier { get; init; }
 
     public int VertexCount => Positions.Length;
     public int TriangleCount => Triangles.Length / 3;
