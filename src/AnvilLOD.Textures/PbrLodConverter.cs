@@ -59,16 +59,17 @@ public static class PbrLodConverter
     }
 
     /// <summary>Scales alpha so the share of texels passing the alpha test matches the top mip (leaves and needles would thin out to nothing).</summary>
-    private static void KeepCoverage(byte[] rgba, float target)
+    internal static void KeepCoverage(byte[] rgba, float target)
     {
         if (target <= 0f || target >= 1f) return;
-        float lo = 0.25f, hi = 8f;
-        for (int i = 0; i < 12; i++)
+        float now = Coverage(rgba, 1f);
+        if (MathF.Abs(now - target) * (rgba.Length / 4) < 1f) return;
+        float lo = now < target ? 1f : 0.25f, hi = now < target ? 8f : 1f;
+        for (int i = 0; i < 16; i++)
         {
             float mid = (lo + hi) / 2;
             if (Coverage(rgba, mid) < target) lo = mid; else hi = mid;
         }
-        if (MathF.Abs(hi - 1f) < 0.01f) return;
         for (int i = 3; i < rgba.Length; i += 4) rgba[i] = (byte)Math.Min(255, MathF.Round(rgba[i] * hi));
     }
 }

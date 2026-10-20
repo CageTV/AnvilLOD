@@ -116,6 +116,22 @@ public class PbrLodTests
     }
 
     [Fact]
+    public void Coverage_is_restored_even_when_the_scale_needed_is_close_to_one()
+    {
+        byte[] mip = [0, 0, 0, 127, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 0];
+        PbrLodConverter.KeepCoverage(mip, 0.25f);
+        Assert.Equal(1, Enumerable.Range(0, 4).Count(i => mip[i * 4 + 3] >= 128));
+    }
+
+    [Fact]
+    public void Alpha_is_left_alone_when_the_coverage_already_matches()
+    {
+        byte[] mip = [0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 64, 0, 0, 0, 64];
+        PbrLodConverter.KeepCoverage(mip, 0.5f);
+        Assert.Equal(new byte[] { 255, 255, 64, 64 }, Enumerable.Range(0, 4).Select(i => mip[i * 4 + 3]).ToArray());
+    }
+
+    [Fact]
     public void A_missing_pbr_texture_goes_to_its_plain_twin_or_to_a_path_outside_the_pbr_folder()
     {
         var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { @"textures\landscape\trees\oak.dds", @"textures\pbr\landscape\rock.dds" };
