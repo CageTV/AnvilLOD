@@ -18,6 +18,14 @@ public sealed class Mo2Profile
 
     public bool UsesLocalInis { get; }
 
+    /// <summary>The folders of the enabled mods that exist on disk, plus Overwrite (lowest priority first, Overwrite last).</summary>
+    public IReadOnlyList<string> EnabledModFolders()
+    {
+        var folders = EnabledModsLowToHigh.Select(m => Path.Combine(Instance.ModsFolder, m)).Where(Directory.Exists).ToList();
+        if (Directory.Exists(Instance.OverwriteFolder)) folders.Add(Instance.OverwriteFolder);
+        return folders;
+    }
+
     /// <summary>Plugins ticked in plugins.txt. Base masters and Skyrim.ccc entries are implicit and may legitimately be absent.</summary>
     public IReadOnlySet<string> ExplicitlyEnabled { get; }
 

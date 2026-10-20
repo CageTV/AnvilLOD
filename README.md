@@ -62,6 +62,16 @@ The **LOD Mesh Maker** (also under "Mod author tools" on the left; or `AnvilLOD 
 
 As with the other author tools, the generated files are a starting point to check in NifSkope and in game, and are only shared with the model author's permission.
 
+### Texture fixer
+
+Some textures are saved in a format Skyrim SE cannot load, usually **BC6H** (an HDR format, DXGI 95/96): the game then crashes the moment a shader uses one, often far from where the file is. The **Texture fixer** (under "Mod author tools" on the left; or `AnvilLOD fix-textures`) finds them and converts them to **BC7** with the same size and mip levels:
+
+- **What it checks:** the mod folders you add, or every enabled mod of your MO2 profile and Overwrite ("All enabled mods"). It only reads the 148-byte header of each `.dds`, so 20,000 textures take about a second. Loose files only, not the inside of BSAs.
+- **What it converts:** BC6H. Other formats the game cannot load are listed but not converted.
+- **Where the result goes:** a **new mod in your MO2 mods folder** (put it above the broken ones, the originals stay untouched), a folder you choose, or **in place**, where every original is first copied to a backup folder (`%APPDATA%\AnvilLOD\texture-backups\<date>`) and a file that fails to convert is left alone.
+- **texconv:** the conversion runs Microsoft's `texconv.exe`, found in the xLODGen, DynDOLOD or SSEEdit `Edit Scripts` folder (or choose it). Nothing is installed or bundled.
+- Command line: `AnvilLOD fix-textures --input <folder> [--input ...]` (or `--mo2 <instance> [--profile <name>]`) only lists; add `--apply` with `--output <folder>`, or `--in-place --backup <folder>`, to convert; `--texconv <exe or folder>` to name texconv.
+
 ## Build
 
 ```powershell
@@ -373,7 +383,7 @@ Object LOD level 32 is only drawn on the world map. In the game's own far view t
 
 ## Occlusion (Occlusion.esp)
 
-Occlusion data is stored on the exterior CELL records and tells the game which distant LOD is hidden behind terrain, so it is not drawn. AnvilLOD does not calculate it itself yet. The Occlusion page starts the occlusion run of xLODGen or DynDOLOD (by default also right after every Generate, when the program is found and AnvilLOD was started from MO2; untick "Run occlusion automatically" to turn that off), which you have installed, with your game's Data folder and a folder of its own for the result, then copies the `Occlusion.esp` it wrote into the LOD output (an `Occlusion.esp` that is already there is kept as `.bak_<time>`). AnvilLOD does not change those programs' settings and does not contain or copy any of their code.
+Occlusion data is stored on the exterior CELL records and tells the game which distant LOD is hidden behind terrain, so it is not drawn. By default AnvilLOD works it out itself (see "AnvilLOD's own occlusion" below, selected on the Occlusion page and run right after every Generate). The Occlusion page can instead start the occlusion run of xLODGen or DynDOLOD (by default also right after every Generate, when the program is found and AnvilLOD was started from MO2; untick "Run occlusion automatically" to turn that off), which you have installed, with your game's Data folder and a folder of its own for the result, then copies the `Occlusion.esp` it wrote into the LOD output (an `Occlusion.esp` that is already there is kept as `.bak_<time>`). AnvilLOD does not change those programs' settings and does not contain or copy any of their code.
 
 - Generate your LOD first and enable the LOD output in MO2, then start AnvilLOD from MO2 so the program sees your mods.
 - In the program's window pick the worldspaces, tick only Occlusion and press OK. Close it when it has finished.

@@ -146,6 +146,7 @@
                         <TextBlock Text="MOD AUTHOR TOOLS" Style="{StaticResource SectionHeader}" Margin="8,22,0,8" />
                         <RadioButton x:Name="NavFinder" GroupName="Nav" Tag="Finder" Style="{StaticResource NavButton}" Content="Missing LOD finder" Checked="Nav_Checked" ToolTip="Finds the objects and trees of one plugin that are seen from afar but have no LOD, and makes what is missing." />
                         <RadioButton x:Name="NavMaker" GroupName="Nav" Tag="Maker" Style="{StaticResource NavButton}" Content="LOD Mesh Maker" Checked="Nav_Checked" ToolTip="Makes LOD meshes (name_lod_0/1/2.nif) from full models you pick." />
+                        <RadioButton x:Name="NavTextures" GroupName="Nav" Tag="Textures" Style="{StaticResource NavButton}" Content="Texture fixer" Checked="Nav_Checked" ToolTip="Finds textures the game cannot load (BC6H) in a mod or in all your enabled mods and converts them to BC7." />
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -711,6 +712,66 @@
                                 </DataGrid>
                             </StackPanel>
                         </StackPanel>
+                                </StackPanel>
+                                <StackPanel x:Name="CatTextures" Visibility="Collapsed" HorizontalAlignment="Left" MaxWidth="1000">
+                                    <StackPanel Margin="0,6,10,10">
+                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,8"
+                                                   Text="Some textures are saved in a format Skyrim SE cannot load (BC6H, an HDR format). The game then crashes the moment a shader uses one, often far from where the file is. This finds them (it only reads the file headers) and converts them to BC7 with the same size and mip levels. It uses texconv, which xEdit, xLODGen and DynDOLOD already have in their Edit Scripts folder; nothing is installed." />
+
+                                        <TextBlock Text="Mods or folders to check (one per line)" Style="{StaticResource FieldLabel}" />
+                                        <DockPanel Width="620" HorizontalAlignment="Left">
+                                            <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0">
+                                                <Button Content="Add folder…" Padding="8,3" Margin="0,0,0,4" Click="TexAddFolder_Click" />
+                                                <Button Content="Clear" Padding="8,3" Click="TexClear_Click" />
+                                            </StackPanel>
+                                            <TextBox x:Name="TexInputBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="70" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                                     ToolTip="A mod folder, or any folder with textures in it. Every .dds below it is checked." />
+                                        </DockPanel>
+                                        <CheckBox x:Name="TexAllModsCheck" Margin="0,6,0,0" Content="All enabled mods of my MO2 profile (and Overwrite)"
+                                                  ToolTip="Needs MO2 instance mode in the top bar. Disabled mods are not looked at." />
+
+                                        <TextBlock Text="texconv.exe (found automatically when it can be; or choose it, or a folder that has it)" Style="{StaticResource FieldLabel}" />
+                                        <DockPanel Width="620" HorizontalAlignment="Left">
+                                            <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="TexBrowseTexconv_Click" />
+                                            <TextBox x:Name="TexTexconvBox" />
+                                        </DockPanel>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
+                                            <Button x:Name="TexScanButton" Content="Find unloadable textures" Style="{StaticResource PrimaryButton}" Click="TexScan_Click" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="TexSummaryText" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                                        <DataGrid x:Name="TexGrid" Height="260">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Mod" Binding="{Binding Mod}" Width="170" />
+                                                <DataGridTextColumn Header="Texture" Binding="{Binding File}" Width="*" />
+                                                <DataGridTextColumn Header="Format" Binding="{Binding Format}" Width="150" />
+                                                <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="90" />
+                                                <DataGridTextColumn Header="Result" Binding="{Binding Status}" Width="200" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+
+                                        <TextBlock Text="Put the converted textures in" Style="{StaticResource FieldLabel}" />
+                                        <StackPanel>
+                                            <RadioButton x:Name="TexNewModRadio" GroupName="TexOut" IsChecked="True" Margin="0,2,0,2" Checked="TexOutMode_Changed"
+                                                         Content="A new mod in my MO2 mods folder (put it above the broken ones; the originals stay untouched)" />
+                                            <DockPanel Width="560" HorizontalAlignment="Left" Margin="22,0,0,4">
+                                                <TextBlock Text="Mod name" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <TextBox x:Name="TexModNameBox" Text="AnvilLOD Texture Fixes" />
+                                            </DockPanel>
+                                            <RadioButton x:Name="TexFolderRadio" GroupName="TexOut" Margin="0,2,0,2" Checked="TexOutMode_Changed" Content="A folder I choose" />
+                                            <DockPanel Width="560" HorizontalAlignment="Left" Margin="22,0,0,4">
+                                                <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="TexBrowseOut_Click" />
+                                                <TextBox x:Name="TexOutBox" IsEnabled="False" />
+                                            </DockPanel>
+                                            <RadioButton x:Name="TexInPlaceRadio" GroupName="TexOut" Margin="0,2,0,2" Checked="TexOutMode_Changed"
+                                                         Content="Replace the broken files where they are (every original is copied to a backup folder first)" />
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
+                                            <Button x:Name="TexFixButton" Content="Convert to BC7" Style="{StaticResource PrimaryButton}" IsEnabled="False" Click="TexFix_Click" />
+                                            <Button x:Name="TexOpenButton" Content="Open output folder" Margin="8,0,0,0" IsEnabled="False" Click="TexOpen_Click" />
+                                        </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
                                 <StackPanel x:Name="CatMaker" Visibility="Collapsed" HorizontalAlignment="Left" MaxWidth="1000">
 <StackPanel Margin="0,6,10,10">

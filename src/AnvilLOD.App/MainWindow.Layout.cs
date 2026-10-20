@@ -32,6 +32,7 @@ public partial class MainWindow
             ["Occlusion"] = (CatOcclusion, "Occlusion data (Occlusion.esp)"),
             ["Finder"] = (CatFinder, "Missing LOD finder (mod author tool)"),
             ["Maker"] = (CatMaker, "LOD Mesh Maker (mod author tool)"),
+            ["Textures"] = (CatTextures, "Texture fixer (mod tool)"),
         };
         PreviewKeyDown += (_, e) =>
         {

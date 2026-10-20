@@ -36,7 +36,7 @@ public sealed class AppSettings
     public int MapObjects { get; set; }              // LOD32 objects for the world map: 0 auto, 1 from the rules only, 2/3/4 = the level 0/1/2 LOD mesh
     public bool MapTrees { get; set; } = true;       // tree cards in LOD32 (3D tree LOD): off = no trees on the map
     public string? DynDolodFolder { get; set; }
-    public int OcclusionTool { get; set; }           // the Occlusion page: 0 xLODGen, 1 DynDOLOD
+    public int OcclusionTool { get; set; } = 2;      // the Occlusion page: 0 xLODGen, 1 DynDOLOD, 2 AnvilLOD's own
     public bool OccAfterGenerate { get; set; } = true; // start the occlusion run when Generate has finished (skipped, with a note, when the program is not set up)
     public bool OccAutoClose { get; set; } = true;    // close xLODGen's window when its log says the work is done (you still confirm the save)
     public bool OccPreset { get; set; } = true;       // set xLODGen's occlusion options before it starts
@@ -59,6 +59,12 @@ public sealed class AppSettings
     public bool MakerFolderMode { get; set; }       // false = a new mod in the MO2 mods folder, true = a folder the user chose
     public string? MakerModName { get; set; }
     public string? MakerOutput { get; set; }
+    public string? TexFixInputs { get; set; }       // Texture fixer: the folders to check (one path per line)
+    public bool TexFixAllMods { get; set; }         // ... and all enabled mods of the MO2 profile
+    public int TexFixMode { get; set; }             // 0 a new mod in the MO2 mods folder, 1 a folder the user chose, 2 in place (with a backup)
+    public string? TexFixModName { get; set; }
+    public string? TexFixOutput { get; set; }
+    public string? TexconvPath { get; set; }
     public bool LargeReferences { get; set; }   // list missing large references in AnvilLOD.esm (off by default)
     public bool CleanOutput { get; set; } = true;   // empty the output folder before generating (only if it is AnvilLOD's own)
     public bool LargeRefsEsl { get; set; } = true; // flag AnvilLOD.esm as ESL (no plugin slot); off = a normal ESM that uses a slot
@@ -109,7 +115,7 @@ public sealed class AppSettings
     [
         nameof(SettingsRevision), nameof(UseMo2), nameof(UseVortex), nameof(Mo2Instance), nameof(Mo2Profile), nameof(Mo2GamePath), nameof(Mo2ModsFolder),
         nameof(Mo2ProfilesFolder), nameof(Mo2OverwriteFolder), nameof(DataFolder), nameof(PluginsTxt),
-        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(OccClearance), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput),
+        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(OccClearance), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput), nameof(TexFixInputs), nameof(TexFixAllMods), nameof(TexFixMode), nameof(TexFixModName), nameof(TexFixOutput), nameof(TexconvPath),
         nameof(Presets), nameof(ActivePreset),
     ];
 
@@ -144,16 +150,22 @@ public sealed class AppSettings
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    public const int CurrentRevision = 1;
+    public const int CurrentRevision = 2;
 
-    /// <summary>Brings a saved file up to the current defaults once: a stored mountain inset of 0 was only ever the old default.</summary>
+    /// <summary>Brings a saved file up to the current defaults once: a stored mountain inset of 0 and a stored occlusion tool of 0 (xLODGen) were only ever the old defaults.</summary>
     public void Migrate()
     {
         if (SettingsRevision >= CurrentRevision) return;
-        if (MountainInset == 0) MountainInset = 12;
+        if (SettingsRevision < 1 && MountainInset == 0) MountainInset = 12;
+        if (OcclusionTool == 0) OcclusionTool = 2;
         foreach (var slot in Presets)
-            if (slot.Values is { } v && v.TryGetValue(nameof(MountainInset), out var el) && el.ValueKind == JsonValueKind.Number && el.GetInt32() == 0)
+        {
+            if (slot.Values is not { } v) continue;
+            if (SettingsRevision < 1 && v.TryGetValue(nameof(MountainInset), out var el) && el.ValueKind == JsonValueKind.Number && el.GetInt32() == 0)
                 v[nameof(MountainInset)] = JsonSerializer.SerializeToElement(12);
+            if (v.TryGetValue(nameof(OcclusionTool), out var occ) && occ.ValueKind == JsonValueKind.Number && occ.GetInt32() == 0)
+                v[nameof(OcclusionTool)] = JsonSerializer.SerializeToElement(2);
+        }
         SettingsRevision = CurrentRevision;
     }
 

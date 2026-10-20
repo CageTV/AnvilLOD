@@ -63,6 +63,7 @@ public partial class MainWindow : Window
         if (_settings.MakerFolderMode) MakerFolderRadio.IsChecked = true; else MakerNewModRadio.IsChecked = true;
         MakerOutMode_Changed(this, new RoutedEventArgs());
         MakerBudget_Changed(this, new RoutedEventArgs());
+        InitTextures();
         LoadProfiles(_settings.Mo2Profile, StartupLog.IsUnderMo2());
         if (_settings.UseMo2) Mo2Radio.IsChecked = true; else if (_settings.UseVortex) VortexRadio.IsChecked = true; else DataRadio.IsChecked = true;
         DataBox.Text = _settings.DataFolder ?? "";

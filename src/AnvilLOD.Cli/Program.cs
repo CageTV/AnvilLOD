@@ -22,6 +22,15 @@ public static class Program
                                          --budget recommended|off|<LOD0,LOD1,LOD2> triangle budget for the LOD meshes (default
                                          recommended, by model size; see lodmaker)
 
+          AnvilLOD fix-textures (--input <folder> [--input ...] | --mo2 <instance> [--profile <name>]) [options]
+                                         Finds textures Skyrim SE cannot load (BC6H, a format that crashes the game when a shader
+                                         samples it) and converts them to BC7. Without --apply it only lists them. Options:
+                                         --apply  --output <folder> (put the fixed files there, same relative paths: a new mod that
+                                         overrides the broken ones) or --in-place --backup <folder> (replace them; the originals are
+                                         copied to the backup folder first)  --texconv <texconv.exe or a folder that has it>
+                                         (default: found in the xLODGen / SSEEdit / DynDOLOD folders "Edit Scripts" or on the path)
+                                         --mo2 scans every enabled mod of the profile and Overwrite.
+
           AnvilLOD convert-lod --source <mod folder> --output <folder> [--all-meshes] [--overwrite]
                                          Skyrim LE (Oldrim) -> SE: converts the static LOD meshes of a mod folder (loose files and its BSAs)
                                          to Skyrim SE meshes under the same paths in --output. Collision is dropped; animated, skinned and
@@ -200,6 +209,7 @@ public static class Program
                 "author" => RunAuthor(Checked(CliArgs.Parse(args[1..]))),
                 "lodmaker" => RunLodMaker(Checked(CliArgs.Parse(args[1..]))),
                 "convert-lod" => RunConvertLod(Checked(CliArgs.Parse(args[1..]))),
+                "fix-textures" => RunFixTextures(Checked(CliArgs.Parse(args[1..]))),
                 _ => Fail($"Unknown command '{args[0]}'.\n\n{Usage}"),
             };
         }
@@ -362,6 +372,41 @@ public static class Program
             throw new CliArgException($"--budget must be recommended, off, or up to three numbers LOD0,LOD1,LOD2 (got '{v}').");
         while (nums.Count < 3) nums.Add(0);
         return (AnvilLOD.Meshes.Authoring.BudgetMode.Custom, nums);
+    }
+
+    private static int RunFixTextures(CliArgs a)
+    {
+        var folders = new List<string>(a.GetAll("input") ?? []);
+        string? mo2Root = null;
+        if (a.Get("mo2") is { } mo2)
+        {
+            var instance = AnvilLOD.Plugins.Mo2.Mo2Instance.Open(mo2, Mo2LocationsFromArgs(a));
+            folders.AddRange(instance.OpenProfile(a.Get("profile")).EnabledModFolders());
+            mo2Root = instance.InstanceFolder;
+        }
+        if (folders.Count == 0) throw new CliArgException("fix-textures needs --input <folder> (repeatable) or --mo2 <instance>.");
+        var total = Stopwatch.StartNew();
+        var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));
+        var bad = AnvilLOD.Core.Textures.TextureFixer.Scan(folders, sync);
+        foreach (var b in bad.OrderBy(b => b.Mod, StringComparer.OrdinalIgnoreCase).ThenBy(b => b.Relative, StringComparer.OrdinalIgnoreCase))
+            Console.WriteLine($"  {b.Mod}\\{b.Relative}  {b.Format}  {b.Width}x{b.Height}, {b.Mips} mips  {(b.Fixable ? "can be converted" : "cannot be converted here")}");
+        if (!a.Has("apply") || bad.Count == 0)
+        {
+            if (bad.Count > 0) Console.WriteLine("Nothing was changed. Add --apply (with --output <folder> or --in-place --backup <folder>) to convert them.");
+            return 0;
+        }
+        bool inPlace = a.Has("in-place");
+        var output = a.Get("output");
+        var backup = a.Get("backup");
+        if (inPlace == (output is not null)) throw new CliArgException("--apply needs either --output <folder> or --in-place with --backup <folder>.");
+        if (inPlace && backup is null) throw new CliArgException("--in-place needs --backup <folder> (the originals are copied there first).");
+        var texconv = AnvilLOD.Core.Textures.TextureFixer.FindTexconv([a.Get("texconv"), .. new[] { mo2Root }.Where(x => x is not null).SelectMany(r => new[] { Path.Combine(r!, "tools") }),
+            Environment.GetEnvironmentVariable("TEXCONV")])
+            ?? throw new CliArgException("texconv.exe was not found: pass --texconv <exe or folder> (xEdit, xLODGen and DynDOLOD have it in their \"Edit Scripts\" folder).");
+        Console.WriteLine($"Using {texconv}");
+        var results = AnvilLOD.Core.Textures.TextureFixer.Fix(bad, texconv, inPlace ? null : output, inPlace ? backup : null, dryRun: false, sync);
+        foreach (var r in results.Where(r => !r.Status.StartsWith("Converted", StringComparison.Ordinal))) Console.WriteLine($"  {r.Source.Mod}\\{r.Source.Relative}: {r.Status}");
+        return results.Any(r => r.Status.StartsWith("Failed", StringComparison.Ordinal)) ? 1 : 0;
     }
 
     private static int RunConvertLod(CliArgs a)
