@@ -45,6 +45,8 @@ public sealed record ScanRequest(
     bool CleanOutput = true,                       // Generate empties the output folder first (only if it is AnvilLOD's own, see OutputFolder), so old files never mix with new ones
     float IceInset = LodInset.DefaultIce,          // units glacier/ice LOD (LOD4, LOD8) is pulled inside its own surface, so the full model wins the z-fight where both are drawn (0 = off)
     float MountainInset = 0f,                      // the same for mountain LOD (off by default)
+    int SnowShaderMode = 0,                        // snow/ash LOD shader on full-texture shapes: 0 = HD at LOD4 only (DynDOLOD), 1 = plain at every level, 2 = HD at every level
+    int SnowCover = 0,                             // vertex colour of snow/ash shapes: 0 = as the meshes carry it, 1 = full alpha, 2 = full alpha + lighter colour
     float ObjectInset = 0f,                        // the same for every other object (building, wall, rock) in LOD4/LOD8, so the loaded full model is the nearer surface in the swap ring (off by default)
     bool OpaqueAlpha = true,                       // shapes without an alpha property use opaque copies of textures whose alpha channel isn't opacity (ship hulls), so the LOD shader doesn't cut holes
     bool DetailedShips = true,                     // whole ships are drawn from simplified copies of their real models at LOD4 and LOD8 instead of the very coarse stock LOD meshes
@@ -442,7 +444,7 @@ public static class ScanPipeline
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (mapObjectLevel >= 0 ? $"|map32:{mapObjectLevel}" : "") + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
+                req.SettingsFingerprint + (mapObjectLevel >= 0 ? $"|map32:{mapObjectLevel}" : "") + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.SnowShaderMode != 0 ? $"|snowmode:{req.SnowShaderMode}" : "") + (req.SnowCover != 0 ? $"|snowcover:{req.SnowCover}" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none") + (req.RemoveUnderwater ? "|water:" + cullTerrain.Heights.WaterFingerprint(kv.Key.Worldspace) : "")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
@@ -486,7 +488,7 @@ public static class ScanPipeline
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
             var opaqueLod = req.OpaqueAlpha ? new OpaqueLodTextures(assets, OpaqueLodStage.IsTranslucent) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { RemoveUnderwater = req.RemoveUnderwater, Brightness = req.ObjectBrightness, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
+            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { RemoveUnderwater = req.RemoveUnderwater, Brightness = req.ObjectBrightness, SnowShaderMode = req.SnowShaderMode, SnowCover = req.SnowCover, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
             if (ships is not null && ships.Built() is { Count: > 0 } builtShips)
                 progress?.Report($"Detailed ships: {builtShips.Count} ship models drawn from their real models ("
@@ -799,7 +801,11 @@ public static class ScanPipeline
                     Warn($"The grass cache names {grass.ModelsNotFound.Count} grass models that no enabled mod provides ({string.Join(", ", grass.ModelsNotFound.OrderByDescending(kv => kv.Value).Take(4).Select(kv => Path.GetFileName(kv.Key)))}). "
                          + "The cache was probably made with a different set of grass mods (or with one disabled since): rebuild the grass cache (NGIO / FasterNGIO) with the grass mods you use now, otherwise those areas get no grass LOD and no real grass either.");
             } 
-            if (gen.MeshErrors.Count > 0) Warn($"{gen.MeshErrors.Count} LOD meshes could not be used; see the Missing meshes tab.");
+            if (gen.MeshErrors.Count > 0)
+            {
+                foreach (var (mesh, err) in gen.MeshErrors.Take(20)) progress?.Report($"Mesh problem: {mesh}: {err}");
+                Warn($"{gen.MeshErrors.Count} LOD meshes could not be used; see the Missing meshes tab.");
+            }
         }
 
         return new ScanSummary(

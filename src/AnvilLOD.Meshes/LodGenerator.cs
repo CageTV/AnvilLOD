@@ -52,6 +52,12 @@ public sealed class LodGenerator
     /// <summary>Also drop triangles that lie completely below the water surface of their cell (needs the water heights in the terrain data).</summary>
     public bool RemoveUnderwater { get; init; }
 
+    /// <summary>Which snow/ash LOD shader full-texture shapes get: 0 = HD at LOD4 only (DynDOLOD), 1 = the plain one everywhere, 2 = HD everywhere. See <see cref="BtoBuilder.ShapeNameFor"/>.</summary>
+    public int SnowShaderMode { get; init; }
+
+    /// <summary>Snow/ash shapes' vertex colour: 0 = as the meshes carry it, 1 = full alpha (full HD snow intensity), 2 = full alpha and lighter colour. See <see cref="BtoBuilder.FullCover"/>.</summary>
+    public int SnowCover { get; init; }
+
     /// <summary>Object LOD colour multiplier (1 = as the textures are). See <see cref="BtoBuilder.Build"/>.</summary>
     public float Brightness { get; init; } = 1f;
 
@@ -526,7 +532,7 @@ public sealed class LodGenerator
                     var test = _terrain is null ? null
                         : new BtoBuilder.TerrainTest((x, y) => _terrain.HeightAt(quad.Worldspace, x, y), TerrainHeights.MarginFor(quad.Level),
                             RemoveUnderwater ? (x, y) => _terrain.WaterAt(quad.Worldspace, x, y) : null);
-                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize, Inset);
+                    var result = BtoBuilder.Build(quad, quads[quad], GetMesh, test, Brightness, Categorize, Inset, SnowShaderMode, SnowCover);
                     var rel = seasonSuffix is null ? quad.RelativePath : AnvilLOD.Core.Lod.SeasonSwaps.SeasonalPath(quad.RelativePath, seasonSuffix);
                     var path = Path.Combine(outputFolder, rel.Replace('\\', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(path)!);

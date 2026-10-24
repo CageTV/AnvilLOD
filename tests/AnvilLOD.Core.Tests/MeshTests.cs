@@ -141,6 +141,48 @@ public class MeshTests
     }
 
     [Fact]
+    public void Snow_shader_mode_chooses_HD_or_plain_for_full_texture_shapes_on_every_level()
+    {
+        var fullTex = new LodMaterial([@"textures\landscape\mountains\mountainslab02.dds", @"textures\landscape\mountains\mountainslab02_n.dds"], 0x8000_0300u, 5, 0, false, 0, 0, Vector3.Zero, 1f);
+        var meshes = new Dictionary<string, LodMesh> { ["full"] = new() { Path = "m", Parts = [Triangle(fullTex, null)] } };
+        var refs = new[] { new LodReference("1:A.esp", "2:A.esp", null, "T", "A.esp", new Vector3(300, 100, 0), Vector3.Zero, 1f,
+            new LodMeshSet("full", "full", "full", "full"), LodReferenceFlags.None, Shader: LodShaderKind.Snow) };
+        string Name(LodLevel level, int mode)
+        {
+            var res = BtoBuilder.Build(new QuadKey("T", level, 0, 0), refs, p => meshes[p], snowMode: mode);
+            return NifGeometryReader.Read("out", res.Bytes).Parts.Single().Name!;
+        }
+
+        Assert.Equal("objSnowHD", Name(LodLevel.Lod4, 0));
+        Assert.Equal("objSnow", Name(LodLevel.Lod8, 0));
+        Assert.Equal("objSnow", Name(LodLevel.Lod4, 1));   // plain everywhere: near mountains share the far look
+        Assert.Equal("objSnow", Name(LodLevel.Lod16, 1));
+        Assert.Equal("objSnowHD", Name(LodLevel.Lod4, 2));
+        Assert.Equal("objSnowHD", Name(LodLevel.Lod16, 2));
+    }
+
+    [Fact]
+    public void Snow_cover_sets_full_alpha_on_snow_shapes_only()
+    {
+        var fullTex = new LodMaterial([@"textures\landscape\mountains\mountainslab02.dds"], 0x8000_0300u, 5, 0, false, 0, 0, Vector3.Zero, 1f);
+        var mesh = new LodMesh { Path = "m", Parts = [Triangle(fullTex, [0x66_50_50_50u, 0x66_50_50_50u, 0x66_50_50_50u])] };
+        LodReference R(LodShaderKind kind) => new("1:A.esp", "2:A.esp", null, "T", "A.esp", new Vector3(300, 100, 0), Vector3.Zero, 1f,
+            new LodMeshSet("m", "m", "m", "m"), LodReferenceFlags.None, Shader: kind);
+        uint FirstColor(LodShaderKind kind, int cover)
+        {
+            var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod4, 0, 0), [R(kind)], _ => mesh, snowCover: cover);
+            return NifGeometryReader.Read("out", res.Bytes).Parts.Single().Colors![0];
+        }
+
+        Assert.Equal(0x66_50_50_50u, FirstColor(LodShaderKind.Snow, 0));
+        Assert.Equal(0xFF_50_50_50u, FirstColor(LodShaderKind.Snow, 1));
+        Assert.Equal(0x66_50_50_50u, FirstColor(LodShaderKind.None, 1));          // plain objects are left alone
+        var bright = FirstColor(LodShaderKind.Snow, 2);
+        Assert.Equal(0xFFu, bright >> 24);
+        Assert.True((bright & 0xFF) > 0xB0);                                       // 0x50 moved most of the way to white
+    }
+
+    [Fact]
     public void Empty_block_is_a_valid_nif()
     {
         var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod32, 0, 0), [], _ => null);

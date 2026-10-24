@@ -99,6 +99,8 @@ public static class Program
           --no-detailed-ships       Draw moored ships from the stock LOD meshes instead of simplified copies of their real models
           --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
           --mountain-inset <units>  The same for mountain LOD (default 12, 0 = off)
+          --snow-cover <off|full|bright>  Vertex colour of snow/ash LOD shapes: full (default, alpha 1 = full snow intensity), off (as the meshes carry it), bright (full and lighter colour)
+          --snow-shader <auto|plain|hd>  Snow/ash LOD shader on full-texture shapes: auto (default, DynDOLOD: HD at LOD4 only), plain (the plain shader at every level, so near mountains match far ones), hd (HD at every level)
           --object-inset <units>    The same for every other object in LOD4/LOD8 (buildings, walls, rocks; default 0 = off): smooths the swap to the full model
           --map-objects <mode>      LOD 32 objects for the world map: auto (default; level 0 when A Clear Map of Skyrim is loaded, else rules only), rules, 0, 1 or 2 (that level's LOD mesh)
           --no-map-trees            With --tree-3d: no tree cards in LOD 32, so no trees on the world map (LOD 4 to 16 unchanged)
@@ -286,6 +288,8 @@ public static class Program
             Occlusion: a.Has("occlusion") ? new AnvilLOD.Core.Occlusion.OcclusionSettings(Clearance: a.Get("occlusion-clearance") is { } oc && float.TryParse(oc, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv) ? Math.Max(0f, ocv) : 3072f, ParentClearance: a.Get("occlusion-clearance") is { } oc2 && float.TryParse(oc2, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv2) ? Math.Max(0f, ocv2) : 3072f) : null,
             OcclusionFolder: a.Get("occlusion-folder"),
             MapObjectLevel: a.Get("map-objects")?.ToLowerInvariant() switch { null or "auto" => -2, "rules" => -1, "0" => 0, "1" => 1, "2" => 2, var bad => throw new CliArgException($"--map-objects must be auto, rules, 0, 1 or 2 (got '{bad}').") },
+            SnowCover: a.Get("snow-cover") switch { "off" => 0, "bright" => 2, _ => 1 },
+            SnowShaderMode: a.Get("snow-shader") switch { "plain" => 1, "hd" => 2, _ => 0 },
             ObjectInset: a.Get("object-inset") is { } oi && float.TryParse(oi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var oip) ? Math.Clamp(oip, 0f, 64f) : 0f,
             ObjectBrightness: (a.Get("object-brightness") is { } ob && float.TryParse(ob, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var obp) ? Math.Clamp(obp, 10f, 110f) : 100f) / 100f,
             TreeBrightness: (a.Get("tree-brightness") is { } tb && float.TryParse(tb, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var tbp) ? tbp : 100f) / 100f,

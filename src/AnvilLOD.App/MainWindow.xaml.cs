@@ -104,6 +104,8 @@ public partial class MainWindow : Window
         TargetSizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(TargetSizeChoices, _settings.TargetSizeGb));
         IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
         MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
+        SnowCoverBox.SelectedIndex = Math.Clamp(_settings.SnowCover, 0, 2);
+        SnowShaderBox.SelectedIndex = Math.Clamp(_settings.SnowShader, 0, 2);
         ObjectInsetBox.SelectedIndex = InsetIndex(_settings.ObjectInset);
         DynamicLodCheck.IsChecked = _settings.DynamicLod;
         GridObjectsCheck.IsChecked = _settings.GridObjects;
@@ -174,6 +176,8 @@ public partial class MainWindow : Window
         _settings.TargetSizeGb = TargetSizeChoices[Math.Clamp(TargetSizeBox.SelectedIndex, 0, TargetSizeChoices.Length - 1)];
         _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
+        _settings.SnowCover = Math.Clamp(SnowCoverBox.SelectedIndex, 0, 2);
+        _settings.SnowShader = Math.Clamp(SnowShaderBox.SelectedIndex, 0, 2);
         _settings.ObjectInset = InsetChoices[Math.Clamp(ObjectInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.DynamicLod = DynamicLodCheck.IsChecked == true;
         _settings.GridObjects = GridObjectsCheck.IsChecked == true;
@@ -449,6 +453,8 @@ public partial class MainWindow : Window
             CsGrassLod: _settings.CsGrassLod,
             IceInset: _settings.IceInset,
             MountainInset: _settings.MountainInset,
+            SnowCover: _settings.SnowCover,
+            SnowShaderMode: _settings.SnowShader,
             ObjectInset: _settings.ObjectInset,
             MapObjectLevel: _settings.MapObjects switch { 0 => -2, 1 => -1, 2 => 0, 3 => 1, _ => 2 },
             Seasons: _settings.Seasons,

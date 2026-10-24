@@ -458,6 +458,20 @@
                             <ComboBoxItem Content="16 units" />
                             <ComboBoxItem Content="24 units" />
                         </ComboBox>
+<TextBlock Text="Snow shader on mountains" Margin="0,2,0,2" />
+<ComboBox x:Name="SnowShaderBox" SelectedIndex="0" Margin="0,0,0,6"
+                                  ToolTip="Which snow LOD shader the full-texture mountains get. DynDOLOD default: the HD shader at LOD4 only, the plain one beyond, and the two are not tuned alike, so the nearer mountains can show less snow than the far ones. Plain everywhere: one look on every distance. HD everywhere: the HD shader on every distance.">
+                            <ComboBoxItem Content="DynDOLOD default (HD at LOD4)" />
+                            <ComboBoxItem Content="Plain everywhere (near = far)" />
+                            <ComboBoxItem Content="HD everywhere" />
+                        </ComboBox>
+<TextBlock Text="Snow cover on mountains" Margin="0,2,0,2" />
+<ComboBox x:Name="SnowCoverBox" SelectedIndex="1" Margin="0,0,0,6"
+                                  ToolTip="Mountains flagged as snow can come out thinly covered: the snow shader reads the mesh's vertex alpha as its strength (about 0.4 for light-snow meshes) and the vertex colour darkens the rock. Full: alpha 1 on every snow/ash shape, so all of them get full snow. Full + brighter: also lightens the vertex colour.">
+                            <ComboBoxItem Content="As the meshes" />
+                            <ComboBoxItem Content="Full cover (default)" />
+                            <ComboBoxItem Content="Full cover + brighter" />
+                        </ComboBox>
 <TextBlock Text="Object LOD inset (smooth swap)" Margin="0,2,0,2" />
 <ComboBox x:Name="ObjectInsetBox" SelectedIndex="0" Margin="0,0,0,6"
                                   ToolTip="Pulls every other object in LOD4/LOD8 (buildings, walls, rocks) a few units inside its own surface. In the ring where the full model has loaded and the LOD is still drawn, the full model is then the nearer surface, so the swap shows less flicker. Flat pieces (roads, floor slabs) are left alone. Off by default: try 2 or 4 units if you see objects flicker or shimmer as they load in.">

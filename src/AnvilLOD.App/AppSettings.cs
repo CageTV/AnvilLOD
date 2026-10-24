@@ -89,6 +89,8 @@ public sealed class AppSettings
     public bool DetailedShips { get; set; } = true;   // whole ships in object LOD from simplified copies of their real models
     public int IceInset { get; set; } = 6;           // units, 0-24: glacier/ice LOD pulled inside its surface (0 = off)
     public int MountainInset { get; set; } = 12;     // units, 0-24: the same for mountain LOD (12 = the ERM add-on and other mountain mods stop flickering)
+    public int SnowCover { get; set; } = 1;          // vertex colour of snow/ash shapes: 0 = as the meshes carry it, 1 = full alpha (default), 2 = full alpha + lighter colour
+    public int SnowShader { get; set; } = 0;         // snow/ash LOD shader on full-texture shapes: 0 = DynDOLOD default (HD at LOD4), 1 = plain everywhere, 2 = HD everywhere
     public int ObjectInset { get; set; } = 0;        // units, 0-24: the same for every other object in LOD4/LOD8 (experimental)
     public bool DynamicLod { get; set; } = true;
     public bool GridObjects { get; set; } = true;

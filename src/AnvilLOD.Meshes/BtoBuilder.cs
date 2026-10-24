@@ -32,13 +32,15 @@ public static class BtoBuilder
     /// output has about 5% of its LOD8 snow shapes and 2% of its LOD16 ones in the HD form, against 20% at LOD4 here before this rule.
     /// (https://dyndolod.info/Help/Snow-Ash-LOD-Shader: "HD objects are used only at LOD Level 4".)
     /// </summary>
-    internal static string ShapeNameFor(LodShaderKind kind, LodMaterial m, LodLevel level)
+    /// <param name="snowMode">0 = DynDOLOD's default (HD at LOD4 only), 1 = never HD (the plain snow shader on every level, so near and far mountains share one look),
+    /// 2 = HD on every full-texture shape at every level.</param>
+    internal static string ShapeNameFor(LodShaderKind kind, LodMaterial m, LodLevel level, int snowMode = 0)
     {
         if (kind == LodShaderKind.None) return ObjName;
         var tex = m.Textures.Count > 0 ? m.Textures[0] : null;
         bool lodTexture = tex is not null && tex.Replace('/', '\\').TrimStart('\\')
             .StartsWith("textures\\lod\\", StringComparison.OrdinalIgnoreCase);
-        return ObjName + (kind == LodShaderKind.Snow ? "Snow" : "Ash") + (lodTexture || level != LodLevel.Lod4 ? "" : "HD");
+        return ObjName + (kind == LodShaderKind.Snow ? "Snow" : "Ash") + (lodTexture || snowMode == 1 || (snowMode == 0 && level != LodLevel.Lod4) ? "" : "HD");
     }
 
     public sealed record Result(byte[] Bytes, int Shapes, int Triangles, int Vertices, int RefsPlaced, int RefsSkipped, int TrianglesCulled = 0,
@@ -70,7 +72,7 @@ public static class BtoBuilder
     /// <param name="categorize">Names the layer a mesh path belongs to (<see cref="LodLayers"/>: objects, grass, tree3d, treecard); null = everything is "objects".
     /// Each layer other than objects gets its own shapes under a named node, so the SKSE plugin can hide it in game, and feeds the size breakdown.</param>
     /// <param name="inset">Units a mesh path's geometry is pulled inside its own surface (see <see cref="LodInset"/>), or null for none. Only LOD4 and LOD8 use it.</param>
-    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f, Func<string, string>? categorize = null, Func<string, float>? inset = null)
+    public static Result Build(QuadKey quad, IReadOnlyList<LodReference> refs, Func<string, LodMesh?> meshes, TerrainTest? terrain = null, float brightness = 1f, Func<string, string>? categorize = null, Func<string, float>? inset = null, int snowMode = 0, int snowCover = 0)
     {
         var origin = new Vector3(quad.X * CellCoord.CellSize, quad.Y * CellCoord.CellSize, 0);
         float level = (int)quad.Level;
@@ -109,17 +111,17 @@ public static class BtoBuilder
                 if (part.VertexCount > MaxIndex || part.TriangleCount > MaxIndex) continue; // can't happen for valid SSE shapes
                 // A layer other than plain objects never shares a shape with another layer, even with the same material.
                 // The game puts its snow/ash LOD material on shapes by NAME, so those parts get their own shapes.
-                var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material, quad.Level) : ObjName;
+                var shapeName = category == LodLayers.Objects ? ShapeNameFor(r.Shader, part.Material, quad.Level, snowMode) : ObjName;
                 var chunkKey = category == LodLayers.Objects ? part.Material.Key : part.Material.Key + "|layer:" + category;
                 // A grass density tier has its own shapes under its own node, so the SKSE plugin can hide it.
                 int tier = category == LodLayers.Grass ? part.Tier : 0;
                 if (tier > 0) chunkKey += "|tier:" + tier;
                 if (shapeName != ObjName) chunkKey += "|shape:" + shapeName;
                 if (!chunks.TryGetValue(chunkKey, out var list))
-                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier }];
+                    chunks[chunkKey] = list = [new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier, SnowCover = snowCover }];
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
-                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier });
+                    list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier, SnowCover = snowCover });
                 culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull, flatGuard);
             }
         }
@@ -219,6 +221,20 @@ public static class BtoBuilder
 
     /// <summary>Merged geometry for one material, in block-local, level-scaled coordinates.</summary>
     /// <summary>Scales the RGB bytes of an RGBA vertex colour (alpha kept).</summary>
+    /// <summary>
+    /// Full snow cover on a snow/ash shape. The HD snow shader reads vertex alpha as its intensity (vanilla meshes carry about 0.4 for light snow
+    /// and 0.5 for heavy snow, mod meshes anything), and vertex colour darkens the rock the snow sits on, so a mountain flagged as snow can come out
+    /// thinly covered. Mode 1 sets alpha to 1; mode 2 also moves the colour 70% of the way to white.
+    /// </summary>
+    internal static uint FullCover(uint rgba, int mode)
+    {
+        if (mode <= 0) return rgba;
+        uint a = 0xFF00_0000u;
+        if (mode == 1) return (rgba & 0x00FF_FFFFu) | a;
+        uint L(uint c) => c + (uint)MathF.Round((255 - c) * 0.7f);
+        return a | (L((rgba >> 16) & 0xFF) << 16) | (L((rgba >> 8) & 0xFF) << 8) | L(rgba & 0xFF);
+    }
+
     public static uint Scale(uint rgba, float f)
     {
         if (f >= 0.999f && f <= 1.001f) return rgba;
@@ -234,6 +250,8 @@ public static class BtoBuilder
         public string Layer { get; init; } = LodLayers.Objects;
         public int Tier { get; init; }
         public string ShapeName { get; init; } = ObjName;
+        public int SnowCover { get; init; }
+        private bool Covered => SnowCover > 0 && (ShapeName.StartsWith("objSnow", StringComparison.Ordinal) || ShapeName.StartsWith("objAsh", StringComparison.Ordinal));
         private readonly List<Vector3> _pos = [];
         private readonly List<Vector2> _uv = [];
         private readonly List<Vector3> _n = [];
@@ -286,13 +304,13 @@ public static class BtoBuilder
                         _n.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ));
                         _t.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Tangents[i], rot), Vector3.UnitX));
                         _b.Add(Transforms.SafeNormalize(Vector3.TransformNormal(p.Bitangents[i], rot), Vector3.UnitY));
-                        _c.Add(Scale(p.Colors?[i] ?? 0xFFFF_FFFFu, brightness));
+                        _c.Add(Covered ? FullCover(Scale(p.Colors?[i] ?? 0xFFFF_FFFFu, brightness), SnowCover) : Scale(p.Colors?[i] ?? 0xFFFF_FFFFu, brightness));
                     }
                     tris.Add((ushort)remap[i]);
                     _indexCount++;
                 }
             }
-            if ((p.Colors is not null || MathF.Abs(brightness - 1f) > 0.001f) && culled < keep.Length) HasColors = true;
+            if ((p.Colors is not null || Covered || MathF.Abs(brightness - 1f) > 0.001f) && culled < keep.Length) HasColors = true;
             return culled;
         }
 
