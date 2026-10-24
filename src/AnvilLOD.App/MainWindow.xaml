@@ -446,6 +446,8 @@
                             <ComboBoxItem Content="16 units" />
                             <ComboBoxItem Content="24 units" />
                         </ComboBox>
+<CheckBox x:Name="MountainFitCheck" Content="Fit mountain LOD to the full mountain" IsChecked="True" Margin="0,2,0,2"
+                                  ToolTip="Mountain mods ship LOD meshes whose vertices lie outside the real mountain by more than the inset below can cover (tens of units), which flickers where the engine draws both. With this on, LOD4 and LOD8 vertices that lie outside the full model are moved onto its surface first, then the inset pulls everything slightly inside. Needs the full model to be found (landscape\mountains) and a mountain inset above 0." />
 <TextBlock Text="Mountain LOD inset" Margin="0,2,0,2" />
 <ComboBox x:Name="MountainInsetBox" SelectedIndex="0" Margin="0,0,0,6"
                                   ToolTip="The same inset for mountain LOD (meshes\lod\mountains and dlc01\lod\mountains). 12 units by default: mountain LOD that sits outside the full mesh flickers against it as you approach (the ERM add-on does). Set 0 to turn it off.">

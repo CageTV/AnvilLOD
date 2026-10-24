@@ -83,6 +83,34 @@ public sealed class LodGenerator
     /// <summary>Names the kind of thing a mesh path is, for the size breakdown (null = everything is "objects").</summary>
     public Func<string, string>? Categorize { get; init; }
 
+    /// <summary>Mountain LOD4/LOD8 meshes get their vertices that lie outside the full model moved onto its surface (<see cref="MountainFit"/>).</summary>
+    public bool FitMountains { get; init; }
+
+    /// <summary>How many mountain LOD meshes were fitted, and how many vertices moved (for the log).</summary>
+    public FitStats Fitting { get; } = new();
+
+    public sealed class FitStats
+    {
+        public long Meshes, Vertices, NoFullModel;
+    }
+
+    private LodMesh FitToFullModel(string path, LodMesh lod)
+    {
+        var fullPath = MountainFit.FullModelFor(path);
+        if (fullPath is null || lod.Parts.Count == 0) return lod;
+        try
+        {
+            if (!_assets.TryOpen(fullPath, out var s)) { Interlocked.Increment(ref Fitting.NoFullModel); return lod; }
+            byte[] bytes;
+            using (s) { using var copy = new MemoryStream(); s.CopyTo(copy); bytes = copy.ToArray(); }
+            var full = NifGeometryReader.Read(fullPath, bytes);
+            var fitted = MountainFit.Fit(lod, full, out var moved);
+            if (moved > 0) { Interlocked.Increment(ref Fitting.Meshes); Interlocked.Add(ref Fitting.Vertices, moved); }
+            return fitted;
+        }
+        catch (Exception) { Interlocked.Increment(ref Fitting.NoFullModel); return lod; }
+    }
+
     /// <summary>Units a mesh path's geometry is pulled inside its own surface in LOD4/LOD8 (<see cref="LodInset"/>); null = none.</summary>
     public Func<string, float>? Inset { get; init; }
 
@@ -170,6 +198,7 @@ public sealed class LodGenerator
                 }
             }
             var mesh = Tidy(NifGeometryReader.Read(path, bytes));
+            if (FitMountains) mesh = FitToFullModel(path, mesh);
             mesh = ApplyMissingPbr(mesh);
             if (Pbr is not null) mesh = ApplyPbr(mesh, Pbr);
             if (Opaque is not null) mesh = ApplyOpaque(mesh, Opaque);

@@ -25,6 +25,9 @@ public static class BtoBuilder
     private const int MaxIndex = ushort.MaxValue;
     private const string ObjName = "obj";
 
+    /// <summary>How much deeper LOD8 is pulled than LOD4 (the inset of a mesh path, times this at LOD8).</summary>
+    public const float Lod8InsetFactor = 2f;
+
     /// <summary>
     /// The shape name the engine reads the LOD material from: <c>obj</c> normally, <c>objSnow</c>/<c>objAsh</c> for objects
     /// whose base record has a snow/ash Material, and the <c>HD</c> form when the shape uses full textures instead of LOD
@@ -101,8 +104,11 @@ public static class BtoBuilder
             var rot = Transforms.RotationOnly(m);
             placed++;
             var category = categorize?.Invoke(path!) ?? LodLayers.Objects;
-            float pull = inset is not null && (int)quad.Level <= LodInset.MaxLevel ? inset(path!) : 0f;
-            bool flatGuard = pull > 0f && LodInset.IsGenericObject(path!);   // only the generic object inset leaves flat pieces alone
+            float basePull = inset is not null && (int)quad.Level <= LodInset.MaxLevel ? inset(path!) : 0f;
+            // LOD8 sits one more step inside than LOD4: while the engine swaps LOD8 for LOD4 for the real model, all three are drawn,
+            // and the same pull would leave LOD8 and LOD4 on the same surface (z-fighting) with only the full model separated.
+            float pull = basePull * (quad.Level == LodLevel.Lod8 ? Lod8InsetFactor : 1f);
+            bool flatGuard = basePull > 0f && LodInset.IsGenericObject(path!);   // only the generic object inset leaves flat pieces alone
 
             foreach (var part in mesh.Parts)
             {
@@ -122,7 +128,7 @@ public static class BtoBuilder
                 var chunk = list[^1];
                 if (chunk.Vertices + part.VertexCount > MaxIndex || chunk.TriangleCount + part.TriangleCount > MaxIndex)
                     list.Add(chunk = new Chunk(part.Material, segmented, brightness) { Layer = category, ShapeName = shapeName, Tier = tier, SnowCover = snowCover });
-                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull, flatGuard);
+                culled += chunk.Append(part, m, rot, origin, inv, terrain, segment, pull, flatGuard, basePull);
             }
         }
 
@@ -266,7 +272,7 @@ public static class BtoBuilder
         public int TriangleCount => _indexCount / 3;
 
         /// <returns>Number of triangles dropped because they were buried under the terrain.</returns>
-        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment, float inset = 0f, bool skipFlat = false)
+        public int Append(LodMeshPart p, Matrix4x4 m, Matrix4x4 rot, Vector3 origin, float inv, TerrainTest? terrain, int segment, float inset = 0f, bool skipFlat = false, float flatDistance = 0f)
         {
             var world = new Vector3[p.VertexCount];
             for (int i = 0; i < world.Length; i++) world[i] = Vector3.Transform(p.Positions[i], m);
@@ -280,7 +286,7 @@ public static class BtoBuilder
                 if (!keep[t]) culled++;
             }
 
-            if (inset > 0f && !(skipFlat && LodInset.IsFlat(world, inset)))
+            if (inset > 0f && !(skipFlat && LodInset.IsFlat(world, flatDistance > 0f ? flatDistance : inset)))
             {
                 var worldNormals = new Vector3[p.VertexCount];
                 for (int i = 0; i < worldNormals.Length; i++) worldNormals[i] = Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ);

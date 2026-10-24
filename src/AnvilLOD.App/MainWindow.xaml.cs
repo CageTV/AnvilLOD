@@ -103,6 +103,7 @@ public partial class MainWindow : Window
         CsGrassLodCheck.IsChecked = _settings.CsGrassLod;
         TargetSizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(TargetSizeChoices, _settings.TargetSizeGb));
         IceInsetBox.SelectedIndex = InsetIndex(_settings.IceInset);
+        MountainFitCheck.IsChecked = _settings.MountainFit;
         MountainInsetBox.SelectedIndex = InsetIndex(_settings.MountainInset);
         SnowCoverBox.SelectedIndex = Math.Clamp(_settings.SnowCover, 0, 2);
         SnowShaderBox.SelectedIndex = Math.Clamp(_settings.SnowShader, 0, 2);
@@ -175,6 +176,7 @@ public partial class MainWindow : Window
         _settings.CsGrassLod = CsGrassLodCheck.IsChecked == true;
         _settings.TargetSizeGb = TargetSizeChoices[Math.Clamp(TargetSizeBox.SelectedIndex, 0, TargetSizeChoices.Length - 1)];
         _settings.IceInset = InsetChoices[Math.Clamp(IceInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
+        _settings.MountainFit = MountainFitCheck.IsChecked == true;
         _settings.MountainInset = InsetChoices[Math.Clamp(MountainInsetBox.SelectedIndex, 0, InsetChoices.Length - 1)];
         _settings.SnowCover = Math.Clamp(SnowCoverBox.SelectedIndex, 0, 2);
         _settings.SnowShader = Math.Clamp(SnowShaderBox.SelectedIndex, 0, 2);
@@ -452,6 +454,7 @@ public partial class MainWindow : Window
             AnimatedShips: _settings.AnimatedShips,
             CsGrassLod: _settings.CsGrassLod,
             IceInset: _settings.IceInset,
+            MountainFit: _settings.MountainFit,
             MountainInset: _settings.MountainInset,
             SnowCover: _settings.SnowCover,
             SnowShaderMode: _settings.SnowShader,

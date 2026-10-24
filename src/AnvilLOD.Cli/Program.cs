@@ -98,6 +98,7 @@ public static class Program
           --no-animated-ships       Don't draw Animated Ships' sailing ships in the distance (they need the native grid objects; on by default when the mod is in the load order)
           --no-detailed-ships       Draw moored ships from the stock LOD meshes instead of simplified copies of their real models
           --ice-inset <units>       Pull glacier/ice LOD this far inside its surface so the full model wins the z-fight (default 6, 0 = off)
+          --no-mountain-fit         Keep mountain LOD where its mesh has it (default: LOD4/LOD8 vertices outside the full mountain model are moved onto its surface, when a mountain inset is on)
           --mountain-inset <units>  The same for mountain LOD (default 12, 0 = off)
           --snow-cover <off|full|bright>  Vertex colour of snow/ash LOD shapes: full (default, alpha 1 = full snow intensity), off (as the meshes carry it), bright (full and lighter colour)
           --snow-shader <auto|plain|hd>  Snow/ash LOD shader on full-texture shapes: auto (default, DynDOLOD: HD at LOD4 only), plain (the plain shader at every level, so near mountains match far ones), hd (HD at every level)
@@ -284,6 +285,7 @@ public static class Program
             AnimatedShips: !a.Has("no-animated-ships"),
             CsGrassLod: !a.Has("no-cs-grass"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
+            MountainFit: !a.Has("no-mountain-fit"),
             MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 12f,
             Occlusion: a.Has("occlusion") ? new AnvilLOD.Core.Occlusion.OcclusionSettings(Clearance: a.Get("occlusion-clearance") is { } oc && float.TryParse(oc, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv) ? Math.Max(0f, ocv) : 3072f, ParentClearance: a.Get("occlusion-clearance") is { } oc2 && float.TryParse(oc2, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ocv2) ? Math.Max(0f, ocv2) : 3072f) : null,
             OcclusionFolder: a.Get("occlusion-folder"),

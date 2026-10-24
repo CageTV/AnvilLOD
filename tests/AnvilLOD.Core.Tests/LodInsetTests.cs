@@ -61,7 +61,7 @@ public class LodInsetTests
     }
 
     [Fact]
-    public void Bto_inset_applies_at_lod4_and_lod8_but_not_lod16()
+    public void Bto_inset_applies_at_lod4_and_lod8_but_not_lod16_and_lod8_sits_deeper()
     {
         var part = new LodMeshPart
         {
@@ -85,7 +85,7 @@ public class LodInsetTests
         }
 
         Assert.Equal(994f, ZAt(LodLevel.Lod4), 1);
-        Assert.Equal(994f, ZAt(LodLevel.Lod8), 1);
+        Assert.Equal(988f, ZAt(LodLevel.Lod8), 1);   // LOD8 is pulled twice as far, so LOD8, LOD4 and the full model never share a surface
         Assert.Equal(1000f, ZAt(LodLevel.Lod16), 1);
     }
 
