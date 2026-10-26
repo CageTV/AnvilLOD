@@ -54,11 +54,23 @@ public sealed class PbrLodTextures(IAssetSource assets)
     {
         var p = Normalize(original);
         if (!p.EndsWith(".dds", StringComparison.OrdinalIgnoreCase) || !p.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) return null;
-        if (p.StartsWith("textures\\pbr\\", StringComparison.OrdinalIgnoreCase)
-            || p.StartsWith("textures\\anvillod\\", StringComparison.OrdinalIgnoreCase)
+        if (p.StartsWith("textures\\anvillod\\", StringComparison.OrdinalIgnoreCase)
             || p.EndsWith("pbr_lod.dds", StringComparison.OrdinalIgnoreCase)
             || p.StartsWith("textures\\terrain\\", StringComparison.OrdinalIgnoreCase)
             || p.StartsWith("textures\\dyndolod\\", StringComparison.OrdinalIgnoreCase)) return null;
+
+        // A path that already names the PBR albedo (a patch plugin's texture set or alternate texture, or a LOD mesh made for the PBR
+        // model) is converted like its plain twin would be: drawn as is, the raw albedo is far darker than the vanilla LOD shader expects.
+        // The output path is the same one the plain twin gets, so both spellings share one converted copy.
+        const string pbrRoot = "textures\\pbr\\";
+        if (p.StartsWith(pbrRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            // Stitched LOD textures under the PBR folder were made for the LOD shader already; a missing file has nothing to convert.
+            if (p.EndsWith("lod.dds", StringComparison.OrdinalIgnoreCase) || p.Contains("\\lod\\", StringComparison.Ordinal) || !assets.Exists(p)) return null;
+            var converted = OutputRoot + p[pbrRoot.Length..];
+            _conversions[converted] = p;
+            return converted;
+        }
 
         if (p.EndsWith("lod.dds", StringComparison.OrdinalIgnoreCase))
         {

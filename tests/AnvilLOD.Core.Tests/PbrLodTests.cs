@@ -40,7 +40,9 @@ public class PbrLodTests
 
     [Theory]
     [InlineData("textures\\landscape\\rocks01.dds")]          // no PBR version
-    [InlineData("textures\\pbr\\landscape\\mountains\\mountainslab01.dds")] // already PBR
+    [InlineData("textures\\pbr\\landscape\\missing.dds")]    // PBR path that exists nowhere
+    [InlineData("textures\\pbr\\lod\\alod.dds")]              // stitched LOD texture, already made for the LOD shader
+    [InlineData("textures\\anvillod\\pbr\\landscape\\mountains\\mountainslab01.dds")] // our own converted copy
     [InlineData("textures\\anvillod\\grass\\x.dds")]
     [InlineData("textures\\terrain\\tamriel\\trees\\tamrieltreelod.dds")]
     [InlineData("meshes\\foo.nif")]
@@ -50,6 +52,18 @@ public class PbrLodTests
         var pbr = new PbrLodTextures(new Files("textures\\pbr\\landscape\\mountains\\mountainslab01.dds"));
         Assert.Null(pbr.MapDiffuse(path));
         Assert.Empty(pbr.Conversions);
+    }
+
+    [Fact]
+    public void A_path_that_already_names_the_PBR_albedo_is_converted_to_the_same_copy_as_its_plain_twin()
+    {
+        var pbr = new PbrLodTextures(new Files("textures\\pbr\\skyland\\rock01.dds", "textures\\pbr\\lod\\alod.dds"));
+        const string expected = "textures\\anvillod\\pbr\\skyland\\rock01.dds";
+        Assert.Equal(expected, pbr.MapDiffuse("Textures/PBR/Skyland/Rock01.dds"));
+        Assert.Equal(expected, pbr.MapDiffuse("textures\\skyland\\rock01.dds"));   // plain spelling lands on the same copy
+        var c = Assert.Single(pbr.Conversions);
+        Assert.Equal("textures\\pbr\\skyland\\rock01.dds", c.Value);
+        Assert.Null(pbr.MapNormal("textures\\pbr\\skyland\\rock01.dds", "textures\\pbr\\skyland\\rock01_n.dds"));   // its normal map stays
     }
 
     [Fact]
