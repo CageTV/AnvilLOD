@@ -37,4 +37,5 @@ public sealed record ParentCopyRegion(
     string WorldPlugin, uint WorldLocalId,
     AnvilLOD.Core.Lod.ParentCopyWorld Config,
     IReadOnlySet<(int X, int Y)> ChildCells,    // the cells the child worldspace has
-    bool UsesParentWater = false);              // the child has no water of its own and shows its parent's (Whiterun, Windhelm, Solitude); Riften has its own
+    bool UsesParentWater = false,
+    IReadOnlySet<(int X, int Y)>? LandCells = null);   // the cells where the child has its own terrain: its own ground and its own grass rules apply there, the parent's grass LOD must not be drawn              // the child has no water of its own and shows its parent's (Whiterun, Windhelm, Solitude); Riften has its own

@@ -44,7 +44,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
 
     private const float FlatModelHeight = 24f, FlatModelMinSpan = 128f;   // game units: a ground piece is at most this tall and at least this wide
 
-    private sealed record ParentCopyTarget(ParentCopyWorld Config, FormKey WorldKey, HashSet<(int X, int Y)> Cells, HashSet<(int X, int Y)> NavmeshCells);
+    private sealed record ParentCopyTarget(ParentCopyWorld Config, FormKey WorldKey, HashSet<(int X, int Y)> Cells, HashSet<(int X, int Y)> NavmeshCells, HashSet<(int X, int Y)> LandCells);
 
     private sealed record BaseInfo(string ModelPath, string?[]? Mnam, bool DistantFlag, string? EditorId, string FormIdKey, TextureVariant? Variant = null, LodShaderKind Shader = LodShaderKind.None);
 
@@ -384,7 +384,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
             foreach (var (child, cfg) in configs)
             {
                 if (!worldKeys.TryGetValue(child, out var key)) continue;
-                var target = new ParentCopyTarget(cfg, key, [], []);
+                var target = new ParentCopyTarget(cfg, key, [], [], []);
                 targetsByChild[child] = target;
                 if (!parentCopyTargets.TryGetValue(cfg.Parent, out var list)) parentCopyTargets[cfg.Parent] = list = [];
                 list.Add(target);
@@ -401,6 +401,13 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                              && configs.Values.Any(c => c.Bounds is not null && c.Parent.Equals(cid, StringComparison.OrdinalIgnoreCase) && c.Covers(grid.Point.X, grid.Point.Y)))
                         parentCellWater[(cid, grid.Point.X, grid.Point.Y)] = wh;   // the cell's own water (rivers, ponds): the terrain LOD water the child hides
                 }
+            // The child's own terrain (cobbled streets, its own grass rules): the parent's grass LOD copied into those cells would put
+            // the plains' grass on the city's paving, so GrassCopies leaves them out.
+            foreach (var lctx in priority.Landscape().WinningContextOverrides(linkCache))
+                if (lctx.TryGetParentSimpleContext<ICellGetter>(out var lcell) && lcell.Record.Grid is { } lgrid
+                    && lctx.TryGetParentSimpleContext<IWorldspaceGetter>(out var lws)
+                    && lws.Record.EditorID is { } lid && targetsByChild.TryGetValue(lid, out var ltgt))
+                    ltgt.LandCells.Add((lgrid.Point.X, lgrid.Point.Y));
             if (configs.Values.Any(c => c.NoCellsWithNavmesh))
                 foreach (var nctx in priority.NavigationMesh().WinningContextOverrides(linkCache))
                     if (nctx.TryGetParentSimpleContext<ICellGetter>(out var ncell) && ncell.Record.Grid is { } ngrid
@@ -426,7 +433,7 @@ public sealed class MutagenReferenceScanner : IReferenceScanner
                 // Windhelm, Solitude); one with its own water record (Riften) does, and the copies must sit under it.
                 bool usesParentWater = linkCache.TryResolve<IWorldspaceGetter>(t.WorldKey, out var childWs)
                     && childWs.Parent is { } cp && cp.Flags.HasFlag(WorldspaceParent.Flag.UseWaterData);
-                parentCopyRegions.Add(new ParentCopyRegion(t.Config.Child, t.Config.Parent, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID, t.Config, t.Cells, usesParentWater));
+                parentCopyRegions.Add(new ParentCopyRegion(t.Config.Child, t.Config.Parent, t.WorldKey.ModKey.FileName.String, t.WorldKey.ID, t.Config, t.Cells, usesParentWater, t.LandCells));
             }
             progress?.Report("Parent > Child copies: " + string.Join(", ", targetsByChild.Values.Select(t =>
                 $"{t.Config.Child} ({t.Cells.Count} cells, from {t.Config.Parent})")));
