@@ -32,12 +32,50 @@ public static class LodInset
     /// <summary>
     /// True for a flat piece (a road, a floor slab, a plank on the ground): it has nothing to pull inside, and moving it down would sink it
     /// under the terrain. Only the generic object inset skips these.
+    /// <paramref name="positions"/> are in the model's own space and <paramref name="scale"/> is the reference's scale: a road chunk laid
+    /// on a hillside is still flat, but its world height range grows with the slope (2 degrees over a 900-unit chunk is already more than
+    /// 4 x 8 units), so a world-space test pulled most roads on sloped ground under the terrain.
     /// </summary>
-    public static bool IsFlat(Vector3[] positions, float distance)
+    public static bool IsFlat(Vector3[] positions, float distance, float scale = 1f)
     {
         float minZ = float.MaxValue, maxZ = float.MinValue;
         foreach (var p in positions) { minZ = MathF.Min(minZ, p.Z); maxZ = MathF.Max(maxZ, p.Z); }
-        return maxZ - minZ < FlatExtentFactor * distance;
+        return (maxZ - minZ) * scale < FlatExtentFactor * distance;
+    }
+
+    /// <summary>Share of a ground sheet's area that must face up (within 60 degrees of level).</summary>
+    public const float GroundSheetUpShare = 0.95f;
+
+    /// <summary>
+    /// How evenly a ground sheet must face one way: the length of its area-weighted normal sum over its area. Measured on real LOD
+    /// meshes: TMD Dirt Roads' road parts and ramps 0.965 and up, vanilla road chunks 0.998 and up, rock piles mostly 0.83-0.90.
+    /// </summary>
+    public const float GroundSheetCoherence = 0.96f;
+
+    /// <summary>
+    /// True for a piece lying on the ground that is too tall for <see cref="IsFlat"/>: a road ramp climbing a hill, a road's mound, a
+    /// city's ground slab. Its surface faces up, evenly (unlike a rock pile, which faces every way), and it starts at the model's ground
+    /// level (unlike a roof). Pulling such a piece down sinks it under the terrain just like a flat one. Positions are in model space.
+    /// </summary>
+    public static bool IsGroundSheet(Vector3[] positions, ushort[] triangles, float distance, float scale = 1f)
+    {
+        float minZ = float.MaxValue;
+        foreach (var p in positions) minZ = MathF.Min(minZ, p.Z);
+        if (minZ * scale > FlatExtentFactor * distance) return false;
+
+        float total = 0f, up = 0f;
+        var sum = Vector3.Zero;
+        for (int t = 0; t + 2 < triangles.Length; t += 3)
+        {
+            var a = positions[triangles[t]];
+            var n = Vector3.Cross(positions[triangles[t + 1]] - a, positions[triangles[t + 2]] - a);   // length = twice the area
+            float area = n.Length();
+            if (area <= 0f) continue;
+            total += area;
+            sum += n;
+            if (n.Z > 0.5f * area) up += area;
+        }
+        return total > 0f && up >= GroundSheetUpShare * total && sum.Length() >= GroundSheetCoherence * total;
     }
 
     /// <summary>The inset in units for a mesh path (0 = none): <paramref name="ice"/> for glacier/ice LOD, <paramref name="mountains"/> for mountain LOD.</summary>

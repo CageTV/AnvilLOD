@@ -286,7 +286,10 @@ public static class BtoBuilder
                 if (!keep[t]) culled++;
             }
 
-            if (inset > 0f && !(skipFlat && LodInset.IsFlat(world, flatDistance > 0f ? flatDistance : inset)))
+            // Flatness is judged on the part as modelled (scaled, not rotated), so a road on a slope is still recognised as flat, and a
+            // ramp or mound lying on the ground counts as flat too.
+            float flatAt = flatDistance > 0f ? flatDistance : inset, scale = new Vector3(m.M11, m.M12, m.M13).Length();
+            if (inset > 0f && !(skipFlat && (LodInset.IsFlat(p.Positions, flatAt, scale) || LodInset.IsGroundSheet(p.Positions, p.Triangles, flatAt, scale))))
             {
                 var worldNormals = new Vector3[p.VertexCount];
                 for (int i = 0; i < worldNormals.Length; i++) worldNormals[i] = Transforms.SafeNormalize(Vector3.TransformNormal(p.Normals[i], rot), Vector3.UnitZ);

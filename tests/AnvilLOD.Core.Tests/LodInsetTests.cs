@@ -115,6 +115,85 @@ public class LodInsetTests
     }
 
     [Fact]
+    public void Flatness_counts_the_reference_scale()
+    {
+        var slab = new[] { new Vector3(0, 0, 0), new Vector3(100, 0, 0), new Vector3(0, 100, 10) };
+        Assert.True(LodInset.IsFlat(slab, 8f));               // 10 < 32
+        Assert.False(LodInset.IsFlat(slab, 8f, scale: 4f));   // 40 >= 32: scaled up it is no longer a flat piece
+    }
+
+    private static LodMeshPart Part(Vector3[] positions, Vector3 normal, ushort[]? triangles = null) => new()
+    {
+        Material = new LodMaterial(["textures\\a.dds", "", "", "", "", "", "", "", ""], 0x80000300, 0x5, 3, false, 0, 0, Vector3.Zero, 1f),
+        Positions = positions,
+        UVs = positions.Select(_ => Vector2.Zero).ToArray(),
+        Normals = positions.Select(_ => normal).ToArray(),
+        Tangents = positions.Select(_ => Vector3.UnitX).ToArray(),
+        Bitangents = positions.Select(_ => Vector3.UnitY).ToArray(),
+        Triangles = triangles ?? [0, 1, 2],
+    };
+
+    // A four-sided pyramid: every face looks up, but in four different directions (a rock pile's shape).
+    private static readonly Vector3[] Pyramid = [new(-100, -100, 0), new(100, -100, 0), new(100, 100, 0), new(-100, 100, 0), new(0, 0, 90)];
+    private static readonly ushort[] PyramidFaces = [0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4];
+
+    [Fact]
+    public void A_ramp_lying_on_the_ground_is_a_ground_sheet_and_a_lump_or_a_roof_is_not()
+    {
+        // A 900-unit road ramp climbing 150 units, as modelled: too tall for IsFlat, but it faces up evenly from ground level.
+        Vector3[] ramp = [new(-450, -100, -75), new(450, -100, 75), new(450, 100, 75), new(-450, 100, -75)];
+        ushort[] quad = [0, 1, 2, 0, 2, 3];
+        Assert.False(LodInset.IsFlat(ramp, 8f));
+        Assert.True(LodInset.IsGroundSheet(ramp, quad, 8f));
+
+        Assert.False(LodInset.IsGroundSheet(Pyramid, PyramidFaces, 8f));                 // faces up, but every way: a lump, not a sheet
+        Vector3[] roof = ramp.Select(p => p + new Vector3(0, 0, 400)).ToArray();
+        Assert.False(LodInset.IsGroundSheet(roof, quad, 8f));                            // a sheet, but high above the ground
+    }
+
+    [Fact]
+    public void A_ramp_is_not_pulled_and_a_rock_pile_still_is()
+    {
+        var slope = new Vector3(0, 5f * MathF.PI / 180f, 0);
+        var ramp = Part([new(-450, -100, -75), new(450, -100, 75), new(450, 100, 75), new(-450, 100, -75)], Vector3.UnitZ, [0, 1, 2, 0, 2, 3]);
+        Assert.Equal(BuildPositions(ramp, slope, 0f), BuildPositions(ramp, slope, 8f));
+
+        var pile = Part(Pyramid, Vector3.UnitZ, PyramidFaces);
+        Assert.NotEqual(BuildPositions(pile, slope, 0f), BuildPositions(pile, slope, 8f));
+    }
+
+    private static Vector3[] BuildPositions(LodMeshPart part, Vector3 rotation, float objectInset)
+    {
+        const string path = "lod\\roads\\road_lod_0.nif";
+        var mesh = new LodMesh { Path = "m", Parts = [part] };
+        var r = new LodReference("1:A.esp", "2:A.esp", null, "T", "A.esp", new Vector3(2000, 2000, 1000), rotation, 1f,
+            new LodMeshSet(path, path, path, path), LodReferenceFlags.None);
+        var res = BtoBuilder.Build(new QuadKey("T", LodLevel.Lod4, 0, 0), [r], _ => mesh,
+            inset: p => LodInset.For(p, 0f, 0f, 0f, objects: objectInset));
+        return NifGeometryReader.Read("o", res.Bytes).Parts[0].Positions;
+    }
+
+    [Fact]
+    public void A_road_on_a_slope_is_still_flat_and_is_not_pulled_under_the_terrain()
+    {
+        // A 900-unit road piece, 4 units high as modelled, laid on a 10 degree slope: its world height range is about 160 units.
+        var road = Part([new(-450, -100, 0), new(450, -100, 4), new(0, 100, 2)], Vector3.UnitZ);
+        var slope = new Vector3(0, 10f * MathF.PI / 180f, 0);
+        Assert.Equal(BuildPositions(road, slope, 0f), BuildPositions(road, slope, 8f));
+    }
+
+    [Fact]
+    public void A_wall_on_a_slope_is_still_pulled_in()
+    {
+        var wall = Part([new(0, -100, 0), new(0, 100, 0), new(0, 0, 200)], Vector3.UnitX);
+        var slope = new Vector3(0, 10f * MathF.PI / 180f, 0);
+        var plain = BuildPositions(wall, slope, 0f);
+        var pulled = BuildPositions(wall, slope, 8f);
+        Assert.NotEqual(plain, pulled);
+        Assert.Equal(8f, Vector3.Distance(plain[0], pulled[0]), 1);
+    }
+
+    [Fact]
     public void A_tall_wall_is_pulled_in()
     {
         var wall = new[] { new Vector3(0, 0, 0), new Vector3(0, 100, 0), new Vector3(0, 0, 60), new Vector3(0, 100, 60) };
