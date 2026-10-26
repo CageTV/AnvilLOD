@@ -213,6 +213,12 @@ public static class ScanPipeline
         if ((req.Candles || req.FxGlow) && rulesFolder is null)
             progress?.Report("Candles / FXGlow need the DynDOLOD folder (their rule files are part of DynDOLOD); nothing was added.");
         var rules = LodRules.Load(rulesFolder, dataRuleFiles, plugins, req.Preset, "SSE", ruleOptions);
+        // A mod's rule file is only read when it is named for a plugin; one named after the mod (spaces, no .esp key) never is.
+        var unreadable = dataRuleFiles.Keys.Where(n => n.StartsWith("DynDOLOD_", StringComparison.OrdinalIgnoreCase) && !LodRules.IsReadableRuleFileName(n))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        if (unreadable.Count > 0)
+            progress?.Report($"WARNING: {unreadable.Count} rule file(s) in Data\\DynDOLOD are named for no plugin, so their rules are never used: {string.Join(", ", unreadable)}. "
+                             + "Rename each to DynDOLOD_SSE_<plugin key>.ini for the plugin that places the models (TMDDirtRoads.esp -> DynDOLOD_SSE_tmddirtroadsesp.ini).");
         if (rulesFolder is not null)
         {
             var worldIgnore = Path.Combine(Path.GetDirectoryName(rulesFolder)!, "Configs", "DynDOLOD_SSE_mod_world_ignore.txt");

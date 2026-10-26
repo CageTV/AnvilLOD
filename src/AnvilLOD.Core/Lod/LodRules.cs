@@ -289,6 +289,26 @@ public sealed class LodRules
     public static string PluginKey(string pluginFileName) =>
         new string(pluginFileName.ToLowerInvariant().Where(ch => char.IsLetterOrDigit(ch) || ch == '_').ToArray());
 
+    private static readonly System.Text.RegularExpressions.Regex PluginRuleName = new(
+        @"^dyndolod_[a-z0-9]+_(?<key>[a-z0-9_]+?(?:esp|esm|esl))(?:_(?:low|medium|high|all))?\.ini$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private static readonly System.Text.RegularExpressions.Regex SharedRuleName = new(
+        @"^dyndolod_[a-z0-9]+_(?:low|medium|high|all|candles_[a-z]+|fxglow_[a-z]+)(?:_(?:static|dynamic))?\.ini$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// True when a <c>DynDOLOD_*.ini</c> file name can ever be read as a rule file: a plugin's own file
+    /// (<c>DynDOLOD_SSE_&lt;plugin key&gt;[_preset].ini</c>, the key being <see cref="PluginKey"/> of a plugin, so it ends in esp/esm/esl)
+    /// or one of the shared preset/candle/glow files. A name like <c>DynDOLOD_SSE_My Mod LOD.ini</c> matches no plugin, so neither AnvilLOD
+    /// nor DynDOLOD ever reads it, silently.
+    /// </summary>
+    public static bool IsReadableRuleFileName(string fileName)
+    {
+        var n = fileName.ToLowerInvariant();
+        return PluginRuleName.IsMatch(n) || SharedRuleName.IsMatch(n);
+    }
+
     /// <param name="plugin">The plugin the file belongs to (for its <c>[… Settings]</c> section), or null.</param>
     public void AddFile(string sourceName, string content, string? plugin = null)
     {

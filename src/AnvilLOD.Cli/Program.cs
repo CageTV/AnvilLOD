@@ -42,6 +42,8 @@ public static class Program
                                          --input is a .nif, a mod folder, its meshes folder or any folder of models.
                                          --new-mod <name> creates the mod folder in the MO2 mods folder (needs --mo2).
                                          Options: --group <name> (meshes\lod\<name>, default the output folder's name)
+                                         --plugin <file> the plugin that places the models (e.g. TMDDirtRoads.esp): the rule
+                                         file is named for it (DynDOLOD_SSE_tmddirtroadsesp.ini), the only name it is read under
                                          --levels 0,1,2 (LOD4, LOD8, LOD16; default all) --detail <0.1-10, default 1;
                                          lower keeps more detail> --min-size <units> --no-rules --overwrite
                                          --budget recommended|off|<LOD0,LOD1,LOD2>  triangle budget per model: the default,
@@ -458,7 +460,7 @@ public static class Program
 
         var total = Stopwatch.StartNew();
         var req = new AnvilLOD.Plugins.Authoring.LodMakerRequest(inputs.ToList(), output, group, levels, detail, F("min-size", 0f),
-            RuleFile: !a.Has("no-rules"), Overwrite: a.Has("overwrite"), Budget: budget, CustomBudget: custom);
+            RuleFile: !a.Has("no-rules"), Overwrite: a.Has("overwrite"), Budget: budget, CustomBudget: custom, Plugin: a.Get("plugin"));
         Console.WriteLine("WARNING: " + AnvilLOD.Plugins.Authoring.LodMeshMaker.Warning);
         var sync = new SyncProgress(m => Console.WriteLine($"[{total.Elapsed:mm\\:ss\\.f}] {m}"));
         var r = AnvilLOD.Plugins.Authoring.LodMeshMaker.Run(req, sync);

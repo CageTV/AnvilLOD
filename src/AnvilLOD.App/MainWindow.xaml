@@ -869,9 +869,14 @@
                                 </StackPanel>
                                 <TextBlock x:Name="MakerBudgetHint" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <WrapPanel Margin="0,6,0,0">
-                                    <CheckBox x:Name="MakerRulesCheck" Content="Rule file" IsChecked="True" Margin="0,3,16,3" ToolTip="DynDOLOD\DynDOLOD_SSE_&lt;name&gt;.ini so the meshes are used for the models they were made from. An existing file only gets lines for new models." />
+                                    <CheckBox x:Name="MakerRulesCheck" Content="Rule file" IsChecked="True" Margin="0,3,16,3" ToolTip="DynDOLOD\DynDOLOD_SSE_&lt;plugin key&gt;.ini so the meshes are used for the models they were made from. An existing file only gets lines for new models." />
                                     <CheckBox x:Name="MakerOverwriteCheck" Content="Overwrite existing files" Margin="0,3,16,3" ToolTip="Off: files already in the output folder (maybe hand-edited) are kept" />
                                 </WrapPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="Plugin that places these models" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox x:Name="MakerPluginBox" Width="260"
+                                             ToolTip="For example TMDDirtRoads.esp. The rule file is named for it (DynDOLOD_SSE_tmddirtroadsesp.ini): AnvilLOD and DynDOLOD only read a mod's rule file under its plugin's name, and that is also what puts these rules ahead of broad masks such as FOLIP's \road." />
+                                </StackPanel>
 
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
                                     <Button x:Name="MakerGenerateButton" Content="Make LOD meshes" Style="{StaticResource PrimaryButton}" Click="MakerGenerate_Click" />

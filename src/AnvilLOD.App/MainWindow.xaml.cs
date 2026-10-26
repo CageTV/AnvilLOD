@@ -922,7 +922,8 @@ public partial class MainWindow : Window
         };
         var req = new AnvilLOD.Plugins.Authoring.LodMakerRequest(inputs, output, Path.GetFileName(Path.TrimEndingDirectorySeparator(output)), levels, detail, minSize,
             RuleFile: MakerRulesCheck.IsChecked == true, Overwrite: MakerOverwriteCheck.IsChecked == true,
-            Budget: budgetMode, CustomBudget: [Num0(MakerBudget0Box), Num0(MakerBudget1Box), Num0(MakerBudget2Box)]);
+            Budget: budgetMode, CustomBudget: [Num0(MakerBudget0Box), Num0(MakerBudget1Box), Num0(MakerBudget2Box)],
+            Plugin: string.IsNullOrWhiteSpace(MakerPluginBox.Text) ? null : MakerPluginBox.Text.Trim());
 
         SetBusy(true);
         MakerPanel.IsEnabled = false;

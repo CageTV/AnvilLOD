@@ -16,6 +16,8 @@ namespace AnvilLOD.Plugins.Authoring;
 /// <param name="MinModelSize">Models whose largest dimension is smaller than this (game units) are skipped.</param>
 /// <param name="Budget">Off, the recommended triangle budget for the model's size (default), or the custom numbers.</param>
 /// <param name="CustomBudget">With <see cref="BudgetMode.Custom"/>: the most triangles at LOD 0, 1 and 2 (0 = no limit).</param>
+/// <param name="Plugin">The plugin that places the models (e.g. "TMDDirtRoads.esp"): the rule file is named for it, the only name AnvilLOD and
+/// DynDOLOD read a mod's rule file under. Without it the file is named after <see cref="Group"/> and has to be renamed before it is used.</param>
 public sealed record LodMakerRequest(
     IReadOnlyList<string> Inputs,
     string OutputFolder,
@@ -26,7 +28,8 @@ public sealed record LodMakerRequest(
     bool RuleFile = true,
     bool Overwrite = false,
     BudgetMode Budget = BudgetMode.Recommended,
-    IReadOnlyList<int>? CustomBudget = null);
+    IReadOnlyList<int>? CustomBudget = null,
+    string? Plugin = null);
 
 public sealed record LodMakerItem(string Model, string Status, float Size, int SourceTriangles, string Action);
 
@@ -129,6 +132,16 @@ public static class LodMeshMaker
     /// <summary>The triangle budget for one level of a model of this size, or null for none.</summary>
     public static int? BudgetFor(LodMakerRequest req, int level, float size) => LodBudgets.For(req.Budget, req.CustomBudget, level, size);
 
+    /// <summary>
+    /// The rule file's name: <c>DynDOLOD_SSE_&lt;plugin key&gt;.ini</c> for the plugin that places the models, which is the only name a mod's rule
+    /// file is read under (and plugin files come before the preset's and FOLIP's broad masks like <c>\road</c>, so the new meshes win).
+    /// Without a plugin: <c>DynDOLOD_SSE_&lt;group&gt;.ini</c>, which nothing reads until it is renamed.
+    /// </summary>
+    public static string RuleFileName(string group, string? plugin) =>
+        string.IsNullOrWhiteSpace(plugin)
+            ? $"DynDOLOD_SSE_{Safe(group)}.ini"
+            : $"DynDOLOD_SSE_{AnvilLOD.Core.Lod.LodRules.PluginKey(plugin.Trim())}.ini";
+
     private static string Safe(string s)
     {
         var bad = Path.GetInvalidFileNameChars();
@@ -216,8 +229,11 @@ public static class LodMeshMaker
         string? ruleFile = null;
         if (req.RuleFile && !rules.IsEmpty)
         {
-            ruleFile = Path.Combine(req.OutputFolder, "DynDOLOD", $"DynDOLOD_SSE_{group}.ini");
+            ruleFile = Path.Combine(req.OutputFolder, "DynDOLOD", RuleFileName(group, req.Plugin));
             WriteRuleFile(ruleFile, group, rules.OrderBy(r => r.Key).Select(r => r.Value).ToList(), req.Overwrite);
+            if (!AnvilLOD.Core.Lod.LodRules.IsReadableRuleFileName(Path.GetFileName(ruleFile)))
+                progress?.Report($"WARNING: {Path.GetFileName(ruleFile)} is named for no plugin, so AnvilLOD and DynDOLOD will not read it. Give the plugin that places "
+                                 + "these models, or rename it to DynDOLOD_SSE_<plugin key>.ini (TMDDirtRoads.esp -> DynDOLOD_SSE_tmddirtroadsesp.ini).");
         }
 
         Directory.CreateDirectory(req.OutputFolder);
