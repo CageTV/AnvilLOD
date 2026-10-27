@@ -59,6 +59,39 @@ public sealed class OcclusionCalculatorTests
     }
 
     [Fact]
+    public void A_block_over_cells_with_no_height_data_is_never_hidden()
+    {
+        // The ridge hides everything east of it, but cells 21..24 have no landscape at all (open sea, land that is only LOD): nothing is known about
+        // what stands there, so the block must stay visible. Treating them as sea level hid LOD-only mountains behind the map edge.
+        var calc = new OcclusionCalculator(World(0f, 30000f), Origin, Origin, new OcclusionSettings(Clearance: 1536f));
+        var t = calc.Compute(-12, 0);
+        var known = Block(10, 0); var unknown = Block(22, 0);
+        Assert.False(t.GetLeaf(known.X, known.Y));
+        Assert.True(t.GetLeaf(unknown.X, unknown.Y));
+    }
+
+    [Fact]
+    public void A_block_is_visible_when_a_big_object_it_owns_reaches_into_view()
+    {
+        // A mountain stands in the block of cells 4..7, behind the ridge, but its footprint reaches out to the west of the ridge. The block is
+        // drawn or hidden as a whole, mesh included, so seeing the part of the mountain that is in the open must keep the block.
+        var calc = new OcclusionCalculator(World(0f, 30000f), Origin, Origin, new OcclusionSettings(Clearance: 1536f));
+        var b = Block(5, 0);
+        Assert.False(calc.Compute(-12, 0).GetLeaf(b.X, b.Y));
+        calc.AddOwnedTargets([(6.5f * 4096f, 0.5f * 4096f, 10f * 4096f, 90000f)]);
+        Assert.True(calc.Compute(-12, 0).GetLeaf(b.X, b.Y));
+    }
+
+    [Fact]
+    public void An_object_that_stays_inside_its_own_block_adds_nothing()
+    {
+        var calc = new OcclusionCalculator(World(0f, 30000f), Origin, Origin, new OcclusionSettings(Clearance: 1536f));
+        var b = Block(5, 0);
+        calc.AddOwnedTargets([(5.5f * 4096f, 0.5f * 4096f, 500f, 90000f)]);
+        Assert.False(calc.Compute(-12, 0).GetLeaf(b.X, b.Y));
+    }
+
+    [Fact]
     public void A_quad_is_visible_whenever_any_of_its_blocks_is()
     {
         var t = new OcclusionCalculator(World(0f, 30000f), Origin, Origin).Compute(-12, 3);

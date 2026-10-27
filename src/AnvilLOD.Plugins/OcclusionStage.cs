@@ -60,6 +60,7 @@ public static class OcclusionStage
 
             // The tops of what stands in LOD: objects by their LOD mesh, trees by their billboard.
             int objects = 0, treeCount = 0;
+            var owned = new List<(float X, float Y, float Radius, float Top)>();
             foreach (var r in refs)
             {
                 if (!string.Equals(r.Worldspace, ws, StringComparison.OrdinalIgnoreCase)) continue;
@@ -68,7 +69,9 @@ public static class OcclusionStage
                 var b = MeshBounds(assets, mesh, boundsCache);
                 if (b is null) continue;
                 float scale = r.Scale <= 0f ? 1f : r.Scale, radius = b.Value.Radius * scale;
-                heights.RaiseTop(r.Position.X - radius, r.Position.Y - radius, r.Position.X + radius, r.Position.Y + radius, r.Position.Z + b.Value.Top * scale);
+                float top = r.Position.Z + b.Value.Top * scale;
+                heights.RaiseTop(r.Position.X - radius, r.Position.Y - radius, r.Position.X + radius, r.Position.Y + radius, top);
+                owned.Add((r.Position.X, r.Position.Y, radius, top));
                 objects++;
             }
             if (trees is not null)
@@ -88,6 +91,7 @@ public static class OcclusionStage
                 .Where(c => terrain.TryGetCell(ws, c.X, c.Y, out var v) && v.Any(h => h != v[0])).Select(c => (c.X, c.Y)).ToList();
             progress?.Report($"Occlusion {ws}: {todo.Count:N0} cells, {objects:N0} objects and {treeCount:N0} trees in the height grid ({heights.Width}x{heights.Height} samples)");
             var calc = new OcclusionCalculator(heights, grid.Settings.SwCellX, grid.Settings.SwCellY, settings);
+            calc.AddOwnedTargets(owned);
             int last = 0;
             var data = calc.ComputeMany(todo, new Progress<int>(n => { if (n - last >= 2000) { last = n; progress?.Report($"Occlusion {ws}: {n:N0} of {todo.Count:N0} cells"); } }), ct);
 
