@@ -49,6 +49,15 @@ public class OpaqueLodTests
     }
 
     [Fact]
+    public void A_dxt5_cutout_mask_is_not_translucent()
+    {
+        // two blocks fully cut out, two fully kept: a 0 / 255 mask like DLC01IceSnow's lake patches
+        var dds = Dxt5(0, 0);
+        for (int b = 2; b < 4; b++) { dds[128 + b * 16] = 255; dds[128 + b * 16 + 1] = 255; }
+        Assert.False(DdsAlpha.IsTranslucent(dds));
+    }
+
+    [Fact]
     public void A_dxt5_texture_that_is_opaque_already_is_left_alone()
     {
         Assert.False(DdsAlpha.IsTranslucent(Dxt5(255, 255)));
