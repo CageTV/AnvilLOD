@@ -16,3 +16,5 @@ skse/vcpkg_installed-vr/
 skse/dist/
 release/
 CLAUDE.md
+_stale/
+.claude-snap-*/

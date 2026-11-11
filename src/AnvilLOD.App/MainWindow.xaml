@@ -625,6 +625,9 @@
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Padding="0,4" Margin="6,0,0,0" Click="BrowseOccFolder_Click" />
                                 <TextBox x:Name="OccFolderBox" LostFocus="OccFolder_LostFocus" ToolTip="The folder with xLODGenx64.exe (or DynDOLODx64.exe). Filled in when it is found next to your DynDOLOD folder or in the MO2 instance's tools folder." />
                             </DockPanel>
+                            <TextBlock x:Name="OccArgsLabel" Text="Extra program arguments (optional)" Style="{StaticResource FieldLabel}" />
+                            <TextBox x:Name="OccArgsBox" LostFocus="OccFolder_LostFocus"
+                                     ToolTip="Added to the program's command line after -sse, -D: and -o:. For example -i:&quot;D:\mods\skyrim\profiles\Default\skyrim.ini&quot; gives it your own Skyrim.ini. An argument for the same switch as one of AnvilLOD's own (-D:, -o:, -sse) replaces it." />
                             <TextBlock x:Name="OccInfoText" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" />
                             <StackPanel x:Name="OccOptionsPanel">
                                 <TextBlock Text="XLODGEN OPTIONS" Style="{StaticResource SectionHeader}" />

@@ -172,12 +172,18 @@ public sealed class AssetIndex : IAssetSource
         return false;
     }
 
+    /// <summary>
+    /// When set, a loose file is fingerprinted by what is IN it, not by its last-write time, so a support app that rewrites a file with the same
+    /// content does not change the fingerprint. Archived files are still identified by archive name and size.
+    /// </summary>
+    public HashCache? ContentHashes { get; set; }
+
     public string? Fingerprint(string dataRelativePath)
     {
         var key = GamePath.Normalize(dataRelativePath);
-        if (Loose(key) is { } fi) return $"L:{fi.Length}:{fi.LastWriteTimeUtc.Ticks}";
+        if (Loose(key) is { } fi) return ContentHashes is null ? $"L:{fi.Length}:{fi.LastWriteTimeUtc.Ticks}" : $"C:{fi.Length}:{ContentHashes.HashOf(fi)}";
         if (_archived.TryGetValue(key, out var e)) return $"A:{e.ArchiveName}:{e.File.Size}";
-        if (Fallback(key) is { } fb) return $"F:{fb.Length}:{fb.LastWriteTimeUtc.Ticks}";
+        if (Fallback(key) is { } fb) return ContentHashes is null ? $"F:{fb.Length}:{fb.LastWriteTimeUtc.Ticks}" : $"C:{fb.Length}:{ContentHashes.HashOf(fb)}";
         return null;
     }
 

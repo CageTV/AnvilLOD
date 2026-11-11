@@ -59,7 +59,8 @@ public partial class MainWindow
 
     private void StoreOccFolder(int tool)
     {
-        if (tool == 2) return;   // the built-in calculation has no folder
+        if (tool == 2) return;   // the built-in calculation has no folder and takes no arguments
+        if (tool == 1) _settings.DynDolodArgs = Blank(OccArgsBox.Text); else _settings.XLodGenArgs = Blank(OccArgsBox.Text);
         if (tool == 1) DynDolodBox.Text = OccFolderBox.Text.Trim();   // DynDOLOD's folder is the one on the LOD rules page
         else _settings.XLodGenFolder = Blank(OccFolderBox.Text);
     }
@@ -71,6 +72,8 @@ public partial class MainWindow
         stored ??= OcclusionLauncher.GuessFolder(tool, Blank(DynDolodBox.Text), _settings.UseMo2 ? Blank(Mo2Box.Text) : null);
         OccFolderBox.Text = tool == OcclusionTool.Builtin ? "" : stored ?? "";
         OccFolderBox.IsEnabled = tool != OcclusionTool.Builtin;
+        OccArgsBox.Text = tool == OcclusionTool.Builtin ? "" : (tool == OcclusionTool.DynDolod ? _settings.DynDolodArgs : _settings.XLodGenArgs) ?? "";
+        OccArgsBox.IsEnabled = tool != OcclusionTool.Builtin;
         OccFolderLabel.Text = tool == OcclusionTool.Builtin ? "No other program is needed" : OcclusionLauncher.ToolName(tool) + " folder";
         UpdateOccInfo();
     }
@@ -227,7 +230,7 @@ public partial class MainWindow
         // xLODGen reads LOD files from its -o: folder before the ones in the Data folder, so pointing it at the AnvilLOD output lets it
         // see LOD that MO2's virtual folder does not hold yet. It writes no LOD files in an occlusion-only run, and the plugin goes to Data/Overwrite.
         var outArg = tool == OcclusionTool.XLodGen && Directory.Exists(output) ? output : run;
-        foreach (var a in OcclusionLauncher.Arguments(dataFolder, outArg)) psi.ArgumentList.Add(a);
+        foreach (var a in OcclusionLauncher.Arguments(dataFolder, outArg, tool == OcclusionTool.DynDolod ? _settings.DynDolodArgs : _settings.XLodGenArgs)) psi.ArgumentList.Add(a);
 
         OccStartButton.IsEnabled = false;
         OccSummaryText.Text = $"{OcclusionLauncher.ToolName(tool)} is running. Pick the worldspaces, then close it when it has finished." + presetNote;

@@ -135,8 +135,9 @@ namespace AnvilLOD::Menu
 							 "MCM changes; values saved in DynDOLOD's MCM file are read at startup, and saving here "
 							 "writes them to SKSE\\Plugins\\AnvilLOD.ini, which wins from then on.");
 			if (lod.DeferringToDynDolod()) {
-				Smf::TextWrapped("DynDOLOD.dll is installed and manages these settings. Changes here last until "
-								 "DynDOLOD applies its own again. Set bOverrideDynDOLOD=1 in AnvilLOD.ini to let AnvilLOD take over.");
+				Smf::TextWrapped("DynDOLOD.dll is installed and manages these settings, except the ones AnvilLOD.ini [LOD] names: those are AnvilLOD's "
+								 "(hybrid mode, bHybridWithDynDOLOD=1) and are put back if DynDOLOD changes them. Other changes here last until "
+								 "DynDOLOD applies its own again. Set bOverrideDynDOLOD=1 in AnvilLOD.ini to let AnvilLOD take over completely.");
 			}
 			Smf::Separator();
 			const char* group = nullptr;

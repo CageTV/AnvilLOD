@@ -13,6 +13,20 @@ public static class Program
         Usage:
           AnvilLOD scan [options]        analyse the load order and show what would be built
           AnvilLOD generate [options]    scan, then write the changed LOD blocks (.bto) to --output
+          AnvilLOD dyncheck --dyndolod-output <folder> --mo2 <instance> [--csv <file>]
+                                         Read-only: DynDOLOD's dynamic LOD references (DynDOLOD_Data\*_Objects.txt) against the
+                                         load order as it is now: sources that moved, were deleted or are gone. Writes nothing.
+          AnvilLOD stale --baseline <file> --snapshot|--check|--refresh [scan options]
+                                         Read-only staleness report for LOD another tool made (DynDOLOD, xLODGen).
+                                         --snapshot right after that tool finished records what every object-LOD block
+                                         was built from; --check later lists the blocks whose inputs changed (new, moved
+                                         or removed references, changed LOD/full meshes or textures, terrain).
+                                         --dyndolod-output <folder> marks which stale blocks exist in that output,
+                                         --csv <file> writes the list. Use the same scan options for both.
+                                         --refresh --output <folder> writes ONLY the stale blocks (new LOD4/8/16/32 .bto)
+                                         into that folder, to load as a mod after the original LOD output so
+                                         it wins; the snapshot is then updated to the new state. Object LOD blocks only:
+                                         no plugins, dynamic LOD or tree LOD (.btt) are touched.
           AnvilLOD author --plugin <file> --author-out <folder> [options]
                                          Mod author tools: report the plugin's objects and trees that have no
                                          LOD, and generate LOD meshes, tree billboards and a rule file for them
@@ -215,6 +229,8 @@ public static class Program
             {
                 "scan" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: false),
                 "generate" => RunScan(Checked(CliArgs.Parse(args[1..])), generate: true),
+                "stale" => RunStale(Checked(CliArgs.Parse(args[1..])), args[1..]),
+                "dyncheck" => RunDynCheck(Checked(CliArgs.Parse(args[1..]))),
                 "author" => RunAuthor(Checked(CliArgs.Parse(args[1..]))),
                 "lodmaker" => RunLodMaker(Checked(CliArgs.Parse(args[1..]))),
                 "convert-lod" => RunConvertLod(Checked(CliArgs.Parse(args[1..]))),
@@ -228,7 +244,142 @@ public static class Program
         }
     }
 
-    private static int RunScan(CliArgs a, bool generate)
+    private static readonly HashSet<string> StaleOnlyKeys = new(StringComparer.OrdinalIgnoreCase) { "baseline", "dyndolod-output", "csv", "report", "to" };
+
+    private static int RunStale(CliArgs a, string[] raw)
+    {
+        bool snapshot = a.Has("snapshot"), check = a.Has("check"), refresh = a.Has("refresh"), rebase = a.Has("rebase-files");
+        if ((snapshot ? 1 : 0) + (check ? 1 : 0) + (refresh ? 1 : 0) + (rebase ? 1 : 0) != 1) throw new CliArgException("stale needs exactly one of --snapshot, --check, --refresh or --rebase-files.");
+        if (rebase && a.Get("to") is null) throw new CliArgException("--rebase-files needs --to <new baseline file>: the old baseline is not overwritten.");
+        var baselinePath = a.Get("baseline") ?? throw new CliArgException("stale needs --baseline <file> (for example AnvilLOD.baseline.json.gz).");
+        if (rebase && !File.Exists(baselinePath)) return Fail($"No snapshot at {baselinePath}.");
+        if (!refresh && (a.Has("output") || a.Has("keep-output"))) throw new CliArgException("only --refresh writes LOD; --snapshot and --check never do, so --output does not apply.");
+        if (refresh && a.Get("output") is null) throw new CliArgException("--refresh needs --output <folder> for the refreshed blocks (a folder of its own, not the original LOD output).");
+        if (refresh && !File.Exists(baselinePath)) return Fail($"No snapshot at {baselinePath}. Run 'stale --snapshot' right after the LOD tool finishes.");
+
+        // The scan options are part of the snapshot: a check with other options would compare unlike things.
+        var kept = new List<string>();
+        for (int i = 0; i < raw.Length; i++)
+        {
+            var key = raw[i].TrimStart('-').ToLowerInvariant();
+            if (key is "snapshot" or "check" or "refresh" or "ignore-assets" or "rebase-files") continue;
+            if (StaleOnlyKeys.Contains(key) || (refresh && key == "output")) { i++; continue; }
+            kept.Add(raw[i]);
+        }
+        var options = string.Join(' ', kept);
+
+        AnvilLOD.Core.Incremental.StaleReport? refreshReport = null;
+        AnvilLOD.Core.Incremental.LodBaseline? refreshOld = null;
+        Func<IReadOnlyDictionary<AnvilLOD.Core.World.QuadKey, IReadOnlyList<AnvilLOD.Core.World.LodReference>>, IReadOnlyDictionary<AnvilLOD.Core.World.QuadKey, string>, IReadOnlySet<string>>? selector = null;
+        if (refresh)
+            selector = (quads, hashes) =>
+            {
+                refreshOld = AnvilLOD.Core.Incremental.LodBaseline.Load(baselinePath);
+                refreshReport = refreshOld.Diff(quads, hashes, quads.Keys.Select(q => q.Worldspace).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), options, a.Has("ignore-assets"));
+                if (refreshReport.OptionsWarning is { } ow) Console.WriteLine("WARNING: " + ow);
+                // A block that no longer exists has nothing to write; its old file stays in the original output (see the summary).
+                return refreshReport.Stale.Where(d => d.Kind != AnvilLOD.Core.Incremental.BlockChange.Removed).Select(d => d.RelativePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            };
+
+        return RunScan(a, generate: refresh, stale: true, refresh: selector, after: s =>
+        {
+            if (refresh)
+            {
+                int written = s.Generation?.BlocksWritten ?? 0, failed = s.Generation?.BlocksFailed ?? 0;
+                var gone = refreshReport!.Stale.Where(d => d.Kind == AnvilLOD.Core.Incremental.BlockChange.Removed).ToList();
+                Console.WriteLine();
+                Console.WriteLine($"=== Refresh ===");
+                Console.WriteLine($"Stale blocks: {refreshReport.Stale.Count:N0}; written to {a.Get("output")}: {written:N0}; failed: {failed:N0}.");
+                if (gone.Count > 0)
+                    Console.WriteLine($"{gone.Count:N0} blocks no longer have any LOD object. Their old files in the original output were NOT removed (an overlay can't delete them): {string.Join(", ", gone.Take(5).Select(d => Path.GetFileName(d.RelativePath)))}{(gone.Count > 5 ? ", ..." : "")}");
+                if (failed > 0) { Console.WriteLine("Some blocks failed, so the snapshot was NOT updated; fix the errors above and run --refresh again."); return 1; }
+                var nb = AnvilLOD.Core.Incremental.LodBaseline.Capture(s.Quads, s.QuadHashes, options, components: Comp(s));
+                nb.Save(baselinePath);
+                Console.WriteLine($"Snapshot updated: {baselinePath}. In MO2, enable that folder as a mod with HIGHER priority than the original LOD output, so its blocks win.");
+                return 0;
+            }
+            if (rebase)
+            {
+                var baseOld = AnvilLOD.Core.Incremental.LodBaseline.Load(baselinePath);
+                if (!string.Equals(baseOld.Options, options, StringComparison.Ordinal))
+                    Console.WriteLine($"WARNING: the snapshot's scan options ('{baseOld.Options}') differ from these ('{options}'); repeat the same options or the grafted file state will not fit.");
+                var rebased = baseOld.WithCurrentFiles(s.Quads, s.QuadHashes, Comp(s), out var adopted, out var keptStale);
+                rebased.Save(a.Get("to")!);
+                Console.WriteLine();
+                Console.WriteLine($"Rebased: {adopted:N0} blocks adopt today's file state (their objects are unchanged since {baseOld.TakenAt:yyyy-MM-dd HH:mm}); {keptStale:N0} keep their old fingerprint and stay stale (objects changed or block gone).");
+                Console.WriteLine($"Saved: {a.Get("to")} (still dated {baseOld.TakenAt:yyyy-MM-dd HH:mm}). Check against it with the same options; the original is untouched.");
+                return 0;
+            }
+            if (snapshot)
+            {
+                var b = AnvilLOD.Core.Incremental.LodBaseline.Capture(s.Quads, s.QuadHashes, options, components: Comp(s));
+                b.Save(baselinePath);
+                Console.WriteLine();
+                Console.WriteLine($"Snapshot saved: {baselinePath} ({b.Blocks.Count:N0} blocks, {b.Blocks.Values.Sum(x => x.Refs.Count):N0} reference entries, {new FileInfo(baselinePath).Length / 1048576.0:F1} MB)");
+                return 0;
+            }
+            if (!File.Exists(baselinePath)) return Fail($"No snapshot at {baselinePath}. Run 'stale --snapshot' right after the LOD tool finishes.");
+            var old = AnvilLOD.Core.Incremental.LodBaseline.Load(baselinePath);
+            var report = old.Diff(s.Quads, s.QuadHashes, s.Grids.Keys.ToList(), options, a.Has("ignore-assets"), Comp(s));
+            if (a.Get("dyndolod-output") is { } dyn)
+                foreach (var d in report.Stale)
+                    d.OnDisk = File.Exists(AnvilLOD.Core.Incremental.BuildManifest.FullPath(dyn, d.RelativePath));
+
+            Console.WriteLine();
+            Console.WriteLine($"=== Stale LOD report (snapshot of {old.TakenAt:yyyy-MM-dd HH:mm}) ===");
+            if (report.OptionsWarning is { } w) Console.WriteLine("WARNING: " + w);
+            Console.WriteLine($"Blocks compared: {report.BlocksCompared:N0}; unchanged {report.Unchanged:N0}; stale {report.Stale.Count:N0}");
+            if (a.Has("ignore-assets"))
+                Console.WriteLine($"  --ignore-assets: {report.AssetOnlyIgnored:N0} blocks differ only by a mesh, texture, terrain or water fingerprint (a support app rewrote files) and are counted as unchanged. Only object changes count here.");
+            var nowHashing = s.ContentHashed ? "content" : "mtime";
+            if (old.Hashing != nowHashing)
+                Console.WriteLine($"NOTE: the snapshot fingerprints files by {old.Hashing}, this check by {nowHashing}, so blocks that differ only by files are not comparable. Use --ignore-assets, or take a new snapshot.");
+            else if (report.Stale.Any(d => d.AssetOnly))
+            {
+                Console.WriteLine("Blocks whose objects are unchanged but whose fingerprint moved, by what changed (a block can be under several):");
+                foreach (var (k, n) in report.AssetBreakdown().OrderBy(x => x.Key))
+                    Console.WriteLine($"  {k,-9} {n,6:N0}");
+                foreach (var part in new[] { AnvilLOD.Core.Incremental.AssetChange.Terrain, AnvilLOD.Core.Incremental.AssetChange.Files, AnvilLOD.Core.Incremental.AssetChange.Water })
+                {
+                    var worlds = report.Stale.Where(d => d.AssetOnly && d.AssetReasons.HasFlag(part)).GroupBy(d => d.Worldspace).OrderByDescending(g => g.Count()).Take(6).ToList();
+                    if (worlds.Count > 0) Console.WriteLine($"    {part}: " + string.Join(", ", worlds.Select(g => $"{g.Key} ({g.Count()})")));
+                }
+            }
+            if (report.Stale.Count == 0) Console.WriteLine("Nothing changed since the snapshot: no refresh needed.");
+            else
+            {
+                foreach (var kind in new[] { AnvilLOD.Core.Incremental.BlockChange.Changed, AnvilLOD.Core.Incremental.BlockChange.New, AnvilLOD.Core.Incremental.BlockChange.Removed })
+                {
+                    var of = report.Stale.Where(d => d.Kind == kind).ToList();
+                    if (of.Count == 0) continue;
+                    Console.WriteLine($"  {kind,-8} {of.Count,6:N0} blocks" + (kind == AnvilLOD.Core.Incremental.BlockChange.Changed ? $" ({of.Count(d => d.AssetOnly):N0} only because a mesh/texture/terrain file changed)" : ""));
+                }
+                Console.WriteLine("By worldspace and level:");
+                foreach (var g in report.ByWorldspace.OrderByDescending(g => g.Count()).Take(15))
+                    Console.WriteLine($"  {g.Key,-28} {g.Count(),6:N0}  (" + string.Join(", ", g.GroupBy(d => d.Level).OrderBy(x => x.Key).Select(x => $"LOD{x.Key} {x.Count()}")) + ")");
+                Console.WriteLine("Added or changed by (blocks touched / references):");
+                foreach (var (plugin, blocks, refs) in report.ByPlugin().Take(20))
+                    Console.WriteLine($"  {plugin,-48} {blocks,6:N0} blocks {refs,8:N0} refs");
+                var gone = report.RemovedByPlugin().Take(10).ToList();
+                if (gone.Count > 0)
+                {
+                    Console.WriteLine("No longer in LOD, previously from (a later plugin disabled or replaced them; this names the plugin that owned them, not the one that removed them):");
+                    foreach (var (plugin, blocks, refs) in gone)
+                        Console.WriteLine($"  {plugin,-48} {blocks,6:N0} blocks {refs,8:N0} refs");
+                }
+                if (a.Get("dyndolod-output") is not null)
+                {
+                    int have = report.Stale.Count(d => d.OnDisk == true);
+                    Console.WriteLine($"In the DynDOLOD output: {have:N0} of the stale blocks exist there (refresh), {report.Stale.Count - have:N0} do not (new LOD needed, or the block was never made).");
+                }
+            }
+            if (a.Get("csv") is { } csv) { File.WriteAllText(csv, report.ToCsv()); Console.WriteLine($"List: {csv}"); }
+            return 0;
+        });
+    }
+
+    private static int RunScan(CliArgs a, bool generate, bool stale = false, Func<ScanSummary, int>? after = null,
+        Func<IReadOnlyDictionary<AnvilLOD.Core.World.QuadKey, IReadOnlyList<AnvilLOD.Core.World.LodReference>>, IReadOnlyDictionary<AnvilLOD.Core.World.QuadKey, string>, IReadOnlySet<string>>? refresh = null)
     {
         var total = Stopwatch.StartNew();
         var gameOptions = a.Get("mo2") is { } mo2Folder
@@ -252,7 +403,9 @@ public static class Program
                 GlowWindows: a.Has("glow-windows"),
                 RenderTreeBillboards: a.Has("render-trees")),
             OutputFolder: outputFolder,
-            CleanOutput: !a.Has("keep-output"),
+            CleanOutput: !a.Has("keep-output") && refresh is null,   // a refresh folder keeps its earlier refreshed blocks
+            RefreshSelector: refresh,
+            ContentHashCache: stale && a.Get("baseline") is { } hashBase ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(hashBase)) ?? ".", "content-hashes.json") : null,   // stale commands compare file CONTENT, not file times
             Generate: generate,
             DynDolodFolder: a.Get("dyndolod"),
             Preset: ParsePreset(a.Get("preset")),
@@ -261,7 +414,7 @@ public static class Program
             CustomRulesFile: a.Get("rules"),
             RemoveBuried: !a.Has("keep-buried"),
             RemoveUnderwater: !a.Has("keep-underwater"),
-            GrassLod: !a.Has("no-grass"),
+            GrassLod: !stale && !a.Has("no-grass"),
             ChildWorlds: !a.Has("no-child-worlds"),
             Seasons: a.Has("seasons"),
             Underside: a.Has("underside"),
@@ -285,7 +438,7 @@ public static class Program
             EslRange: a.Get("esl-range") is { } er && int.TryParse(er, out var erv) && erv is 2048 or 4096 ? erv : 0,
             DetailedShips: !a.Has("no-detailed-ships"),
             AnimatedShips: !a.Has("no-animated-ships"),
-            CsGrassLod: !a.Has("no-cs-grass"),
+            CsGrassLod: !stale && !a.Has("no-cs-grass"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
             MountainFit: !a.Has("no-mountain-fit"),
             MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 12f,
@@ -336,6 +489,7 @@ public static class Program
         }
         foreach (var w in s.Warnings) Console.WriteLine($"WARNING: {w}");
 
+        if (after is not null) return after(s);
         var reportPath = a.Get("report") ?? Path.Combine(AppContext.BaseDirectory, "AnvilLOD.scan.json");
         ScanReport.Write(reportPath, s, total.Elapsed);
         Console.WriteLine($"Report: {reportPath}");
@@ -480,6 +634,104 @@ public static class Program
         "low" => AnvilLOD.Core.Lod.LodPreset.Low,
         _ => throw new CliArgException($"Unknown preset '{s}' (use low, medium or high)."),
     };
+
+    /// <summary>Read-only: DynDOLOD's dynamic LOD references against the load order as it is now (moved, deleted or missing sources).</summary>
+    private static int RunDynCheck(CliArgs a)
+    {
+        var dynOut = a.Get("dyndolod-output") ?? throw new CliArgException("dyncheck needs --dyndolod-output <folder> (the folder that holds skse\\plugins\\DynDOLOD_Data).");
+        var gameOptions = a.Get("mo2") is { } mo2Folder
+            ? new GameContextOptions(Mode: GameSourceMode.Mo2Instance, Mo2InstanceFolder: mo2Folder, Mo2Profile: a.Get("profile"), Mo2Locations: Mo2LocationsFromArgs(a))
+            : new GameContextOptions(a.Get("data"), a.Get("plugins"));
+        var progress = new SyncProgress(Console.WriteLine);
+        using var game = GameContext.Open(gameOptions, progress);
+        var r = AnvilLOD.Plugins.DynamicRefCheck.Run(game, dynOut, progress);
+
+        Console.WriteLine();
+        Console.WriteLine("=== DynDOLOD dynamic references vs the load order now ===");
+        foreach (var w in r.Warnings) Console.WriteLine("WARNING: " + w);
+        Console.WriteLine($"Files: {r.Files:N0}; rows: {r.Rows:N0}; unreadable rows skipped: {r.Unparsed:N0}");
+        var by = r.Findings.GroupBy(f => f.Issue).ToDictionary(g => g.Key, g => g.Count());
+        foreach (var issue in Enum.GetValues<AnvilLOD.Plugins.DynRefIssue>())
+            if (by.TryGetValue(issue, out var n)) Console.WriteLine($"  {issue,-14} {n,7:N0}");
+        int toggled = r.Findings.Count(f => f.Toggled);
+        Console.WriteLine($"Sources that start disabled or are enable-parented (they switch at run time): {toggled:N0}; of those with a problem: {r.Problems.Count(f => f.Toggled):N0}");
+        Console.WriteLine("  (DiffersNoOverride is not counted as a problem: no plugin overrides the source now, so the load order did not change it.)");
+        var problems = r.Problems.ToList();
+        if (problems.Count > 0)
+        {
+            Console.WriteLine("By worldspace:");
+            foreach (var g in problems.GroupBy(f => f.Row.World).OrderByDescending(g => g.Count()).Take(10))
+                Console.WriteLine($"  {g.Key,-28} {g.Count(),6:N0}");
+            Console.WriteLine("Changed by (the plugin that wins the source reference now):");
+            foreach (var g in problems.Where(f => f.WinningPlugin is not null).GroupBy(f => f.WinningPlugin!, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).Take(15))
+                Console.WriteLine($"  {g.Key,-48} {g.Count(),6:N0}");
+            Console.WriteLine("First problems:");
+            foreach (var f in problems.Take(12))
+                Console.WriteLine($"  {f.Row.World} {f.Row.DynId:X6} <- {f.Row.SourceId:X6}:{f.Row.SourcePlugin}  {f.Issue}: {f.Detail}");
+        }
+        if (a.Get("csv") is { } csv) { File.WriteAllText(csv, r.ToCsv()); Console.WriteLine($"List: {csv}"); }
+        if (a.Get("plan") is { } planFile)
+        {
+            var plan = r.Plan();
+            File.WriteAllText(planFile, r.ToPlanCsv());
+            Console.WriteLine();
+            Console.WriteLine($"=== Plan for a copy of the DynDOLOD files (DRY RUN: nothing was written) ===");
+            foreach (var g in plan.GroupBy(i => i.Action).OrderBy(g => g.Key))
+                Console.WriteLine($"  {g.Key,-16} {g.Count(),5:N0}");
+            Console.WriteLine($"Plan: {planFile}");
+        }
+        if (a.Get("apply-plan") is { } approvedPlan)
+        {
+            var fixOut = a.Get("fix-output") ?? throw new CliArgException("--apply-plan needs --fix-output <new folder>.");
+            try
+            {
+                var res = AnvilLOD.Plugins.DynFixWriter.Apply(r, approvedPlan, dynOut, fixOut, progress);
+                Console.WriteLine();
+                Console.WriteLine("=== Write pass: edited COPIES written (originals untouched) ===");
+                Console.WriteLine($"Folder: {res.Folder}");
+                Console.WriteLine($"DynDOLOD.esp: {res.Repositioned} repositioned, {res.Sunk} sunk to z -30000");
+                Console.WriteLine($"Data files edited: {res.DataRowsEdited} rows in {string.Join(", ", res.DataFiles)}");
+                foreach (var v in res.Verification) Console.WriteLine("  verify: " + v);
+            }
+            catch (InvalidOperationException ex) { return Fail(ex.Message); }
+        }
+        if (a.Get("patch-output") is { } patchOut)
+        {
+            try
+            {
+                var res = AnvilLOD.Plugins.DynPatchWriter.Apply(game, r, patchOut, progress);
+                Console.WriteLine();
+                Console.WriteLine("=== Patch plugin for the moved/removed dynamic references (DynDOLOD.esp untouched) ===");
+                Console.WriteLine($"Plugin: {res.Plugin ?? "(none)"}; {res.Repositioned} repositioned, {res.Sunk} sunk to z -30000; enable-state findings not written: {res.EnableStateSkipped}");
+                foreach (var v in res.Verification) Console.WriteLine("  verify: " + v);
+            }
+            catch (InvalidOperationException ex) { return Fail(ex.Message); }
+        }
+        if (a.Get("csv-all") is { } csvAll) { File.WriteAllText(csvAll, r.ToCsv(all: true)); Console.WriteLine($"Every row, with the data columns and enable states: {csvAll}"); }
+
+        var lr = AnvilLOD.Plugins.LargeRefCheck.Run(game, dynOut, progress);
+        Console.WriteLine();
+        Console.WriteLine("=== DynDOLOD large reference lists vs the load order now ===");
+        foreach (var w in lr.Warnings) Console.WriteLine("WARNING: " + w);
+        if (lr.Plugin is not null)
+        {
+            Console.WriteLine($"Entries: {lr.Findings.Count:N0}");
+            foreach (var g in lr.Findings.GroupBy(f => f.Issue).OrderBy(g => g.Key))
+                Console.WriteLine($"  {g.Key,-14} {g.Count(),7:N0}");
+            var lp = lr.Problems.ToList();
+            foreach (var g in lp.GroupBy(f => f.Worldspace).OrderByDescending(g => g.Count()).Take(10))
+                Console.WriteLine($"  {g.Key,-28} {g.Count(),6:N0} problems");
+            foreach (var g in lp.Where(f => f.WinningPlugin is not null).GroupBy(f => f.WinningPlugin!, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Count()).Take(10))
+                Console.WriteLine($"  changed by {g.Key,-44} {g.Count(),6:N0}");
+            foreach (var f in lp.Take(10))
+                Console.WriteLine($"  {f.Worldspace} cell ({f.CellX},{f.CellY}) {f.Reference.ID:X6}:{f.Reference.ModKey.FileName}  {f.Issue}: {f.Detail}");
+            if (a.Get("csv-large") is { } csvLarge) { File.WriteAllText(csvLarge, lr.ToCsv(all: a.Has("csv-large-all"))); Console.WriteLine($"List: {csvLarge}"); }
+        }
+        return 0;
+    }
+
+    private static AnvilLOD.Core.Incremental.BaselineComponents Comp(ScanSummary s) =>
+        new(s.QuadAssets, s.WorldTerrain, s.WorldWater, s.SettingsCore, s.ContentHashed);
 
     private static int Fail(string msg)
     {

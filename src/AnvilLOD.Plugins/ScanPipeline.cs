@@ -55,7 +55,9 @@ public sealed record ScanRequest(
     bool CsGrassLod = true,
     int MapObjectLevel = -2,
     AnvilLOD.Core.Occlusion.OcclusionSettings? Occlusion = null,   // work out the occlusion data (Occlusion.esp) ourselves, with these settings (null = off)
-    string? OcclusionFolder = null);                              // where Occlusion.esp goes (null = the output folder)                      // LOD32 objects for the world map: -1 none unless a rule names LOD32 (DynDOLOD's default), 0..2 = that level's LOD mesh, -2 auto (level 0 when A Clear Map of Skyrim is in the load order, else -1)                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
+    string? OcclusionFolder = null,
+    Func<IReadOnlyDictionary<QuadKey, IReadOnlyList<LodReference>>, IReadOnlyDictionary<QuadKey, string>, IReadOnlySet<string>>? RefreshSelector = null,
+    string? ContentHashCache = null);   // set: fingerprint loose files by content (cached in this file) instead of by last-write time                              // where Occlusion.esp goes (null = the output folder)                      // LOD32 objects for the world map: -1 none unless a rule names LOD32 (DynDOLOD's default), 0..2 = that level's LOD mesh, -2 auto (level 0 when A Clear Map of Skyrim is in the load order, else -1)                       // with Community Shaders' Grass Optimizations installed: _LOD0/_LOD1 meshes for its grass LOD system (meshes\LOD\Grass)
 
 public sealed record ScanSummary(
     ScanStats Stats,
@@ -80,7 +82,12 @@ public sealed record ScanSummary(
     IReadOnlyDictionary<string, long>? MissingGrassBillboards = null,
     IReadOnlySet<string>? SkippedByTexGen = null,
     int DynamicRefs = 0,
-    Tree3DStats? Tree3D = null);   // keys of MissingBillboards / MissingGrassBillboards that TexGen left out on purpose (too small)
+    Tree3DStats? Tree3D = null,
+    IReadOnlyDictionary<QuadKey, string>? QuadAssets = null,      // per block: the file part of its fingerprint
+    IReadOnlyDictionary<string, string>? WorldTerrain = null,    // per worldspace: terrain fingerprint
+    IReadOnlyDictionary<string, string>? WorldWater = null,      // per worldspace: water fingerprint
+    string? SettingsCore = null,                                  // the settings part of every block's fingerprint
+    bool ContentHashed = false);                                  // loose files were fingerprinted by content   // keys of MissingBillboards / MissingGrassBillboards that TexGen left out on purpose (too small)
 
 /// <summary>
 /// Load order → asset index → reference scan → quad buckets → hashes → build plan,
@@ -109,6 +116,13 @@ public static class ScanPipeline
         return large;
     }
 
+    /// <summary>One line with the options that decide what the LOD looks like, so a log sent in for a problem says how it was made.</summary>
+    internal static string OptionsSummary(ScanRequest r) =>
+        $"Options: preset {r.Preset}, levels {(r.Levels is null ? "all" : string.Join("/", r.Levels))}, insets mountain {r.MountainInset:0.#}{(r.MountainFit ? " (fitted)" : "")} / object {r.ObjectInset:0.#} / ice {r.IceInset:0.#}, " +
+        $"snow shader {r.SnowShaderMode} cover {r.SnowCover}, buried removed {r.RemoveBuried}, underwater removed {r.RemoveUnderwater}, grass {(r.GrassLod ? r.GrassDensity.ToString("P0") : "off")}, " +
+        $"child worlds {r.ChildWorlds}, seasons {r.Seasons}, PBR LOD {r.PbrLod}, underside {r.Underside}, map objects level {r.MapObjectLevel}, " +
+        $"occlusion {(r.Occlusion is null ? "not made here" : "clearance " + r.Occlusion.Clearance.ToString("0"))}.";
+
     public static ScanSummary Run(ScanRequest req, IProgress<string>? progress = null, CancellationToken ct = default)
     {
         if (req.Generate && string.IsNullOrWhiteSpace(req.OutputFolder))
@@ -120,6 +134,7 @@ public static class ScanPipeline
         // Every run is also logged to <output>\AnvilLOD.log (Generate only, so a Scan never touches the output folder).
         using var log = new FileLogProgress(req.Generate ? Path.Combine(req.OutputFolder!, "AnvilLOD.log") : null, progress,
             $"AnvilLOD {typeof(ScanPipeline).Assembly.GetName().Version?.ToString(3)} generate");
+        log.Report(OptionsSummary(req));
         if (prepared is not null)
         {
             if (prepared.Created) log.Report($"Output folder created: {req.OutputFolder}");
@@ -171,6 +186,13 @@ public static class ScanPipeline
                  || p.StartsWith("textures\\", StringComparison.Ordinal)); // grass model textures (rendered grass billboards), the textures 3D tree LOD models need, and so the texture audit can tell a BSA texture from a missing one
         progress?.Report($"Indexed {assets.ArchivedFileCount:N0} files from {assets.ArchiveCount} archives in {assets.IndexTime.TotalSeconds:F1}s");
         if (req.Scan.TreeLod && req.Scan.RenderTreeBillboards) assets.FallbackRoot = TreeBillboardSynth.CacheRoot;   // tree billboards AnvilLOD draws itself: read last, so a real TexGen one wins
+        HashCache? contentHashes = null;
+        if (req.ContentHashCache is { } hcPath)
+        {
+            contentHashes = HashCache.Load(hcPath);
+            assets.ContentHashes = contentHashes;
+            progress?.Report($"Content fingerprints: {contentHashes.Count:N0} file hashes remembered in {hcPath}; only files that changed are read again");
+        }
         foreach (var skipped in assets.SkippedArchives)
             Warn($"An archive could not be read and was skipped; its files are not used, everything else is ({skipped}).");
         if (assets.ArchiveCount == 0)
@@ -448,13 +470,32 @@ public static class ScanPipeline
         if (req.Levels is { Count: > 0 } levels)
             quads = quads.Where(kv => levels.Contains(kv.Key.Level)).ToDictionary(kv => kv.Key, kv => kv.Value);
 
+        var settingsCore = req.SettingsFingerprint + (mapObjectLevel >= 0 ? $"|map32:{mapObjectLevel}" : "") + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.SnowShaderMode != 0 ? $"|snowmode:{req.SnowShaderMode}" : "") + (req.SnowCover != 0 ? $"|snowcover:{req.SnowCover}" : "") + (req.MountainFit && req.MountainInset > 0f ? "|mtnfit1" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "");
         var hashes = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
         Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
             hashes[kv.Key] = QuadHasher.Hash(kv.Key, kv.Value, Fingerprint,
-                req.SettingsFingerprint + (mapObjectLevel >= 0 ? $"|map32:{mapObjectLevel}" : "") + (MathF.Abs(req.ObjectBrightness - 1f) > 0.001f ? $"|bright:{req.ObjectBrightness:F2}" : "") + (req.PbrLod ? FormattableString.Invariant($"|pbr:{req.PbrLodBrightness:F2}:{req.PbrLodSize}") : "") + (ruleOptions.Candles ? "|candles" : "") + (ruleOptions.FxGlow ? "|fxglow" : "") + (ruleOptions.CustomFile is { } cf ? $"|rules:{new FileInfo(cf).Length}:{new FileInfo(cf).LastWriteTimeUtc.Ticks}" : "") + (req.SnowShaderMode != 0 ? $"|snowmode:{req.SnowShaderMode}" : "") + (req.SnowCover != 0 ? $"|snowcover:{req.SnowCover}" : "") + (req.MountainFit && req.MountainInset > 0f ? "|mtnfit1" : "") + (req.OpaqueAlpha ? "|opaque1" : "") + (req.DetailedShips ? FormattableString.Invariant($"|ships2:{LodInset.DefaultShip:F1}") : "") + (req.IceInset > 0f ? FormattableString.Invariant($"|iceinset:{req.IceInset:F1}") : "") + (req.MountainInset > 0f ? FormattableString.Invariant($"|mtninset:{req.MountainInset:F1}") : "") + (req.ObjectInset > 0f ? FormattableString.Invariant($"|objinset:{req.ObjectInset:F1}") : "") + (cullTerrain is null ? "|keep-buried"
+                settingsCore + (cullTerrain is null ? "|keep-buried"
                     : "|terrain:" + (cullTerrain.Fingerprints.TryGetValue(kv.Key.Worldspace, out var tf) ? tf : "none") + (req.RemoveUnderwater ? "|water:" + cullTerrain.Heights.WaterFingerprint(kv.Key.Worldspace) : "")),
                 id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
         sw.Stop();
+
+        // The parts of each fingerprint, kept apart so a later check can say WHAT changed.
+        var quadAssets = new System.Collections.Concurrent.ConcurrentDictionary<QuadKey, string>();
+        Parallel.ForEach(quads, new ParallelOptions { CancellationToken = ct }, kv =>
+            quadAssets[kv.Key] = QuadHasher.AssetsHash(kv.Key, kv.Value, Fingerprint,
+                id => scan.TextureVariants is { } tv && tv.TryGetValue(id, out var v) ? Fingerprint(v.FullModel) : null));
+        var worldTerrain = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var worldWater = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var wsName in quads.Keys.Select(k2 => k2.Worldspace).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            worldTerrain[wsName] = cullTerrain is null ? "keep-buried" : (cullTerrain.Fingerprints.TryGetValue(wsName, out var tfp) ? tfp : "none");
+            worldWater[wsName] = cullTerrain is not null && req.RemoveUnderwater ? cullTerrain.Heights.WaterFingerprint(wsName) : "";
+        }
+        if (contentHashes is not null)
+        {
+            contentHashes.Save();
+            progress?.Report($"Content fingerprints: {contentHashes.Computed:N0} files read this run, {contentHashes.Count:N0} remembered");
+        }
 
         // A cleared output has no earlier build to compare with: every block is written again.
         var manifest = req.OutputFolder is null || req.CleanOutput ? new BuildManifest() : BuildManifest.LoadOrEmpty(req.OutputFolder);
@@ -489,13 +530,49 @@ public static class ScanPipeline
                      + string.Join(", ", real.OrderByDescending(kv => kv.Value).Take(5).Select(kv => kv.Key)) + ".");
         }
         Classify(scan.MissingBillboards, "tree", "Re-run TexGen with the current load order.");
-        if (req.Generate)
+        LodGenerator MakeGenerator(PbrLodTextures? pbrLod, OpaqueLodTextures? opaqueLod) =>
+            new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { RemoveUnderwater = req.RemoveUnderwater, Brightness = req.ObjectBrightness, SnowShaderMode = req.SnowShaderMode, SnowCover = req.SnowCover, FitMountains = req.MountainFit && req.MountainInset > 0f, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
+
+        if (req.Generate && req.RefreshSelector is { } selectBlocks)
+        {
+            // Refresh: write only the blocks the selector names (the stale ones) into the overlay folder. No plugins, no dynamic LOD, no tree LOD, no SKSE DLL.
+            var output = req.OutputFolder!;
+            var only = selectBlocks(quads, hashes);
+            var rebuild = quads.Keys.Where(q => only.Contains(q.RelativePath)).ToList();
+            progress?.Report($"Refresh: writing {rebuild.Count:N0} stale blocks into {output}...");
+            var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
+            var opaqueLod = req.OpaqueAlpha ? new OpaqueLodTextures(assets, OpaqueLodStage.IsTranslucent) : null;
+            var generator = MakeGenerator(pbrLod, opaqueLod);
+            gen = generator.Generate(quads, rebuild, output, progress, ct);
+            if (pbrLod is not null && rebuild.Count > 0)
+            {
+                try { PbrLodStage.Run(assets, pbrLod, output, req.PbrLodSize, req.PbrLodBrightness, progress, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { Warn($"PBR LOD textures failed: {ex.Message}"); }
+            }
+            if (opaqueLod is not null && rebuild.Count > 0)
+            {
+                try { OpaqueLodStage.Run(assets, opaqueLod, output, progress, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { Warn($"Opaque LOD textures failed: {ex.Message}"); }
+            }
+            if (gen.MeshesLoaded > 0)
+            {
+                var texMissing = generator.AuditTextures(output);
+                foreach (var kv in texMissing.OrderByDescending(k => k.Value.Meshes).Take(10))
+                    progress?.Report($"Missing texture: {kv.Key} (used by {kv.Value.Meshes:N0} LOD mesh{(kv.Value.Meshes == 1 ? "" : "es")}, first {kv.Value.FirstMesh})");
+                if (texMissing.Count > 0) Warn($"{texMissing.Count:N0} textures named by the refreshed LOD meshes exist nowhere; see the log.");
+            }
+            if (req.Seasons) Warn("Seasons: the seasonal copies of the refreshed blocks were not rebuilt. Run a full generate for those.");
+            progress?.Report($"Refreshed {gen.BlocksWritten:N0} blocks, {gen.Triangles:N0} triangles in {gen.Elapsed.TotalSeconds:F1}s");
+            if (gen.BlocksFailed > 0) Warn($"{gen.BlocksFailed} blocks failed to write (first: {gen.BlockErrors.First().Key}: {gen.BlockErrors.First().Value}).");
+        }
+
+        if (req.Generate && req.RefreshSelector is null)
         {
             var output = req.OutputFolder!;
             progress?.Report($"Generating {plan.Rebuild.Count:N0} blocks ({plan.Unchanged.Count:N0} unchanged, skipped) into {output}...");
             var pbrLod = req.PbrLod ? new PbrLodTextures(assets) : null;
             var opaqueLod = req.OpaqueAlpha ? new OpaqueLodTextures(assets, OpaqueLodStage.IsTranslucent) : null;
-            var generator = new LodGenerator(assets, cullTerrain?.Heights, new CompositeSyntheticSource(grass, cards, tree3d, ships)) { RemoveUnderwater = req.RemoveUnderwater, Brightness = req.ObjectBrightness, SnowShaderMode = req.SnowShaderMode, SnowCover = req.SnowCover, FitMountains = req.MountainFit && req.MountainInset > 0f, Pbr = pbrLod, Opaque = opaqueLod, Categorize = SizeBreakdown.Categorize, Inset = req.IceInset > 0f || req.MountainInset > 0f || req.ObjectInset > 0f || req.DetailedShips ? path => LodInset.For(path, req.IceInset, req.MountainInset, req.DetailedShips ? LodInset.DefaultShip : 0f, req.ObjectInset) : null, TextureVariants = scan.TextureVariants };
+            var generator = MakeGenerator(pbrLod, opaqueLod);
             gen = generator.Generate(quads, plan.Rebuild, output, progress, ct);
             if (ships is not null && ships.Built() is { Count: > 0 } builtShips)
                 progress?.Report($"Detailed ships: {builtShips.Count} ship models drawn from their real models ("
@@ -838,7 +915,8 @@ public static class ScanPipeline
             grass?.MissingBillboards.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
             skippedByTexGen,
             scan.Dynamic?.Count ?? 0,
-            tree3dStats);
+            tree3dStats,
+            quadAssets, worldTerrain, worldWater, settingsCore, contentHashes is not null);
 
         // "plugin.esm\\model_000a7329" -> "plugin.esm;000a7329"
         static string TexGenKey(string missingKey) => TexGenLists.Key(missingKey);

@@ -29,6 +29,24 @@ public sealed class OcclusionLauncherTests : IDisposable
     }
 
     [Fact]
+    public void Extra_arguments_are_split_at_spaces_outside_quotes_and_the_quotes_dropped()
+    {
+        Assert.Equal([@"-i:D:\my mods\skyrim.ini", "-x", "two words"], OcclusionLauncher.ParseArguments(@"  -i:""D:\my mods\skyrim.ini""   -x ""two words"" "));
+        Assert.Empty(OcclusionLauncher.ParseArguments("   "));
+        Assert.Empty(OcclusionLauncher.ParseArguments(null));
+        Assert.Equal(["a", "b"], OcclusionLauncher.ParseArguments("a\r\nb"));
+    }
+
+    [Fact]
+    public void Extra_arguments_come_after_ours_and_one_for_the_same_switch_replaces_ours()
+    {
+        var args = OcclusionLauncher.Arguments(@"C:\Data", @"C:\Out", @"-i:""D:\my mods\skyrim.ini"" -ALL");
+        Assert.Equal(["-sse", @"-D:C:\Data", @"-o:C:\Out", @"-i:D:\my mods\skyrim.ini", "-ALL"], args);
+        var replaced = OcclusionLauncher.Arguments(@"C:\Data", @"C:\Out", @"-d:E:\Other\Data -O:E:\Else");
+        Assert.Equal(["-sse", @"-d:E:\Other\Data", @"-O:E:\Else"], replaced);
+    }
+
+    [Fact]
     public void The_tool_folder_is_guessed_next_to_the_dyndolod_folder_or_in_the_instance_tools_folder()
     {
         Touch(@"tools\DynDOLOD\DynDOLODx64.exe");

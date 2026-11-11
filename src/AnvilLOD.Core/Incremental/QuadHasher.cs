@@ -63,4 +63,34 @@ public static class QuadHasher
 
         return Convert.ToHexString(h.GetHashAndReset(), 0, 16);
     }
+
+    /// <summary>
+    /// Just the file part of a block's fingerprint: the mesh and texture-variant fingerprints of its references. Kept next to the block's full hash in
+    /// a baseline so a later check can say whether the files, the terrain, the water or the settings are what changed.
+    /// </summary>
+    public static string AssetsHash(
+        QuadKey quad,
+        IReadOnlyList<LodReference> refsSortedByFormKey,
+        Func<string, string?> assetFingerprint,
+        Func<string, string?>? variantStamp = null)
+    {
+        using var h = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buf = new byte[4];
+        void Str(string? s)
+        {
+            var bytes = Encoding.UTF8.GetBytes(s ?? "\0");
+            BinaryPrimitives.WriteInt32LittleEndian(buf, bytes.Length);
+            h.AppendData(buf);
+            h.AppendData(bytes);
+        }
+        foreach (var r in refsSortedByFormKey)
+        {
+            var mesh = r.Meshes.For(quad.Level);
+            Str(mesh);
+            Str(mesh is null ? null : assetFingerprint(mesh));
+            Str(r.TextureVariant);
+            Str(r.TextureVariant is null ? null : variantStamp?.Invoke(r.TextureVariant));
+        }
+        return Convert.ToHexString(h.GetHashAndReset(), 0, 8);
+    }
 }

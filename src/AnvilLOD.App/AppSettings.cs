@@ -47,6 +47,8 @@ public sealed class AppSettings
     public int OccClearance { get; set; } = 3072;     // AnvilLOD's own occlusion: units a hill must stand above the line of sight to hide what is behind it (larger = safer)
     public int OccThreads { get; set; }               // threads that read the object LOD meshes (memory!): 0 = by the installed RAM, 1, 2, 4 or -1 = no limit
     public string? XLodGenFolder { get; set; }       // folder with xLODGenx64.exe (DynDOLOD's folder is DynDolodFolder)
+    public string? XLodGenArgs { get; set; }         // extra command line arguments for xLODGen, as typed (for example a -i: switch with the path of a Skyrim.ini)
+    public string? DynDolodArgs { get; set; }        // the same for DynDOLOD
     public string Preset { get; set; } = "High";
     public bool Candles { get; set; }                // also load DynDOLOD's Candles rules
     public bool FxGlow { get; set; }                 // also load DynDOLOD's FXGlow rules
@@ -119,7 +121,7 @@ public sealed class AppSettings
     [
         nameof(SettingsRevision), nameof(UseMo2), nameof(UseVortex), nameof(Mo2Instance), nameof(Mo2Profile), nameof(Mo2GamePath), nameof(Mo2ModsFolder),
         nameof(Mo2ProfilesFolder), nameof(Mo2OverwriteFolder), nameof(DataFolder), nameof(PluginsTxt),
-        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(OccClearance), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput), nameof(TexFixInputs), nameof(TexFixAllMods), nameof(TexFixMode), nameof(TexFixModName), nameof(TexFixOutput), nameof(TexconvPath),
+        nameof(OcclusionTool), nameof(XLodGenFolder), nameof(XLodGenArgs), nameof(DynDolodArgs), nameof(OccPreset), nameof(OccAutoClose), nameof(OccAfterGenerate), nameof(OccQuality), nameof(OccHeight), nameof(OccRadius), nameof(OccMode), nameof(OccThreads), nameof(OccClearance), nameof(MakerInputs), nameof(MakerFolderMode), nameof(MakerModName), nameof(MakerOutput), nameof(TexFixInputs), nameof(TexFixAllMods), nameof(TexFixMode), nameof(TexFixModName), nameof(TexFixOutput), nameof(TexconvPath),
         nameof(Presets), nameof(ActivePreset),
     ];
 

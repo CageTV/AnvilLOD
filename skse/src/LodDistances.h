@@ -43,6 +43,8 @@ namespace AnvilLOD
 		std::map<std::string, float> Read() const;
 		std::filesystem::file_time_type NewestWrite() const;
 
+		std::map<std::string, float>    _pinned;       // hybrid mode: the values AnvilLOD.ini names while DynDOLOD.dll is installed
+		std::atomic_int                 _reasserted{ 0 };
 		std::atomic_bool                _watching{ false };
 		std::filesystem::file_time_type _lastWrite{};
 	};

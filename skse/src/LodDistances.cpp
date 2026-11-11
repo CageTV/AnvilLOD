@@ -138,9 +138,34 @@ namespace AnvilLOD
 		_lastWrite = NewestWrite();
 		if (!flag("bApplyLodDistances", true)) return;
 		if (DynDolodDllLoaded() && !flag("bOverrideDynDOLOD", false)) {
-			logger::info("LOD settings ({}): DynDOLOD.dll is loaded and manages them; not applying (set bOverrideDynDOLOD=1 to take over)", a_reason);
+			if (!flag("bHybridWithDynDOLOD", true)) {
+				_pinned.clear();
+				logger::info("LOD settings ({}): DynDOLOD.dll is loaded and manages them; not applying (set bOverrideDynDOLOD=1 to take over)", a_reason);
+				return;
+			}
+			// Hybrid: DynDOLOD.dll keeps every setting AnvilLOD.ini [LOD] does not name; the ones it does name are AnvilLOD's, so the
+			// distances can go further than DynDOLOD's own MCM allows. Nothing is applied from DynDOLOD's MCM files here.
+			_pinned.clear();
+			for (const auto& [key, candidates] : kKeys) {
+				auto raw = anvil.find(Lower(key));
+				if (raw == anvil.end() || raw->second.empty()) continue;
+				try {
+					_pinned[key] = std::stof(raw->second);
+				} catch (const std::exception&) {
+					logger::warn("LOD settings: bad value for {}: {}", key, raw->second);
+				}
+			}
+			if (_pinned.empty()) {
+				logger::info("LOD settings ({}): hybrid with DynDOLOD.dll, but AnvilLOD.ini [LOD] names no distance, so DynDOLOD's stay in charge", a_reason);
+				return;
+			}
+			for (const auto& [key, value] : _pinned) {
+				const float old = GetGame(key).value_or(value);
+				if (SetGame(key, value) && old != value) logger::info("LOD settings ({}, hybrid): {} {} -> {} (AnvilLOD.ini wins over DynDOLOD)", a_reason, key, old, value);
+			}
 			return;
 		}
+		_pinned.clear();
 
 		const auto values = Read();
 		if (values.empty()) return;
@@ -167,6 +192,17 @@ namespace AnvilLOD
 		std::thread([this] {
 			for (;;) {
 				std::this_thread::sleep_for(std::chrono::seconds(2));
+				if (!_pinned.empty()) {
+					// Hybrid: DynDOLOD.dll may set its own value again after a load or cell change; put AnvilLOD's back (and say so, a few times).
+					SKSE::GetTaskInterface()->AddTask([this] {
+						for (const auto& [key, value] : _pinned) {
+							const auto now = GetGame(key);
+							if (!now || *now == value) continue;
+							if (_reasserted++ < 20) logger::info("LOD settings (hybrid): {} was changed to {} by something else; set back to {}", key, *now, value);
+							SetGame(key, value);
+						}
+					});
+				}
 				if (NewestWrite() != _lastWrite) {
 					SKSE::GetTaskInterface()->AddTask([this] { Apply("file changed"); });
 					std::this_thread::sleep_for(std::chrono::seconds(1));  // let the task run before checking again

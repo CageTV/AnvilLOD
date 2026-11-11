@@ -60,12 +60,50 @@ public static class OcclusionLauncher
     /// The command line, as separate arguments: Skyrim SE, the real Data folder (the tool sees the mods through MO2's virtual folder when
     /// it is started from MO2) and an output folder of its own, so nothing lands in the game or the mod manager's folders.
     /// </summary>
-    public static IReadOnlyList<string> Arguments(string dataFolder, string outputFolder) =>
-    [
-        "-sse",
-        "-D:" + dataFolder.Trim().TrimEnd('\\', '/'),
-        "-o:" + outputFolder.Trim().TrimEnd('\\', '/'),
-    ];
+    public static IReadOnlyList<string> Arguments(string dataFolder, string outputFolder, string? extra = null)
+    {
+        List<string> own =
+        [
+            "-sse",
+            "-D:" + dataFolder.Trim().TrimEnd('\\', '/'),
+            "-o:" + outputFolder.Trim().TrimEnd('\\', '/'),
+        ];
+        var more = ParseArguments(extra);
+        // an argument the user gives for the same switch (-D:, -o:, -sse) replaces ours
+        own.RemoveAll(a => more.Any(m => string.Equals(SwitchOf(m), SwitchOf(a), StringComparison.OrdinalIgnoreCase)));
+        own.AddRange(more);
+        return own;
+    }
+
+    private static string SwitchOf(string argument)
+    {
+        var colon = argument.IndexOf(':');
+        return colon > 0 ? argument[..colon] : argument;
+    }
+
+    /// <summary>
+    /// Splits a command line the user typed into arguments: spaces separate them except inside double quotes, and the quotes themselves are
+    /// dropped, so a switch like -i:"D:\my mods\skyrim.ini" becomes one argument without the quotes (the process start quotes it again when it needs to).
+    /// </summary>
+    public static IReadOnlyList<string> ParseArguments(string? text)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrWhiteSpace(text)) return result;
+        var current = new System.Text.StringBuilder();
+        var quoted = false;
+        var any = false;
+        foreach (var c in text)
+        {
+            if (c == '"') { quoted = !quoted; any = true; }
+            else if (char.IsWhiteSpace(c) && !quoted)
+            {
+                if (any) { result.Add(current.ToString()); current.Clear(); any = false; }
+            }
+            else { current.Append(c); any = true; }
+        }
+        if (any) result.Add(current.ToString());
+        return result;
+    }
 
     /// <summary>
     /// How many threads may read object LOD meshes at once for a PC with this much RAM. Unlimited threads took over 80 GB of committed memory
