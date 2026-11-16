@@ -126,7 +126,7 @@ public sealed class OcclusionCalculatorTests
         var (offset, steps) = OcclusionCalculator.BuildMaxHeight(g, 0, 0);
         Assert.Equal(4992f, offset);                                // 39 * 128, the multiple of 128 at or below 5000
         Assert.Equal(1, steps[31 * 32 + 31]);                       // ground at 5000: (5000 - 4992) / 128 rounds up to 1
-        Assert.Equal(8, steps[0]);                                  // (6000 - 4992) / 128 = 7.9 -> 8, at x = 0, y = 0
+        Assert.Equal(1, steps[0]);                                  // the object is NOT in the MHDT (landscape only, like vanilla and xLODGen)
         Assert.Equal(1024, steps.Length);
     }
 

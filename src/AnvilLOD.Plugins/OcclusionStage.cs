@@ -113,6 +113,9 @@ public static class OcclusionStage
             worlds++; cellsTotal += written; objectsTotal += objects; treesTotal += treeCount;
         }
 
+        // Records with empty bounds (Base Object Swapper replacements, hand-made statics) are culled by the occlusion data: give them their model's bounds.
+        if (cellsTotal > 0) BoundsFixStage.Run(game, assets, mod, progress, ct);
+
         if (cellsTotal == 0)
         {
             warn("Occlusion: no worldspace was big enough or had landscape, so no Occlusion.esp was made.");
