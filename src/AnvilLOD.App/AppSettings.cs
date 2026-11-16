@@ -87,6 +87,7 @@ public sealed class AppSettings
     public int ObjectBrightness { get; set; } = 100; // percent, 10-110
     public int TargetSizeGb { get; set; }             // the size target picked for "Fit my settings" (0 = none)
     public bool CsGrassLod { get; set; } = true;      // LOD meshes for Community Shaders' Grass Optimizations (only made when the feature is installed)
+    public bool GrassWithCs { get; set; }             // keep the grass in the LOD4 blocks too when Grass Optimizations is installed (off: its LOD meshes replace the grass in the blocks)
     public bool AnimatedShips { get; set; } = true;   // Animated Ships' sailing ships drawn beyond the loaded cells
     public bool DetailedShips { get; set; } = true;   // whole ships in object LOD from simplified copies of their real models
     public int IceInset { get; set; } = 6;           // units, 0-24: glacier/ice LOD pulled inside its surface (0 = off)

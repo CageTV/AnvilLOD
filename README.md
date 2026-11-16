@@ -118,7 +118,7 @@ Grass LOD is built from the grass cache into the LOD4 blocks (sparser and larger
 
 - **Density** (`--grass-density <pct>`, 1-100): the share of the cached grass kept. Measured on a 120-plugin Tamriel, objects LOD only, one season: 4% = 15M triangles / 0.7 GB, 8% = 20M / 1.1 GB, 15% = 29M / 1.7 GB, 25% = 43M / 2.7 GB, 40% = 60M / 3.9 GB, 60% = 92M / 6.1 GB, 100% (every blade) = 162M / 11 GB. The default is 8%.
 - **Brightness** (`--grass-top`, `--grass-bottom`): how bright the top of a tuft and its roots are, like DynDOLOD's `GrassBrightnessTop` and `GrassBrightnessBottom` (default 85% and 50%). The object LOD brightness is applied on top.
-- **Seasons:** with Seasons of Skyrim LOD ticked, each season's LOD4 blocks are built from that season's grass cache. Seasonal caches differ a lot (summer's can be several times denser than winter's), so the seasonal output is a multiple of the single-season sizes above.
+- **Seasons:** with Seasons of Skyrim LOD ticked, each season's LOD4 blocks are built from that season's grass cache. Seasonal caches differ a lot (summer's can be several times denser than winter's), so the seasonal output is a multiple of the single-season sizes above. With Community Shaders' Grass Optimizations installed the seasonal blocks leave grass out as well, unless **Keep grass in the blocks too** is ticked (see *Community Shaders Grass Optimizations* below).
 
 ### Water and animated distant objects
 
@@ -162,7 +162,7 @@ DynDOLOD's Advanced window lets you pick Low, Medium or High, tick **Candles** a
 
 ## Seasons of Skyrim
 
-Grass LOD follows the season too when the grass cache has seasonal files (see Grass LOD above).
+Grass LOD follows the season too when the grass cache has seasonal files (see Grass LOD above), unless Grass Optimizations leaves the grass out of the blocks (see *Community Shaders Grass Optimizations* below).
 
 With "Seasons of Skyrim LOD" ticked (`--seasons`), Generate reads the form-swap INIs in `Data\Seasons` (`*_WIN.ini`, `_SPR`, `_SUM`, `_AUT`; sections Statics, MovableStatics, Activators, Furniture) and writes seasonal object LOD next to the normal blocks: `<World>.<L>.<X>.<Y>.WIN.bto` and so on, the names [Seasons of Skyrim](https://github.com/powerof3/SeasonsOfSkyrim) loads for that season. Blocks containing a swapped object are rebuilt with the swap's LOD; every other block is a hard link to the normal one, so it costs almost no disk space. Seasons without INIs get no files, and Seasons of Skyrim falls back to the normal LOD. Tree and terrain LOD are the same in every season for now.
 
@@ -208,7 +208,9 @@ With Vicn's Animated Ships in the load order: its wrecks that only bob up and do
 
 With the Grass Optimizations feature installed, Generate writes `meshes\LOD\Grass\<model>_LOD0.nif` (middle distance) and `_LOD1.nif` (far) for your grass models, which the feature swaps in over distance. They are your installed grass models simplified (about half of the triangles for the middle tier, about a fifth, at most 64, for the far tier), keeping the model's own texture, UVs, normals and vertex colours, so nothing else changes and no grass mod's files are rewritten. A grass type with no file keeps its full mesh. Models that are already tiny, have several shapes, are in the old Skyrim LE format or have another vertex layout are left alone, as are tiers your grass mod ships itself. Turn on mesh LODs in the feature's settings in the Community Shaders menu. On by default; `--no-cs-grass` turns it off; does nothing when the feature is not installed.
 
-AnvilLOD's own grass LOD (the grass in the LOD4 blocks) is unchanged. The feature's author recommends NGIO's extended grass distance plus these LOD meshes instead of grass in the blocks, so if you use extended grass, consider unticking **Grass LOD**.
+**With the feature installed, AnvilLOD leaves its own grass LOD (the grass in the LOD4 blocks) out by default**, as the feature's author recommends: these LOD meshes, plus NGIO's extended grass distance, replace it. That makes the output far smaller (on one large list with grass at 100%, about 4.5 GB of base object LOD instead of 27 GB). These LOD meshes are only used when **Enable Mesh LOD** is ticked in the feature's settings in the Community Shaders menu. The feature is found by its settings file (`shaders\features\grassoptimizations.ini`); AnvilLOD cannot see whether you have ticked it. The generation log says when the grass was left out.
+
+To keep the grass in the blocks as well, tick **Keep grass in the blocks too** or use `--grass-with-cs`. The grass is also kept when the feature is not installed, or when you untick **Community Shaders Grass Optimizations: make grass LOD meshes** (`--no-cs-grass`). While grass is left out, **Grass LOD** and the grass density have no effect, and the size estimate leaves grass out and says so.
 
 ## Presets
 

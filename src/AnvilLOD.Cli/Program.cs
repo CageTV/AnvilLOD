@@ -100,6 +100,8 @@ public static class Program
           --no-match-textures    Keep each LOD mesh's own textures. By default they follow the full model
                                  (alternate textures, snow/ice variants), the way DynDOLOD corrects them
           --no-grass             Don't build grass LOD from the grass cache
+          --grass-with-cs        Keep the grass in the LOD4 blocks even when Community Shaders' Grass Optimizations is installed
+                                 (by default its LOD meshes replace the grass in the blocks)
           --water-standins       Stream/creek/pond water planes (grid objects) that use a real water shader, which
                                  draws black beyond the loaded cells, get a lit fake-water stand-in mesh in the output
           --grass-density <pct>  Share of cached grass kept as LOD, 1-100 (default 8; 15 is high, 100 keeps every blade)
@@ -439,6 +441,7 @@ public static class Program
             DetailedShips: !a.Has("no-detailed-ships"),
             AnimatedShips: !a.Has("no-animated-ships"),
             CsGrassLod: !stale && !a.Has("no-cs-grass"),
+            GrassWithCs: a.Has("grass-with-cs"),
             IceInset: a.Get("ice-inset") is { } ii && float.TryParse(ii, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var iip) ? Math.Clamp(iip, 0f, 64f) : AnvilLOD.Meshes.LodInset.DefaultIce,
             MountainFit: !a.Has("no-mountain-fit"),
             MountainInset: a.Get("mountain-inset") is { } mi && float.TryParse(mi, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var mip) ? Math.Clamp(mip, 0f, 64f) : 12f,

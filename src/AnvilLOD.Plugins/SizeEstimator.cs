@@ -15,7 +15,8 @@ public sealed record SizeCalibration(
     bool Tree3DLod8,
     Dictionary<string, long> BaseBytes,   // "<LOD level>|<layer>" -> bytes of the base files
     long BaseTotal,                        // bytes of all base object LOD on disk
-    long SeasonTotal);                     // bytes of all seasonal object LOD on disk (0 = no seasons in that run)
+    long SeasonTotal,                      // bytes of all seasonal object LOD on disk (0 = no seasons in that run)
+    int? Version = null);                  // SizeEstimator.CalibrationVersion when made; null = made by an older version, whose grass flag meant "ticked", not "written"
 
 public sealed record SizeEstimate(long Base, long? Seasons, string Note);
 
@@ -40,6 +41,12 @@ public static class SizeEstimator
         return Math.Max(1, best.Mb - NonGrassMb);
     }
 
+    /// <summary>2: the grass flag says whether grass was written (before, whether the box was ticked).</summary>
+    public const int CalibrationVersion = 2;
+
+    /// <summary>A calibration can be used only when this version made it: an older one can claim grass that was never written, or the reverse.</summary>
+    public static bool IsCurrent(SizeCalibration? c) => c?.Version == CalibrationVersion;
+
     /// <summary>Called after a generation: what it was made of. Null when the run didn't record sizes.</summary>
     public static SizeCalibration? Calibrate(GenerateStats gen, string outputFolder, int grassPercent, bool grassOn, bool tree3d, bool tree3dLod8)
     {
@@ -56,7 +63,9 @@ public static class SizeEstimator
         var disk = SizeBreakdown.DiskBySeason(outputFolder);
         long baseTotal = disk.TryGetValue("base", out var b) ? b.Values.Sum() : 0;
         long seasons = disk.Where(kv => kv.Key != "base").Sum(kv => kv.Value.Values.Sum());
-        return new SizeCalibration(grassPercent, grassOn, tree3d, tree3dLod8, bytes, baseTotal, seasons);
+        // "Grass on" means grass was written: with Community Shaders' Grass Optimizations the box can be ticked while none went into the blocks.
+        bool grassWritten = bytes.Keys.Any(k => k.EndsWith("|" + LodLayers.Grass, StringComparison.Ordinal));
+        return new SizeCalibration(grassPercent, grassOn && grassWritten, tree3d, tree3dLod8, bytes, baseTotal, seasons, CalibrationVersion);
     }
 
     /// <summary>The size of a generation with the given settings, scaled from the last one. Null if there's nothing to scale from.</summary>

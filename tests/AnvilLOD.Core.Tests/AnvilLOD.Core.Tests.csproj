@@ -14,5 +14,6 @@
     <ProjectReference Include="..\..\src\AnvilLOD.Meshes\AnvilLOD.Meshes.csproj" />
     <ProjectReference Include="..\..\src\AnvilLOD.Textures\AnvilLOD.Textures.csproj" />
     <ProjectReference Include="..\..\src\AnvilLOD.Plugins\AnvilLOD.Plugins.csproj" />
+    <ProjectReference Include="..\..\src\AnvilLOD.Cli\AnvilLOD.Cli.csproj" />
   </ItemGroup>
 </Project>

@@ -230,7 +230,7 @@ public partial class MainWindow
     private SizeCalibration? LoadCalibration()
     {
         if (string.IsNullOrWhiteSpace(_settings.LastRunSizes)) return null;
-        try { return JsonSerializer.Deserialize<SizeCalibration>(_settings.LastRunSizes); }
+        try { var c = JsonSerializer.Deserialize<SizeCalibration>(_settings.LastRunSizes); return SizeEstimator.IsCurrent(c) ? c : null; }
         catch (JsonException) { return null; }
     }
 
