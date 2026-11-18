@@ -31,9 +31,18 @@ public static class OcclusionStage
         var sw = Stopwatch.StartNew();
         var skipped = new List<string>();
         var children = UndersidePluginWriter.ChildWorldspaces(game);
-        var worldspaces = game.LoadOrder.PriorityOrder.Worldspace().WinningOverrides()
-            .Where(w => w.EditorID is not null)
-            .ToDictionary(w => w.EditorID!, w => w, StringComparer.OrdinalIgnoreCase);
+        // Two mods can add worldspaces with the same editor ID (a "Deadland" from two sources). ToDictionary used to throw on that and end the run.
+        // Keep the one from the plugin that loads later and say so.
+        var loadIndex = game.LoadOrder.ListedOrder.Select((m, n) => (m.ModKey, n)).ToDictionary(x => x.ModKey, x => x.n);
+        int Rank(IWorldspaceGetter w) => loadIndex.TryGetValue(w.FormKey.ModKey, out var n) ? n : -1;
+        var worldspaces = new Dictionary<string, IWorldspaceGetter>(StringComparer.OrdinalIgnoreCase);
+        foreach (var w in game.LoadOrder.PriorityOrder.Worldspace().WinningOverrides().Where(w => w.EditorID is not null))
+        {
+            if (!worldspaces.TryGetValue(w.EditorID!, out var have)) { worldspaces[w.EditorID!] = w; continue; }
+            var keepNew = Rank(w) > Rank(have);
+            warn($"Occlusion: more than one worldspace is named '{w.EditorID}' ({(keepNew ? w : have).FormKey} is used, {(keepNew ? have : w).FormKey} is ignored).");
+            if (keepNew) worldspaces[w.EditorID!] = w;
+        }
 
         var mod = new SkyrimMod(ModKey.FromNameAndExtension(FileName), SkyrimRelease.SkyrimSE) { IsSmallMaster = true };
         mod.ModHeader.Stats.NextFormID = 0x800;
