@@ -5,7 +5,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Plugin / load order / BSA access. Requires net9.0+ (we target net10.0). -->
-    <PackageVersion Include="Mutagen.Bethesda.Skyrim" Version="0.54.2" />
+    <!-- 0.54.4 is the first release with the split-mod writer (BeginWrite().WithAutoSplit()): a patch whose records need
+         more masters than a plugin can hold is written as Name.esp, Name_1.esp, ... instead of failing the run. -->
+    <PackageVersion Include="Mutagen.Bethesda.Skyrim" Version="0.54.4" />
 
     <!-- Tests -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

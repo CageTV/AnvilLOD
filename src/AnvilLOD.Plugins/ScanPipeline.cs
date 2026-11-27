@@ -309,7 +309,12 @@ public static class ScanPipeline
         {
             var occ = OcclusionStage.Run(game, terrain.Heights, scan.Grids, scan.References, scan.Trees, assets, occlusionFolder, req.Occlusion, progress, Warn, ct);
             if (occ.Path is not null)
-                progress?.Report($"Occlusion.esp: {occ.Cells:N0} cells of {occ.Worldspaces} worldspace(s) in {occ.Elapsed.TotalSeconds:F0}s (clearance {req.Occlusion.Clearance:0}), written to {occ.Path}. Put it last in your plugin order.");
+            {
+                var split = occ.Files.Count > 1
+                    ? $" (split into {occ.Files.Count} plugins for the 254-master limit: {string.Join(", ", occ.Files.Skip(1).Select(p => Path.GetFileName(p)))}, all of them load last)"
+                    : ". Put it last in your plugin order.";
+                progress?.Report($"Occlusion.esp: {occ.Cells:N0} cells of {occ.Worldspaces} worldspace(s) in {occ.Elapsed.TotalSeconds:F0}s (clearance {req.Occlusion.Clearance:0}), written to {occ.Path}{split}");
+            }
             if (occ.Skipped.Count > 0) progress?.Report($"Occlusion: left out (too small, a child world or no landscape): {string.Join(", ", occ.Skipped)}");
         }
 

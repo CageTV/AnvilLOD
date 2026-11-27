@@ -3,8 +3,6 @@ using AnvilLOD.Core.Occlusion;
 using AnvilLOD.Core.Pipeline;
 using AnvilLOD.Core.World;
 using Mutagen.Bethesda.Plugins;
-using Mutagen.Bethesda.Plugins.Binary.Parameters;
-using Mutagen.Bethesda.Plugins.Order;
 using Mutagen.Bethesda.Skyrim;
 using Noggog;
 
@@ -19,7 +17,10 @@ public static class OcclusionStage
 {
     public const string FileName = "Occlusion.esp";
 
-    public sealed record Result(string? Path, int Worldspaces, int Cells, int Objects, int Trees, TimeSpan Elapsed, IReadOnlyList<string> Skipped);
+    /// <param name="Files">Every plugin written: <c>Occlusion.esp</c> first, then <c>Occlusion_1.esp</c>, ... when the cells' masters
+    /// do not fit in one plugin (see <see cref="SplitPluginWriter"/>). All of them have to load last.</param>
+    public sealed record Result(string? Path, int Worldspaces, int Cells, int Objects, int Trees, TimeSpan Elapsed, IReadOnlyList<string> Skipped,
+        IReadOnlyList<string> Files);
 
     /// <summary>Worldspaces whose LOD grid is smaller than this (cells per side) are left alone, like xLODGen does.</summary>
     public const int MinStride = 128;
@@ -128,18 +129,18 @@ public static class OcclusionStage
         if (cellsTotal == 0)
         {
             warn("Occlusion: no worldspace was big enough or had landscape, so no Occlusion.esp was made.");
-            return new Result(null, 0, 0, 0, 0, sw.Elapsed, skipped);
+            return new Result(null, 0, 0, 0, 0, sw.Elapsed, skipped, []);
         }
         Directory.CreateDirectory(folder);
         var path = System.IO.Path.Combine(folder, FileName);
         var order = game.LoadOrder.ListedOrder.Select(l => l.ModKey).Where(k => k != mod.ModKey).ToList();
-        mod.WriteToBinary(path, new BinaryWriteParameters
-        {
-            ModKey = ModKeyOption.CorrectToPath,
-            MastersListOrdering = new MastersListOrderingByLoadOrder(order),
-            RecordCount = RecordCountOption.Iterate,
-        });
-        return new Result(path, worlds, cellsTotal, objectsTotal, treesTotal, sw.Elapsed, skipped);
+        // One plugin can list 254 masters. A big load order can hand a CELL to a different plugin in almost every block, and then
+        // no single Occlusion.esp can override them all: Mutagen spreads the cells over Occlusion.esp, Occlusion_1.esp, ... instead.
+        var files = SplitPluginWriter.Write(mod, path, order);
+        if (files.Count > 1)
+            progress?.Report($"Occlusion: the cells' masters do not fit in one plugin (254 at most), so Mutagen split the output into "
+                + $"{files.Count} plugins: {string.Join(", ", files.Select(f => System.IO.Path.GetFileName(f)))}. All of them load last.");
+        return new Result(path, worlds, cellsTotal, objectsTotal, treesTotal, sw.Elapsed, skipped, files);
     }
 
     /// <summary>A LOD mesh's footprint radius and top (local units), cached by path. Null when it can't be read.</summary>
