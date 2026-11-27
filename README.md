@@ -22,7 +22,7 @@ Maintainers build both with `.\package.ps1` (output in `release\`).
 
 ## Status
 
-AnvilLOD scans the load order and writes object LOD blocks (`.bto`), billboard tree LOD (`.lst`, `.btt` and the tree atlas) and grass LOD (from the grass cache) for every worldspace with LOD settings. Walled cities (Whiterun, Solitude, Windhelm, Riften, Markarth) are copied from their child worldspaces into Tamriel's LOD, following DynDOLOD's child world configs. Dynamic LOD for quest-switched references, water planes, waterfalls and other DynDOLOD grid objects come from the SKSE plugin; Seasons of Skyrim LOD is supported (object LOD and grass LOD). **Pre-release:** feedback and bug reports are very welcome. Re-runs only rewrite what changed. Object texture atlasing and large references are still to come. See [docs/ROADMAP.md](docs/ROADMAP.md).
+AnvilLOD scans the load order and writes object LOD blocks (`.bto`), billboard tree LOD (`.lst`, `.btt` and the tree atlas) and grass LOD (from the grass cache) for every worldspace with LOD settings. Walled cities (Whiterun, Solitude, Windhelm, Riften, Markarth) are copied from their child worldspaces into Tamriel's LOD, following DynDOLOD's child world configs. Dynamic LOD for quest-switched references, water planes, waterfalls and other DynDOLOD grid objects come from the SKSE plugin; Seasons of Skyrim LOD is supported (object LOD and grass LOD). **Pre-release:** feedback and bug reports are very welcome. Re-runs only rewrite what changed. Large references, terrain underside and the built-in occlusion run are opt-in and checked in game. Object texture atlasing is still to come. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Requirements
 

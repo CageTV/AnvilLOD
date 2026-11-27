@@ -1,0 +1,29 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # The desktop app (AnvilLOD.App) is WPF, so the whole solution only builds on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore AnvilLOD.sln
+
+      - name: Build (Release)
+        run: dotnet build AnvilLOD.sln -c Release --no-restore
+
+      # Test through the solution, not the .csproj: the solution builds x64 (bin\x64\Release),
+      # so --no-build against the project's own default platform would find no test assembly.
+      - name: Test
+        run: dotnet test AnvilLOD.sln -c Release --no-build --logger "console;verbosity=normal"

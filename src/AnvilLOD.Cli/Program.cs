@@ -163,6 +163,11 @@ public static class Program
                                  parented refs that start disabled are left out)
 
         Example: AnvilLOD scan --mo2 "D:\Modlists\MyList" --worldspace Tamriel
+
+        Exit codes (for build scripts and modlist tools):
+          0  done
+          1  ran, but the output is incomplete: some LOD blocks could not be written
+          2  did not run: an option was wrong, or the load order / folders were not found
         """;
 
     /// <summary>Refuses options that would otherwise be silently ignored.</summary>
@@ -243,6 +248,18 @@ public static class Program
         catch (CliArgException e)
         {
             return Fail(e.Message + "\n\n" + Usage);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            // A folder that isn't there, a plugins.txt the profile doesn't have, an MO2 instance with no profile:
+            // the message already says what to change, so print it on one line instead of a stack trace.
+            return Fail(e.Message);
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"Unexpected error: {e.GetType().Name}: {e.Message}");
+            Console.Error.WriteLine(e.StackTrace);
+            return Fail("AnvilLOD stopped on an unexpected error (details above). A log with this run helps: see the --report file or the app's log.");
         }
     }
 
@@ -496,6 +513,12 @@ public static class Program
         var reportPath = a.Get("report") ?? Path.Combine(AppContext.BaseDirectory, "AnvilLOD.scan.json");
         ScanReport.Write(reportPath, s, total.Elapsed);
         Console.WriteLine($"Report: {reportPath}");
+        if (s.Generation is { BlocksFailed: > 0 })
+        {
+            // A modlist build script must be able to see that the output it is about to ship is incomplete.
+            Console.WriteLine($"{s.Generation.BlocksFailed:N0} blocks could not be written, so the output is incomplete (see the warnings above).");
+            return 1;
+        }
         return 0;
     }
 
