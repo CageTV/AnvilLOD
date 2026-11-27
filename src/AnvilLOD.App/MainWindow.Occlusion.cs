@@ -159,7 +159,7 @@ public partial class MainWindow
             OccSummaryText.Text = "Working out the occlusion data (see the Log tab)...";
             await RunAsync(generate: false, occlusionOnly: true);
             var occFolder = _settings.OutputFolder!;
-            var splitCount = Directory.Exists(occFolder) ? Directory.GetFiles(occFolder, "Occlusion_*.esp").Length : 0;
+            var splitCount = SplitPluginWriter.Fragments(occFolder, OcclusionLauncher.PluginName).Count();
             OccSummaryText.Text = !File.Exists(Path.Combine(occFolder, OcclusionLauncher.PluginName)) ? "No Occlusion.esp was written: see the Log tab."
                 : splitCount > 0 ? $"Occlusion.esp and its {splitCount} split file{(splitCount == 1 ? "" : "s")} (Occlusion_1.esp, ...) are in {occFolder}: the cells' masters did not fit in one plugin. Load all of them last in your plugin order."
                 : $"Occlusion.esp is in {occFolder}. Put it last in your plugin order.";
