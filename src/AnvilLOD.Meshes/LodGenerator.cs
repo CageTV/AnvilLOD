@@ -455,6 +455,25 @@ public sealed class LodGenerator
         return new LodMesh { Path = mesh.Path, Parts = parts, Warnings = mesh.Warnings, NoShapesInFile = mesh.NoShapesInFile };
     }
 
+    /// <summary>Every texture (diffuse and normal slots) the loaded LOD meshes name, as data-relative paths.</summary>
+    public IReadOnlyCollection<string> UsedTextures()
+    {
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var l in _meshes.Values)
+        {
+            if (!l.IsValueCreated || l.Value is not { } mesh) continue;
+            foreach (var part in mesh.Parts)
+                foreach (var raw in part.Material.Textures.Take(2))
+                {
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    var tex = raw.Replace('/', '\\').TrimStart('\\');
+                    if (!tex.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase)) tex = "textures\\" + tex;
+                    used.Add(tex);
+                }
+        }
+        return used;
+    }
+
     /// <summary>
     /// Textures (diffuse and normal slots) that the loaded LOD meshes name but that exist nowhere: not loose, not in a
     /// BSA, not written into the output. A texture the engine can't find draws as purple (DynDOLOD's "File Not Found

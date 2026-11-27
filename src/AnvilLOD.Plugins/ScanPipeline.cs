@@ -571,6 +571,7 @@ public static class ScanPipeline
             }
             if (gen.MeshesLoaded > 0)
             {
+                CopyOwnTextures(generator, assets, output, progress);
                 var texMissing = generator.AuditTextures(output);
                 foreach (var kv in texMissing.OrderByDescending(k => k.Value.Meshes).Take(10))
                     progress?.Report($"Missing texture: {kv.Key} (used by {kv.Value.Meshes:N0} LOD mesh{(kv.Value.Meshes == 1 ? "" : "es")}, first {kv.Value.FirstMesh})");
@@ -846,6 +847,7 @@ public static class ScanPipeline
             // DynDOLOD's "File Not Found Textures": a LOD mesh naming a texture that exists nowhere draws purple.
             if (gen.MeshesLoaded > 0)
             {
+                CopyOwnTextures(generator, assets, output, progress);
                 var texMissing = generator.AuditTextures(output);
                 if (texMissing.Count > 0)
                 {
@@ -937,6 +939,22 @@ public static class ScanPipeline
         static string TexGenKey(string missingKey) => TexGenLists.Key(missingKey);
 
         // A billboard TexGen made for the same tree record under another model name ("plugin\model_formid" is what is missing).
+        // Tree billboards AnvilLOD drew itself live in its own cache folder, which the game never sees. LOD cards (trees of light plugins) and anything
+        // else that names such a file would draw purple, so the files the LOD meshes use are written into the output (a real TexGen billboard wins: it is
+        // loose, so it is not "fallback only" and is never copied).
+        static void CopyOwnTextures(LodGenerator generator, AssetIndex assets, string output, IProgress<string>? progress)
+        {
+            if (assets.FallbackRoot is null) return;
+            int copied = 0;
+            foreach (var tex in generator.UsedTextures())
+            {
+                try { if (assets.CopyFallbackTo(tex, output)) copied++; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            if (copied > 0)
+                progress?.Report($"Tree billboards: {copied:N0} texture files that AnvilLOD drew itself and the LOD meshes use were written into the output, because the game cannot read AnvilLOD's cache.");
+        }
+
         static string? StaleTexGenBillboard(AssetIndex assets, string missingKey)
         {
             int slash = missingKey.IndexOf('\\'), us = missingKey.LastIndexOf('_');

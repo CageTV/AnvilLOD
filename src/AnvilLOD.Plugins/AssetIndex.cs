@@ -144,6 +144,27 @@ public sealed class AssetIndex : IAssetSource
         return fi.Exists ? fi : null;
     }
 
+    /// <summary>
+    /// True when the file exists only in the fallback folder (a tree billboard AnvilLOD drew into its own cache): not loose and not in an archive,
+    /// so the game cannot see it unless it is written into the output.
+    /// </summary>
+    public bool IsFallbackOnly(string dataRelativePath)
+    {
+        var key = GamePath.Normalize(dataRelativePath);
+        return Loose(key) is null && !_archived.ContainsKey(key) && Fallback(key) is not null;
+    }
+
+    /// <summary>Copies a fallback-only file to <c>outputFolder\path</c>. False when the file is not fallback-only.</summary>
+    public bool CopyFallbackTo(string dataRelativePath, string outputFolder)
+    {
+        var key = GamePath.Normalize(dataRelativePath);
+        if (!IsFallbackOnly(key) || Fallback(key) is not { } fi) return false;
+        var target = Path.Combine(outputFolder, key.Replace('\\', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        fi.CopyTo(target, overwrite: true);
+        return true;
+    }
+
     public bool Exists(string dataRelativePath)
     {
         var key = GamePath.Normalize(dataRelativePath);
