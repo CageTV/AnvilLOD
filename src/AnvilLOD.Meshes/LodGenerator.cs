@@ -135,10 +135,34 @@ public sealed class LodGenerator
         {
             if (_synthetic.MapTextures(path))
                 return _meshes.GetOrAdd(path, p => new Lazy<LodMesh?>(() => BuildMapped(p), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
-            try { return _synthetic.Build(path); }
+            try
+            {
+                var built = _synthetic.Build(path);
+                if (built is not null) NoteSyntheticTextures(path, built);
+                return built;
+            }
             catch (Exception ex) { _meshErrors[path] = ex.Message; return null; }
         }
         return _meshes.GetOrAdd(path, p => new Lazy<LodMesh?>(() => Load(p), LazyThreadSafetyMode.ExecutionAndPublication)).Value;
+    }
+
+    /// <summary>
+    /// Synthetic meshes that are not mapped (tree cards, grass) are not kept in <see cref="_meshes"/>, so their textures are noted here, by path:
+    /// the copy of AnvilLOD's own billboards into the output and the missing-texture audit would otherwise never see a tree card.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, string[]> _syntheticTextures = new(StringComparer.OrdinalIgnoreCase);
+
+    private static string NormalTexture(string raw)
+    {
+        var tex = raw.Replace('/', '\\').TrimStart('\\');
+        return tex.StartsWith("textures\\", StringComparison.OrdinalIgnoreCase) ? tex : "textures\\" + tex;
+    }
+
+    private void NoteSyntheticTextures(string path, LodMesh mesh)
+    {
+        if (_syntheticTextures.ContainsKey(path)) return;
+        _syntheticTextures.TryAdd(path, mesh.Parts.SelectMany(p => p.Material.Textures.Take(2))
+            .Where(t => !string.IsNullOrWhiteSpace(t)).Select(NormalTexture).Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     /// <summary>A synthetic mesh made from a real model, with the textures mapped the way a LOD mesh's are.</summary>
@@ -471,6 +495,8 @@ public sealed class LodGenerator
                     used.Add(tex);
                 }
         }
+        foreach (var texes in _syntheticTextures.Values)
+            foreach (var t in texes) used.Add(t);
         return used;
     }
 
@@ -480,9 +506,17 @@ public sealed class LodGenerator
     /// Textures"). Call after everything that writes textures into the output has run. Key = texture, value = first
     /// mesh that uses it and how many meshes do.
     /// </summary>
-    public IReadOnlyDictionary<string, (string FirstMesh, int Meshes)> AuditTextures(string outputFolder) =>
-        FindMissingTextures(_meshes.Values.Where(l => l.IsValueCreated && l.Value is not null).Select(l => l.Value!),
-            tex => _assets.Exists(tex) || File.Exists(Path.Combine(outputFolder, tex)));
+    public IReadOnlyDictionary<string, (string FirstMesh, int Meshes)> AuditTextures(string outputFolder)
+    {
+        bool Found(string tex) => _assets.Exists(tex) || File.Exists(Path.Combine(outputFolder, tex));
+        var missing = FindMissingTextures(_meshes.Values.Where(l => l.IsValueCreated && l.Value is not null).Select(l => l.Value!), Found)
+            .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, texes) in _syntheticTextures)
+            foreach (var t in texes)
+                if (!Found(t))
+                    missing[t] = missing.TryGetValue(t, out var m) ? (m.FirstMesh, m.Meshes + 1) : (path, 1);
+        return missing;
+    }
 
     /// <summary>
     /// Opens every texture the loaded LOD meshes name (all nine slots) and checks its DDS header. A texture the engine can't create is
